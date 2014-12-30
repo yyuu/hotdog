@@ -66,40 +66,40 @@ module Hotdog
 
     private
     def define_options
-      @optparse.on("--api-key API_KEY") do |api_key|
+      @optparse.on("--api-key API_KEY", "Datadog API key") do |api_key|
         options[:api_key] = api_key
       end
-      @optparse.on("--application-key APP_KEY") do |app_key|
+      @optparse.on("--application-key APP_KEY", "Datadog application key") do |app_key|
         options[:application_key] = app_key
       end
-      @optparse.on("-0", "--null") do
+      @optparse.on("-0", "--null", "Use null character as separator") do
         options[:print0] = true
       end
-      @optparse.on("-1") do
+      @optparse.on("-1", "Use newline as separator") do
         options[:print1] = true
       end
-      @optparse.on("-d", "--debug") do
+      @optparse.on("-d", "--debug", "Enable debug mode") do
         options[:logger].level = Logger::DEBUG
       end
-      @optparse.on("-E ENVIRONMENT", "--environment ENVIRONMENT") do |environment|
+      @optparse.on("-E ENVIRONMENT", "--environment ENVIRONMENT", "Specify environment") do |environment|
         options[:environment] = environment
       end
-      @optparse.on("-f", "--force") do
+      @optparse.on("-f", "--force", "Enable force mode") do
         options[:force] = true
       end
-      @optparse.on("-F FORMAT", "--format FORMAT") do |format|
+      @optparse.on("-F FORMAT", "--format FORMAT", "Specify output format") do |format|
         options[:formatter] = get_formatter(format).new
       end
-      @optparse.on("-h", "--headers") do |headers|
+      @optparse.on("-h", "--headers", "Display headeres for each columns") do |headers|
         options[:headers] = headers
       end
-      @optparse.on("-l") do
+      @optparse.on("-l", "Use listing format") do
         options[:listing] = true
       end
-      @optparse.on("-a TAG", "-t TAG", "--tag TAG") do |tag|
+      @optparse.on("-a TAG", "-t TAG", "--tag TAG", "Use specified tag name/value") do |tag|
         options[:tags] += [tag]
       end
-      @optparse.on("-V", "--verbose") do |tag|
+      @optparse.on("-V", "--verbose", "Enable verbose mode") do |tag|
         options[:logger].level = Logger::DEBUG
       end
     end
