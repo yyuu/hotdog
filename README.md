@@ -58,7 +58,7 @@ i-069e282c sg-89bfe710    worker-staging    us-east-1a        t2.micro      ami-
 Display hosts with specific attributes.
 
 ```sh
-$ hotdog ls -a host -a name
+$ hotdog ls -h -a host -a name
 host       name             
 ---------- -----------------
 i-02605a79 web-staging      
