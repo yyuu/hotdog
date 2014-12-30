@@ -133,7 +133,7 @@ module Hotdog
 
           execute(<<-EOS % result["results"]["hosts"].map { "LOWER(?)" }.join(", "), result["results"]["hosts"])
             DELETE FROM hosts_tags WHERE host_id NOT IN
-              ( SELECT id FROM hosts WHERE name IN ( %s ) );
+              ( SELECT id FROM hosts WHERE LOWER(name) IN ( %s ) );
           EOS
         end
       end
@@ -188,6 +188,11 @@ module Hotdog
 
         code, result = @dog.host_tags(host_name)
         if code.to_i / 100 != 2
+          case code.to_i
+          when 404 # host not found on datadog
+            @update_host_tags_q7 ||= @db.prepare("DELETE FROM hosts_tags WHERE host_id IN ( SELECT id FROM hosts WHERE LOWER(name) = LOWER(?) );")
+            @update_host_tags_q7.execute(host_name)
+          end
           raise("HTTP #{code}: #{result.inspect}")
         end
 
