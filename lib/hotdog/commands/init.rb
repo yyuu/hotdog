@@ -36,6 +36,7 @@ module Hotdog
         execute(<<-EOS)
           CREATE INDEX IF NOT EXISTS hosts_tags_expires_at ON hosts_tags ( expires_at );
         EOS
+        application.run_command("update")
       end
     end
   end

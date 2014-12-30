@@ -29,7 +29,6 @@ Then, create and initialize host information. This may take several minutes.
 
 ```sh
 $ hotdog init
-$ hotdot update
 ```
 
 List all registered hosts.

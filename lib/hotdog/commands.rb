@@ -127,7 +127,7 @@ module Hotdog
           result["results"]["hosts"].each do |host_name|
             @update_hosts_q2 ||= @db.prepare("INSERT OR IGNORE INTO hosts (name) VALUES (?);")
             logger.debug("update_hosts_q2(%s)" % [host_name.inspect])
-            @update_hosts_q2.execute("INSERT OR IGNORE INTO hosts (name) VALUES (?);", host_name)
+            @update_hosts_q2.execute(host_name)
             update_host_tags(host_name, options)
           end
 
