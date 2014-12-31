@@ -15,6 +15,7 @@ module Hotdog
         @options = options
         @dog = Dogapi::Client.new(options[:api_key], options[:application_key])
         @started_at = Time.new
+        @suspended = false
       end
       attr_reader :application
       attr_reader :formatter
@@ -33,6 +34,10 @@ module Hotdog
         end
         logger.debug(q)
         @db.execute(query, args)
+      end
+
+      def suspended?()
+        @suspended
       end
 
       private
@@ -191,6 +196,7 @@ module Hotdog
       EMPTY_EXPIRES_AT = Time.at(0).to_i
 
       def suspend_host_tags()
+        @suspended = true
         @suspend_host_tags_q1 ||= @db.prepare("INSERT OR IGNORE INTO hosts (name) VALUES (?);")
         @suspend_host_tags_q1.execute(EMPTY_HOST_NAME)
         @suspend_host_tags_q2 ||= @db.prepare("INSERT OR IGNORE INTO tags (name, value) VALUES (?, ?);")

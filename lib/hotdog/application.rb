@@ -55,14 +55,19 @@ module Hotdog
 
       begin
         command = ( args.shift || "help" )
-        run_command(command, args)
+        c = run_command(command, args)
+        if c.suspended?
+          exit(2)
+        end
       rescue Errno::EPIPE
         # nop
       end
     end
 
     def run_command(command, args=[])
-      get_command(command).new(@db, options.merge(application: self)).run(args)
+      get_command(command).new(@db, options.merge(application: self)).tap do |c|
+        c.run(args)
+      end
     end
 
     private
