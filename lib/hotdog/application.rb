@@ -15,7 +15,7 @@ module Hotdog
       @options = {
         environment: "default",
         minimum_expiry: 28800, # 8 hours
-        random_expiry: 57600, # 16 hours
+        random_expiry: 604800, # 7 days
         force: false,
         formatter: get_formatter("plain").new,
         headers: false,
