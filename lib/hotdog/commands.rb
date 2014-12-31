@@ -106,10 +106,12 @@ module Hotdog
       def update_hosts(options={})
         @db.transaction do
           if not options[:force]
+            # Update host list on every expirations to update frequently.
             @update_hosts_q1 ||= @db.prepare("SELECT MIN(expires_at) FROM hosts_tags;")
             logger.debug("update_hosts_q1()")
             if expires_at = @update_hosts_q1.execute().map { |row| row.first }.first
               if Time.new.to_i < expires_at
+                logger.debug("next update will run after %s." % [Time.at(expires_at)])
                 return
               else
                 logger.debug("minimum expires_at was %s. start updateing." % [Time.at(expires_at)])
@@ -173,13 +175,16 @@ module Hotdog
         end
 
         if not options[:force]
-          @update_host_tags_q3 ||= @db.prepare("SELECT MIN(expires_at) FROM hosts_tags WHERE host_id = ?;")
+          # Update host tags less frequently.
+          # Don't need to run updates on every expiration.
+          @update_host_tags_q3 ||= @db.prepare("SELECT AVG(expires_at) FROM hosts_tags WHERE host_id = ?;")
           logger.debug("update_host_tags_q3(%s)" % [host_id.inspect])
           if expires_at = @update_host_tags_q3.execute(host_id).map { |row| row.first }.first
             if Time.new.to_i < expires_at
+              logger.debug("%s: next update will run after %s." % [host_name, Time.at(expires_at)])
               return
             else
-              logger.debug("%s: minimum expires_at was %s. start updating." % [host_name, Time.at(expires_at)])
+              logger.debug("%s: average expires_at was %s. start updating." % [host_name, Time.at(expires_at)])
             end
           else
             logger.debug("%s: expires_at not found. start updateing." % [host_name])
@@ -191,6 +196,7 @@ module Hotdog
           case code.to_i
           when 404 # host not found on datadog
             @update_host_tags_q7 ||= @db.prepare("DELETE FROM hosts_tags WHERE host_id IN ( SELECT id FROM hosts WHERE LOWER(name) = LOWER(?) );")
+            logger.debug("update_host_tags_q7(%s)" % [host_name.inspect])
             @update_host_tags_q7.execute(host_name)
           end
           raise("HTTP #{code}: #{result.inspect}")
