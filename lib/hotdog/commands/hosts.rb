@@ -7,23 +7,29 @@ module Hotdog
         update_hosts(@options.dup)
 
         if args.empty?
-          result = execute(<<-EOS).map { |row| row.first }
+          @hosts_q1 ||= @db.prepare(<<-EOS)
             SELECT DISTINCT host_id FROM hosts_tags;
           EOS
+          logger.debug("hosts_q1()")
+          result = @hosts_q1.execute().to_a
         else
           result = args.map { |host_name|
             if host_name.index("*")
-              execute(<<-EOS, host_name).map { |row| row.first }
+              @hosts_q2 ||= @db.prepare(<<-EOS)
                 SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
                   INNER JOIN hosts ON hosts_tags.host_id = hosts.id
                     WHERE LOWER(hosts.name) GLOB LOWER(?);
               EOS
+              logger.debug("hosts_q2(%s)" % [host_name.inspect])
+              @hosts_q2.execute(host_name).map { |row| row.first }
             else
-              execute(<<-EOS, host_name).map { |row| row.first }
+              @hosts_q3 ||= @db.prepare(<<-EOS)
                 SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
                   INNER JOIN hosts ON hosts_tags.host_id = hosts.id
                     WHERE LOWER(hosts.name) = LOWER(?);
               EOS
+              logger.debug("hosts_q3(%s)" % [host_name.inspect])
+              @hosts_q3.execute(host_name).map { |row| row.first }
             end
           }.reduce(:+)
         end
