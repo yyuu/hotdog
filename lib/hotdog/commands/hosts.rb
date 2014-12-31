@@ -29,7 +29,7 @@ module Hotdog
         end
         if 0 < result.length
           result, fields = get_hosts(result)
-          STDOUT.puts(format(result, fields: fields))
+          STDOUT.print(format(result, fields: fields))
         else
           STDERR.puts("no match found: #{args.join(" ")}")
           exit(1)

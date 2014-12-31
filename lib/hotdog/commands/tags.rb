@@ -28,7 +28,7 @@ module Hotdog
           EOS
         end
         if 0 < result.length
-          STDOUT.puts(format(result, fields: fields))
+          STDOUT.print(format(result, fields: fields))
         end
       end
     end

@@ -6,7 +6,7 @@ module Hotdog
   module Formatters
     class Json < BaseFormatter
       def format(result, options={})
-        JSON.pretty_generate(result)
+        JSON.pretty_generate(result) + "\n"
       end
     end
   end
