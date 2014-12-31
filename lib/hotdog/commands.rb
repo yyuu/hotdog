@@ -151,6 +151,8 @@ module Hotdog
 
       def update_tags(options={})
         @db.transaction do
+          resume_host_tags
+
           if options[:force]
             @update_tags_q1 ||= @db.prepare(<<-EOS)
               SELECT DISTINCT hosts_tags.host_id FROM hosts_tags;
@@ -182,47 +184,44 @@ module Hotdog
         end
       end
 
+      # it'd be better to filter out this host/tag entry on displaying...
+      EMPTY_HOST_NAME = ""
+      EMPTY_TAG_NAME = ""
+      EMPTY_TAG_VALUE = ""
+      EMPTY_EXPIRES_AT = Time.at(0).to_i
+
       def suspend_host_tags()
-        # it'd be better to filter out this host/tag entry on displaying...
-        host_name = ""
-        tag_name = ""
-        tag_value = ""
-        expires_at = Time.at(0).to_i
-        execute("INSERT OR IGNORE INTO hosts (name) VALUES (?);", host_name)
-        execute("INSERT OR IGNORE INTO tags (name, value) VALUES (?, ?);", tag_name, tag_value)
-        execute(<<-EOS, expires_at, host_name, tag_name, tag_value)
+        @suspend_host_tags_q1 ||= @db.prepare("INSERT OR IGNORE INTO hosts (name) VALUES (?);")
+        @suspend_host_tags_q1.execute(EMPTY_HOST_NAME)
+        @suspend_host_tags_q2 ||= @db.prepare("INSERT OR IGNORE INTO tags (name, value) VALUES (?, ?);")
+        @suspend_host_tags_q2.execute(EMPTY_TAG_NAME, EMPTY_TAG_VALUE)
+        @suspend_host_tags_q3 ||= @db.prepare(<<-EOS)
           INSERT OR REPLACE INTO hosts_tags (host_id, tag_id, expires_at)
             SELECT host.id, tag.id, ? FROM
               ( SELECT id FROM hosts WHERE name = ?) AS host,
               ( SELECT id FROM tags WHERE name = ? AND value = ? ) AS tag;
         EOS
+        @suspend_host_tags_q3.execute(EMPTY_EXPIRES_AT, EMPTY_HOST_NAME, EMPTY_TAG_NAME, EMPTY_TAG_VALUE)
+      end
+
+      def resume_host_tags()
+        @resume_host_tags_q1 ||= @db.prepare(<<-EOS)
+          DELETE FROM hosts_tags
+            WHERE host_id IN ( SELECT id FROM hosts WHERE name = ? ) AND tag_id IN ( SELECT id FROM tags WHERE name = ? AND value = ? );
+        EOS
+        @resume_host_tags_q1.execute(EMPTY_HOST_NAME, EMPTY_TAG_NAME, EMPTY_TAG_VALUE)
       end
 
       def update_host_tags(host_name, options={})
         if Integer === host_name
           host_id = host_name
-#         @update_host_tags_q1 ||= @db.prepare("SELECT name FROM hosts WHERE id = ? LIMIT 1;")
-          @update_host_tags_q1 ||= @db.prepare(<<-EOS)
-            SELECT hosts.name FROM hosts_tags
-              INNER JOIN hosts ON hosts_tags.host_id = hosts.id
-                WHERE hosts.id = ? LIMIT 1;
-          EOS
+          @update_host_tags_q1 ||= @db.prepare("SELECT name FROM hosts WHERE id = ? LIMIT 1;")
           logger.debug("update_host_tags_q1(%s)" % [host_id.inspect])
           host_name = @update_host_tags_q1.execute(host_id).map { |row| row.first }.first
         else
-#         @update_host_tags_q2 ||= @db.prepare("SELECT id FROM hosts WHERE LOWER(name) = LOWER(?) LIMIT 1;")
-          @update_host_tags_q2 ||= @db.prepare(<<-EOS)
-            SELECT hosts.id FROM hosts_tags
-              INNER JOIN hosts ON hosts_tags.host_id = hosts.id
-                WHERE LOWER(hosts.name) = LOWER(?) LIMIT 1;
-          EOS
+          @update_host_tags_q2 ||= @db.prepare("SELECT id FROM hosts WHERE LOWER(name) = LOWER(?) LIMIT 1;")
           logger.debug("update_host_tags_q2(%s)" % [host_name.inspect])
           host_id = @update_host_tags_q2.execute(host_name).map { |row| row.first }.first
-        end
-
-        if host_id.nil? or host_name.nil?
-          logger.warn("host_id=%s or host_name=%s has already been removed." % [host_id.inspect, host_name.inspect])
-          return
         end
 
         if not options[:force]
