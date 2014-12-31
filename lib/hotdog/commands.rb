@@ -60,12 +60,19 @@ module Hotdog
             update_host_tags(host_id, @options.merge(tags: tags))
             tags.map { |tag|
               tag_name, tag_value = tag.split(":", 2)
-              if tag_name == "host"
+              case tag_name
+              when "expires_at"
+                @get_hosts_q6 ||= @db.prepare(<<-EOS)
+                  SELECT expires_at FROM hosts_tags WHERE host_id = ? LIMIT 1;
+                EOS
+                logger.debug("get_hosts_q6()")
+                @get_hosts_q6.execute(host_id).map { |row| Time.at(row.first).strftime("%Y-%m-%dT%H:%M:%S") }.first
+              when "host"
                 @get_hosts_q1 ||= @db.prepare(<<-EOS)
                   SELECT name FROM hosts WHERE id = ? LIMIT 1;
                 EOS
                 logger.debug("get_hosts_q1()")
-                @get_hosts_q1.execute(host_id).map { |row| row.first }.join(",")
+                @get_hosts_q1.execute(host_id).map { |row| row.first }.first
               else
                 if not glob?(tag_name)
                   @get_hosts_q2 ||= @db.prepare(<<-EOS)
