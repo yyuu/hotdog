@@ -72,35 +72,35 @@ module Hotdog
       @optparse.on("--application-key APP_KEY", "Datadog application key") do |app_key|
         options[:application_key] = app_key
       end
-      @optparse.on("-0", "--null", "Use null character as separator") do
-        options[:print0] = true
+      @optparse.on("-0", "--null", "Use null character as separator") do |v|
+        options[:print0] = v
       end
-      @optparse.on("-1", "Use newline as separator") do
-        options[:print1] = true
+      @optparse.on("-1", "Use newline as separator") do |v|
+        options[:print1] = v
       end
-      @optparse.on("-d", "--debug", "Enable debug mode") do
-        options[:logger].level = Logger::DEBUG
+      @optparse.on("-d", "--[no-]debug", "Enable debug mode") do |v|
+        options[:logger].level = v ? Logger::DEBUG : Logger::INFO
       end
       @optparse.on("-E ENVIRONMENT", "--environment ENVIRONMENT", "Specify environment") do |environment|
         options[:environment] = environment
       end
-      @optparse.on("-f", "--force", "Enable force mode") do
-        options[:force] = true
+      @optparse.on("-f", "--[no-]force", "Enable force mode") do |v|
+        options[:force] = v
       end
       @optparse.on("-F FORMAT", "--format FORMAT", "Specify output format") do |format|
         options[:formatter] = get_formatter(format).new
       end
-      @optparse.on("-h", "--headers", "Display headeres for each columns") do |headers|
-        options[:headers] = headers
+      @optparse.on("-h", "--[no-]headers", "Display headeres for each columns") do |v|
+        options[:headers] = v
       end
-      @optparse.on("-l", "Use listing format") do
-        options[:listing] = true
+      @optparse.on("-l", "--[no-]listing", "Use listing format") do |v|
+        options[:listing] = v
       end
       @optparse.on("-a TAG", "-t TAG", "--tag TAG", "Use specified tag name/value") do |tag|
         options[:tags] += [tag]
       end
-      @optparse.on("-V", "--verbose", "Enable verbose mode") do |tag|
-        options[:logger].level = Logger::DEBUG
+      @optparse.on("-V", "--[no-]verbose", "Enable verbose mode") do |v|
+        options[:logger].level = v ? Logger::DEBUG : Logger::INFO
       end
     end
 
