@@ -248,13 +248,13 @@ module Hotdog
       class TagGlobExpressionNode < TagExpressionNode
         def evaluate(environment)
           if attribute?
-            environment.execute(<<-EOS, identifier, attribute).map { |row| row.first }
+            values = environment.execute(<<-EOS, identifier, attribute).map { |row| row.first }
               SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
                 INNER JOIN tags ON hosts_tags.tag_id = tags.id
                   WHERE LOWER(tags.name) GLOB LOWER(?) AND LOWER(tags.value) GLOB LOWER(?);
             EOS
           else
-            environment.execute(<<-EOS, identifier, identifier, identifier).map { |row| row.first }
+            values = environment.execute(<<-EOS, identifier, identifier, identifier).map { |row| row.first }
               SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
                 INNER JOIN hosts ON hosts_tags.host_id = hosts.id
                 INNER JOIN tags ON hosts_tags.tag_id = tags.id
@@ -262,6 +262,19 @@ module Hotdog
 
             EOS
           end
+          if not environment.fixed_string? and values.empty?
+            # fallback to glob expression
+            identifier_glob = identifier.gsub(/[-.\/_]/, "?")
+            if identifier != identifier_glob
+              if attribute?
+                attribute_glob = attribute.gsub(/[-.\/:_]/, "?")
+              else
+                attribute_glob = nil
+              end
+              values = TagGlobExpressionNode.new(identifier_glob, attribute_glob).evaluate(environment)
+            end
+          end
+          values
         end
       end
 
