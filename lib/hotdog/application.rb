@@ -14,7 +14,7 @@ module Hotdog
       @optparse = OptionParser.new
       @options = {
         environment: "default",
-        minimum_expiry: 28800, # 8 hours
+        minimum_expiry: 3600, # 1 hour
         random_expiry: 604800, # 7 days
         fixed_string: false,
         force: false,
