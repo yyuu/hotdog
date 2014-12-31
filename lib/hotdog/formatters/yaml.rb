@@ -6,7 +6,7 @@ module Hotdog
   module Formatters
     class Yaml < BaseFormatter
       def format(result, options={})
-        result.to_yaml + "\n"
+        result.to_yaml
       end
     end
   end

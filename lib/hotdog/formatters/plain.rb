@@ -31,7 +31,12 @@ module Hotdog
             }
           }
         end
-        _format(result, sep, options) + (options[:print0] ? "" : "\n")
+        s = _format(result, sep, options)
+        if s.empty? or options[:print0]
+          s
+        else
+          s + "\n"
+        end
       end
 
       def _format(result, sep, options={})
