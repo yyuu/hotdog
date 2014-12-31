@@ -11,7 +11,7 @@ module Hotdog
             SELECT DISTINCT host_id FROM hosts_tags;
           EOS
           logger.debug("hosts_q1()")
-          result = @hosts_q1.execute().to_a
+          result = @hosts_q1.execute().to_a.reduce(:+)
         else
           result = args.map { |host_name|
             if host_name.index("*")
