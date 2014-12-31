@@ -235,8 +235,10 @@ module Hotdog
             if identifier != identifier_glob
               if attribute?
                 attribute_glob = attribute.gsub(/[-.\/:_]/, "?")
+                environment.logger.info("fallback to glob expression: %s:%s" % [identifier_glob, attribute_glob])
               else
                 attribute_glob = nil
+                environment.logger.info("fallback to glob expression: %s" % [identifier_glob])
               end
               values = TagGlobExpressionNode.new(identifier_glob, attribute_glob).evaluate(environment)
             end
@@ -268,8 +270,10 @@ module Hotdog
             if identifier != identifier_glob
               if attribute?
                 attribute_glob = attribute.gsub(/[-.\/:_]/, "?")
+                environment.logger.info("fallback to glob expression: %s:%s" % [identifier_glob, attribute_glob])
               else
                 attribute_glob = nil
+                environment.logger.info("fallback to glob expression: %s" % [identifier_glob])
               end
               values = TagGlobExpressionNode.new(identifier_glob, attribute_glob).evaluate(environment)
             end
