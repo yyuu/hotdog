@@ -21,6 +21,7 @@ module Hotdog
         headers: false,
         listing: false,
         logger: Logger.new(STDERR),
+        max_time: 30,
         api_key: ENV["DATADOG_API_KEY"],
         application_key: ENV["DATADOG_APPLICATION_KEY"],
         print0: false,
@@ -98,6 +99,9 @@ module Hotdog
       end
       @optparse.on("-a TAG", "-t TAG", "--tag TAG", "Use specified tag name/value") do |tag|
         options[:tags] += [tag]
+      end
+      @optparse.on("-m SECONDS", "--max-time SECONDS", Integer, "Maximum time in seconds") do |seconds|
+        options[:max_time] = seconds
       end
       @optparse.on("-V", "--[no-]verbose", "Enable verbose mode") do |v|
         options[:logger].level = v ? Logger::DEBUG : Logger::INFO

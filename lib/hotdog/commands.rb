@@ -14,6 +14,7 @@ module Hotdog
         @application = options[:application]
         @options = options
         @dog = Dogapi::Client.new(options[:api_key], options[:application_key])
+        @started_at = Time.new
       end
       attr_reader :application
       attr_reader :formatter
@@ -122,21 +123,29 @@ module Hotdog
           end
 
           code, result = @dog.search("hosts:")
+          logger.debug("dog.serarch(%s) #==> [%s, %s]" % ["hosts:".inspect, code.inspect, result.inspect])
           if code.to_i / 100 != 2
             raise("HTTP #{code}: #{result.inspect}")
-          end
-
-          result["results"]["hosts"].each do |host_name|
-            @update_hosts_q2 ||= @db.prepare("INSERT OR IGNORE INTO hosts (name) VALUES (?);")
-            logger.debug("update_hosts_q2(%s)" % [host_name.inspect])
-            @update_hosts_q2.execute(host_name)
-            update_host_tags(host_name, options)
           end
 
           execute(<<-EOS % result["results"]["hosts"].map { "LOWER(?)" }.join(", "), result["results"]["hosts"])
             DELETE FROM hosts_tags WHERE host_id NOT IN
               ( SELECT id FROM hosts WHERE LOWER(name) IN ( %s ) );
           EOS
+
+          result["results"]["hosts"].each do |host_name|
+            @update_hosts_q2 ||= @db.prepare("INSERT OR IGNORE INTO hosts (name) VALUES (?);")
+            logger.debug("update_hosts_q2(%s)" % [host_name.inspect])
+            @update_hosts_q2.execute(host_name)
+            update_host_tags(host_name, options)
+
+            elapsed_time = Time.new - @started_at
+            if 0 < options[:max_time] and options[:max_time] < elapsed_time
+              logger.info("update host tags exceeded the maximum time (#{options[:max_time]} < #{elapsed_time}). will resume on next run.")
+              suspend_host_tags
+              break
+            end
+          end
         end
       end
 
@@ -156,22 +165,64 @@ module Hotdog
             EOS
             hosts = @update_tags_q2.execute(Time.new.to_i)
           end
-          hosts.each do |host_name|
-            update_host_tags(host_name, options)
+          hosts.each do |host_id|
+            @update_tags_q3 ||= @db.prepare("DELETE FROM hosts_tags WHERE host_id = ? AND hosts_tags.expires_at < ?;")
+            logger.debug("update_tags_q3(%s, %s)" % [host_id.inspect, Time.new.to_i])
+            @update_tags_q3.execute(host_id, Time.new.to_i)
+
+            update_host_tags(host_id, options)
+
+            elapsed_time = Time.new - @started_at
+            if 0 < options[:max_time] and options[:max_time] < elapsed_time
+              logger.info("update host tags exceeded the maximum time (#{options[:max_time]} < #{elapsed_time}). will resume on next run.")
+              suspend_host_tags
+              break
+            end
           end
         end
+      end
+
+      def suspend_host_tags()
+        # it'd be better to filter out this host/tag entry on displaying...
+        host_name = ""
+        tag_name = ""
+        tag_value = ""
+        expires_at = Time.at(0).to_i
+        execute("INSERT OR IGNORE INTO hosts (name) VALUES (?);", host_name)
+        execute("INSERT OR IGNORE INTO tags (name, value) VALUES (?, ?);", tag_name, tag_value)
+        execute(<<-EOS, expires_at, host_name, tag_name, tag_value)
+          INSERT OR REPLACE INTO hosts_tags (host_id, tag_id, expires_at)
+            SELECT host.id, tag.id, ? FROM
+              ( SELECT id FROM hosts WHERE name = ?) AS host,
+              ( SELECT id FROM tags WHERE name = ? AND value = ? ) AS tag;
+        EOS
       end
 
       def update_host_tags(host_name, options={})
         if Integer === host_name
           host_id = host_name
-          @update_host_tags_q1 ||= @db.prepare("SELECT name FROM hosts WHERE id = ? LIMIT 1;")
+#         @update_host_tags_q1 ||= @db.prepare("SELECT name FROM hosts WHERE id = ? LIMIT 1;")
+          @update_host_tags_q1 ||= @db.prepare(<<-EOS)
+            SELECT hosts.name FROM hosts_tags
+              INNER JOIN hosts ON hosts_tags.host_id = hosts.id
+                WHERE hosts.id = ? LIMIT 1;
+          EOS
           logger.debug("update_host_tags_q1(%s)" % [host_id.inspect])
           host_name = @update_host_tags_q1.execute(host_id).map { |row| row.first }.first
         else
-          @update_host_tags_q2 ||= @db.prepare("SELECT id FROM hosts WHERE LOWER(name) = LOWER(?) LIMIT 1;")
+#         @update_host_tags_q2 ||= @db.prepare("SELECT id FROM hosts WHERE LOWER(name) = LOWER(?) LIMIT 1;")
+          @update_host_tags_q2 ||= @db.prepare(<<-EOS)
+            SELECT hosts.id FROM hosts_tags
+              INNER JOIN hosts ON hosts_tags.host_id = hosts.id
+                WHERE LOWER(hosts.name) = LOWER(?) LIMIT 1;
+          EOS
           logger.debug("update_host_tags_q2(%s)" % [host_name.inspect])
           host_id = @update_host_tags_q2.execute(host_name).map { |row| row.first }.first
+        end
+
+        if host_id.nil? or host_name.nil?
+          logger.warn("host_id=%s or host_name=%s has already been removed." % [host_id.inspect, host_name.inspect])
+          return
         end
 
         if not options[:force]
@@ -192,6 +243,7 @@ module Hotdog
         end
 
         code, result = @dog.host_tags(host_name)
+        logger.debug("dog.hosts_tags(%s) #==> [%s, %s]" % [host_name.inspect, code.inspect, result.inspect])
         if code.to_i / 100 != 2
           case code.to_i
           when 404 # host not found on datadog
