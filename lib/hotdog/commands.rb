@@ -156,7 +156,7 @@ module Hotdog
           code, result = @dog.search("hosts:")
           logger.debug("dog.serarch(%s) #==> [%s, %s]" % ["hosts:".inspect, code.inspect, result.inspect])
           if code.to_i / 100 != 2
-            raise("HTTP #{code}: #{result.inspect}")
+            raise("dog.search(%s) returns (%s: %s)" % ["hosts:".inspect, code.inspect, result.inspect])
           end
 
           execute(<<-EOS % result["results"]["hosts"].map { "LOWER(?)" }.join(", "), result["results"]["hosts"])
@@ -274,7 +274,7 @@ module Hotdog
         end
 
         code, result = @dog.host_tags(host_name)
-        logger.debug("dog.hosts_tags(%s) #==> [%s, %s]" % [host_name.inspect, code.inspect, result.inspect])
+        logger.debug("dog.host_tags(%s) #==> [%s, %s]" % [host_name.inspect, code.inspect, result.inspect])
         if code.to_i / 100 != 2
           case code.to_i
           when 404 # host not found on datadog
@@ -282,7 +282,7 @@ module Hotdog
             logger.debug("update_host_tags_q7(%s)" % [host_name.inspect])
             @update_host_tags_q7.execute(host_name)
           end
-          raise("HTTP #{code}: #{result.inspect}")
+          raise("dog.host_tags(%s) returns (%s: %s)" % [host_name.inspect, code.inspect, result.inspect])
         end
 
         expires_at = Time.new.to_i + (options[:minimum_expiry] + rand(options[:random_expiry]))
