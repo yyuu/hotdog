@@ -229,8 +229,8 @@ module Hotdog
                   WHERE LOWER(hosts.name) = LOWER(?) OR LOWER(tags.name) = LOWER(?) OR LOWER(tags.value) = LOWER(?);
             EOS
           end
-          # fallback to glob expression
-          if values.empty?
+          if not environment.fixed_string? and values.empty?
+            # fallback to glob expression
             identifier_glob = identifier.gsub(/[-.\/_]/, "?")
             if identifier != identifier_glob
               if attribute?

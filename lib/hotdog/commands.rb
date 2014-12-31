@@ -8,6 +8,7 @@ module Hotdog
     class BaseCommand
       def initialize(db, options={})
         @db = db
+        @fixed_string = options[:fixed_string]
         @formatter = options[:formatter]
         @logger = options[:logger]
         @tags = options[:tags]
@@ -34,6 +35,10 @@ module Hotdog
         end
         logger.debug(q)
         @db.execute(query, args)
+      end
+
+      def fixed_string?()
+        @fixed_string
       end
 
       def suspended?()

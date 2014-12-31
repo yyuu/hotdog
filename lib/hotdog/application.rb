@@ -16,6 +16,7 @@ module Hotdog
         environment: "default",
         minimum_expiry: 28800, # 8 hours
         random_expiry: 604800, # 7 days
+        fixed_string: false,
         force: false,
         formatter: get_formatter("plain").new,
         headers: false,
@@ -89,6 +90,9 @@ module Hotdog
       end
       @optparse.on("-E ENVIRONMENT", "--environment ENVIRONMENT", "Specify environment") do |environment|
         options[:environment] = environment
+      end
+      @optparse.on("--fixed-string", "Interpret pattern as fixed string") do |v|
+        options[:fixed_string] = v
       end
       @optparse.on("-f", "--[no-]force", "Enable force mode") do |v|
         options[:force] = v
