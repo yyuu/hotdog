@@ -11,11 +11,19 @@ module Hotdog
             tag_name
           }
           result1 = fields.map { |tag_name|
-            execute(<<-EOS, tag_name).map { |row| row.join(",") }
-              SELECT DISTINCT tags.value FROM hosts_tags
-                INNER JOIN tags ON hosts_tags.tag_id = tags.id
-                  WHERE tags.name = LOWER(?);
-            EOS
+            if not glob?(tag_name)
+              execute(<<-EOS, tag_name).map { |row| row.join(",") }
+                SELECT DISTINCT tags.value FROM hosts_tags
+                  INNER JOIN tags ON hosts_tags.tag_id = tags.id
+                    WHERE tags.name = LOWER(?);
+              EOS
+            else
+              execute(<<-EOS, tag_name).map { |row| row.join(",") }
+                SELECT DISTINCT tags.value FROM hosts_tags
+                  INNER JOIN tags ON hosts_tags.tag_id = tags.id
+                    WHERE tags.name GLOB LOWER(?);
+              EOS
+            end
           }
           result = (0..result1.reduce(0) { |max, values| [max, values.length].max }).map { |field_index|
             result1.map { |values| values[field_index] }

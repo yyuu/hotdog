@@ -50,6 +50,10 @@ module Hotdog
         @formatter.format(result, @options.merge(options))
       end
 
+      def glob?(s)
+        s.index('*') or s.index('?') or s.index('[') or s.index(']')
+      end
+
       def get_hosts(hosts=[])
         if 0 < tags.length
           result = hosts.map { |host_id|
@@ -57,19 +61,29 @@ module Hotdog
             tags.map { |tag|
               tag_name, tag_value = tag.split(":", 2)
               if tag_name == "host"
-                logger.debug("get_hosts_q1()")
                 @get_hosts_q1 ||= @db.prepare(<<-EOS)
                   SELECT name FROM hosts WHERE id = ? LIMIT 1;
                 EOS
+                logger.debug("get_hosts_q1()")
                 @get_hosts_q1.execute(host_id).map { |row| row.first }.join(",")
               else
-                logger.debug("get_hosts_q2()")
-                @get_hosts_q2 ||= @db.prepare(<<-EOS)
-                  SELECT tags.value FROM hosts_tags
-                    INNER JOIN tags ON hosts_tags.tag_id = tags.id
-                      WHERE hosts_tags.host_id = ? AND tags.name = ?;
-                EOS
-                @get_hosts_q2.execute(host_id, tag_name).map { |row| row.first }.join(",")
+                if not glob?(tag_name)
+                  @get_hosts_q2 ||= @db.prepare(<<-EOS)
+                    SELECT tags.value FROM hosts_tags
+                      INNER JOIN tags ON hosts_tags.tag_id = tags.id
+                        WHERE hosts_tags.host_id = ? AND tags.name = ?;
+                  EOS
+                  logger.debug("get_hosts_q2()")
+                  @get_hosts_q2.execute(host_id, tag_name).map { |row| row.first }.join(",")
+                else
+                  @get_hosts_q5 ||= @db.prepare(<<-EOS)
+                    SELECT tags.value FROM hosts_tags
+                      INNER JOIN tags ON hosts_tags.tag_id = tags.id
+                        WHERE hosts_tags.host_id = ? AND tags.name GLOB ?;
+                  EOS
+                  logger.debug("get_hosts_q5()")
+                  @get_hosts_q5.execute(host_id, tag_name).map { |row| row.first }.join(",")
+                end
               end
             }
           }
