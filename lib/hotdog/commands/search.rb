@@ -13,7 +13,6 @@ module Hotdog
         end
 
         update_hosts(@options.dup)
-#       update_tags(@options.dup)
 
         begin
           node = parse(expression)
@@ -70,13 +69,13 @@ module Hotdog
         }
         rule(:atom) {
           ( spacing.maybe >> str('(') >> expression >> str(')') >> spacing.maybe \
-          | spacing.maybe >> identifier_regexp.as(:identifier_regexp) >> str(':') >> attribute_regexp.as(:attribute_regexp) >> spacing.maybe \
+          | spacing.maybe >> identifier_regexp.as(:identifier_regexp) >> separator >> attribute_regexp.as(:attribute_regexp) >> spacing.maybe \
           | spacing.maybe >> identifier_regexp.as(:identifier_regexp) >> spacing.maybe \
-          | spacing.maybe >> identifier_glob.as(:identifier_glob) >> str(':') >> attribute_glob.as(:attribute_glob) >> spacing.maybe \
-          | spacing.maybe >> identifier_glob.as(:identifier_glob) >> str(':') >> attribute.as(:attribute) >> spacing.maybe \
+          | spacing.maybe >> identifier_glob.as(:identifier_glob) >> separator >> attribute_glob.as(:attribute_glob) >> spacing.maybe \
+          | spacing.maybe >> identifier_glob.as(:identifier_glob) >> separator >> attribute.as(:attribute) >> spacing.maybe \
           | spacing.maybe >> identifier_glob.as(:identifier_glob) >> spacing.maybe \
-          | spacing.maybe >> identifier.as(:identifier)>> str(':') >> attribute_glob.as(:attribute_glob) >> spacing.maybe \
-          | spacing.maybe >> identifier.as(:identifier)>> str(':') >> attribute.as(:attribute) >> spacing.maybe \
+          | spacing.maybe >> identifier.as(:identifier)>> separator >> attribute_glob.as(:attribute_glob) >> spacing.maybe \
+          | spacing.maybe >> identifier.as(:identifier)>> separator >> attribute.as(:attribute) >> spacing.maybe \
           | spacing.maybe >> identifier.as(:identifier) >> spacing.maybe \
           )
         }
@@ -90,6 +89,11 @@ module Hotdog
         }
         rule(:identifier) {
           ( match('[A-Za-z]') >> match('[-./0-9A-Z_a-z]').repeat(0) \
+          )
+        }
+        rule(:separator) {
+          ( str(':') \
+          | str('=') \
           )
         }
         rule(:attribute_regexp) {
