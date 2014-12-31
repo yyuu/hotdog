@@ -251,9 +251,9 @@ module Hotdog
           logger.debug("update_host_tags_q1(%s)" % [host_id.inspect])
           host_name = @update_host_tags_q1.execute(host_id).map { |row| row.first }.first
         else
-          @update_host_tags_q2 ||= @db.prepare("SELECT id FROM hosts WHERE LOWER(name) = LOWER(?) LIMIT 1;")
+          @update_host_tags_q2 ||= @db.prepare("SELECT id, name FROM hosts WHERE LOWER(name) = LOWER(?) LIMIT 1;")
           logger.debug("update_host_tags_q2(%s)" % [host_name.inspect])
-          host_id = @update_host_tags_q2.execute(host_name).map { |row| row.first }.first
+          host_id, host_name = @update_host_tags_q2.execute(host_name).map { |row| row }.first
         end
 
         if not options[:force]
