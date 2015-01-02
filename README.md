@@ -75,6 +75,36 @@ $ hotdog search availability-zone:us-east-1b and 'name:web-*'
 i-03cb56ed
 ```
 
+
+## Expression
+
+Acceptable expressions in pseudo BNF.
+
+```
+expression: binary_expression
+          | term
+
+binary_expression: term "&&" term
+                 | term "||" term
+                 | term "and" term
+                 | term "or" term
+
+unary_expression: '!' expression
+                | '~' expression
+                | "not" expression
+
+term: unary_expression
+    | atom
+
+atom: '(' expression ')'
+    | IDENTIFIER separator ATTRIBUTE
+    | IDENTIFIER
+
+separator: ':'
+         | '='
+```
+
+
 ## Contributing
 
 1. Fork it ( https://github.com/yyuu/hotdog/fork )
