@@ -168,7 +168,7 @@ module Hotdog
               ( SELECT id FROM hosts WHERE LOWER(name) IN ( %s ) );
           EOS
 
-          result["results"]["hosts"].each do |host_name|
+          result["results"]["hosts"].each_with_index do |host_name, i|
             @update_hosts_q2 ||= @db.prepare("INSERT OR IGNORE INTO hosts (name) VALUES (?);")
             logger.debug("update_hosts_q2(%s)" % [host_name.inspect])
             @update_hosts_q2.execute(host_name)
@@ -176,7 +176,8 @@ module Hotdog
 
             elapsed_time = Time.new - @started_at
             if 0 < options[:max_time] and options[:max_time] < elapsed_time
-              logger.info("update host tags exceeded the maximum time (#{options[:max_time]} < #{elapsed_time}). will resume on next run.")
+              length = result["results"]["hosts"].length
+              logger.info("update_host_tags: exceeded maximum time (#{options[:max_time]} < #{elapsed_time}) after #{i+1}/#{length}. will resume on next run.")
               suspend_host_tags
               break
             end
@@ -205,7 +206,7 @@ module Hotdog
             logger.debug("update_tags_q2()")
             hosts = @update_tags_q2.execute(Time.new.to_i)
           end
-          hosts.each do |host_id|
+          hosts.each_with_index do |host_id, i|
             @update_tags_q3 ||= @db.prepare("DELETE FROM hosts_tags WHERE host_id = ? AND hosts_tags.expires_at < ?;")
             logger.debug("update_tags_q3(%s, %s)" % [host_id.inspect, Time.new.to_i])
             @update_tags_q3.execute(host_id, Time.new.to_i)
@@ -214,7 +215,8 @@ module Hotdog
 
             elapsed_time = Time.new - @started_at
             if 0 < options[:max_time] and options[:max_time] < elapsed_time
-              logger.info("update host tags exceeded the maximum time (#{options[:max_time]} < #{elapsed_time}). will resume on next run.")
+              length = hosts.length
+              logger.info("update_host_tags: exceeded maximum time (#{options[:max_time]} < #{elapsed_time}) after #{i+1}/#{length}. will resume on next run.")
               suspend_host_tags
               break
             end
