@@ -85,6 +85,9 @@ module Hotdog
       @optparse.on("-1", "Use newline as separator") do |v|
         options[:print1] = v
       end
+      @optparse.on("-B", "--blocking", "Enable blocking mode") do
+        options[:max_time] = -1
+      end
       @optparse.on("-d", "--[no-]debug", "Enable debug mode") do |v|
         options[:logger].level = v ? Logger::DEBUG : Logger::INFO
       end
