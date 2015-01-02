@@ -6,6 +6,10 @@ module Hotdog
   module Formatters
     class Yaml < BaseFormatter
       def format(result, options={})
+        result = result.dup
+        if options[:headers] and options[:fields]
+          result.unshift(options[:fields])
+        end
         result.to_yaml
       end
     end
