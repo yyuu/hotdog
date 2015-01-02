@@ -169,11 +169,13 @@ module Hotdog
             if left_values.empty?
               []
             else
-              (left_values & @right.evaluate(environment)).uniq
+              right_values = @right.evaluate(environment)
+              (left_values & right_values)
             end
           when "||", "|", /\Aor\z/i
             left_values = @left.evaluate(environment)
-            (left_values | @right.evaluate(environment)).uniq
+            right_values = @right.evaluate(environment)
+            (left_values | right_values).uniq
           else
             raise(SyntaxError.new("unknown binary operator: #{@op}"))
           end
