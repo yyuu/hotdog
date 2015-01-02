@@ -136,6 +136,9 @@ module Hotdog
       end
 
       def update_hosts(options={})
+        if suspended?
+          return
+        end
         @db.transaction do
           if not options[:force]
             # Update host list on every expirations to update frequently.
@@ -182,6 +185,9 @@ module Hotdog
       end
 
       def update_tags(options={})
+        if suspended?
+          return
+        end
         @db.transaction do
           resume_host_tags
 
@@ -250,6 +256,10 @@ module Hotdog
       end
 
       def update_host_tags(host_name, options={})
+        if suspended?
+          # stop updating if the `update_host_tags` has already been suspended
+          return
+        end
         if Integer === host_name
           host_id = host_name
           @update_host_tags_q1 ||= @db.prepare("SELECT name FROM hosts WHERE id = ? LIMIT 1;")
