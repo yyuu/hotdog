@@ -159,6 +159,7 @@ module Hotdog
             raise("dog.search(%s) returns (%s: %s)" % ["hosts:".inspect, code.inspect, result.inspect])
           end
 
+          resume_host_tags
           execute(<<-EOS % result["results"]["hosts"].map { "LOWER(?)" }.join(", "), result["results"]["hosts"])
             DELETE FROM hosts_tags WHERE host_id NOT IN
               ( SELECT id FROM hosts WHERE LOWER(name) IN ( %s ) );
