@@ -22,7 +22,7 @@ module Hotdog
         headers: false,
         listing: false,
         logger: Logger.new(STDERR),
-        max_time: 30,
+        max_time: 10,
         api_key: ENV["DATADOG_API_KEY"],
         application_key: ENV["DATADOG_APPLICATION_KEY"],
         print0: false,
