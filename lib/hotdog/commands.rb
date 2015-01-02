@@ -104,12 +104,12 @@ module Hotdog
             EOS
             result = hosts.map { |host_id, host_name|
               update_host_tags(host_name, @options.dup)
-              logger.debug("get_hosts_q3()")
               @get_hosts_q3 ||= @db.prepare(<<-EOS)
                 SELECT DISTINCT tags.name FROM hosts_tags
                   INNER JOIN tags ON hosts_tags.tag_id = tags.id
                     WHERE hosts_tags.host_id = ?;
               EOS
+              logger.debug("get_hosts_q3()")
               tag_names = @get_hosts_q3.execute(host_id).map { |row| row.first }
               tag_names.each do |tag_name|
                 fields << tag_name unless fields.index(tag_name)
@@ -191,11 +191,11 @@ module Hotdog
             logger.debug("update_tags_q1()")
             hosts = @update_tags_q1.execute().map { |row| row.first }
           else
-            logger.debug("update_tags_q2()")
             @update_tags_q2 ||= @db.prepare(<<-EOS)
               SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
                 WHERE hosts_tags.expires_at < ?;
             EOS
+            logger.debug("update_tags_q2()")
             hosts = @update_tags_q2.execute(Time.new.to_i)
           end
           hosts.each do |host_id|
@@ -224,8 +224,10 @@ module Hotdog
       def suspend_host_tags()
         @suspended = true
         @suspend_host_tags_q1 ||= @db.prepare("INSERT OR IGNORE INTO hosts (name) VALUES (?);")
+        logger.debug("suspend_host_tags_q1(%s)" % [EMPTY_HOST_NAME.inspect])
         @suspend_host_tags_q1.execute(EMPTY_HOST_NAME)
         @suspend_host_tags_q2 ||= @db.prepare("INSERT OR IGNORE INTO tags (name, value) VALUES (?, ?);")
+        logger.debug("suspend_host_tags_q2(%s, %s)" % [EMPTY_TAG_NAME.inspect, EMPTY_TAG_VALUE.inspect])
         @suspend_host_tags_q2.execute(EMPTY_TAG_NAME, EMPTY_TAG_VALUE)
         @suspend_host_tags_q3 ||= @db.prepare(<<-EOS)
           INSERT OR REPLACE INTO hosts_tags (host_id, tag_id, expires_at)
@@ -233,6 +235,7 @@ module Hotdog
               ( SELECT id FROM hosts WHERE name = ?) AS host,
               ( SELECT id FROM tags WHERE name = ? AND value = ? ) AS tag;
         EOS
+        logger.debug("suspend_host_tags_q3(%s, %s, %s, %s)" % [EMPTY_EXPIRES_AT.inspect, EMPTY_HOST_NAME.inspect, EMPTY_TAG_NAME.inspect, EMPTY_TAG_VALUE.inspect])
         @suspend_host_tags_q3.execute(EMPTY_EXPIRES_AT, EMPTY_HOST_NAME, EMPTY_TAG_NAME, EMPTY_TAG_VALUE)
       end
 
@@ -241,6 +244,7 @@ module Hotdog
           DELETE FROM hosts_tags
             WHERE host_id IN ( SELECT id FROM hosts WHERE name = ? ) AND tag_id IN ( SELECT id FROM tags WHERE name = ? AND value = ? );
         EOS
+        logger.debug("resume_host_tags_q1(%s, %s, %s)" % [EMPTY_HOST_NAME.inspect, EMPTY_TAG_NAME.inspect, EMPTY_TAG_VALUE.inspect])
         @resume_host_tags_q1.execute(EMPTY_HOST_NAME, EMPTY_TAG_NAME, EMPTY_TAG_VALUE)
       end
 
