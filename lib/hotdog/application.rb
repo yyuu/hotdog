@@ -10,7 +10,7 @@ require "hotdog/formatters"
 module Hotdog
   class Application
     def initialize()
-      @confdir = File.join(ENV["HOME"], ".hotdog")
+      @confdir = find_confdir(File.expand_path("."))
       @optparse = OptionParser.new
       @options = {
         environment: "default",
@@ -159,6 +159,24 @@ module Hotdog
           candidates.first.first
         else
           nil
+        end
+      end
+    end
+
+    def find_confdir(path)
+      if path == "/"
+        # default
+        if ENV.has_key?("HOTDOG_CONFDIR")
+          ENV["HOTDOG_CONFDIR"]
+        else
+          File.join(ENV["HOME"], ".hotdog")
+        end
+      else
+        confdir = File.join(path, ".hotdog")
+        if File.directory?(confdir)
+          confdir
+        else
+          find_confdir(File.dirname(path))
         end
       end
     end
