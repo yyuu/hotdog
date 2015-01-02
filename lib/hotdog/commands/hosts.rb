@@ -4,6 +4,7 @@ module Hotdog
   module Commands
     class Hosts < BaseCommand
       def run(args=[])
+        application.run_command("init")
         update_hosts(@options.dup)
 
         if args.empty?

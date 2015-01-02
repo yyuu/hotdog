@@ -7,6 +7,7 @@ module Hotdog
   module Commands
     class Search < BaseCommand
       def run(args=[])
+        application.run_command("init")
         expression = args.join(" ").strip
         if expression.empty?
           exit(1)

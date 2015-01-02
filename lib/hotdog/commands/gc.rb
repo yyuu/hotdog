@@ -4,6 +4,7 @@ module Hotdog
   module Commands
     class Gc < BaseCommand
       def run(args=[])
+        application.run_command("init")
         execute(<<-EOS)
           DELETE FROM hosts WHERE id NOT IN ( SELECT DISTINCT host_id FROM hosts_tags );
         EOS

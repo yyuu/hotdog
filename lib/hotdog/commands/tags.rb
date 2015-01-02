@@ -4,6 +4,7 @@ module Hotdog
   module Commands
     class Tags < BaseCommand
       def run(args=[])
+        application.run_command("init")
         update_tags(@options.dup)
         if 0 < tags.length
           fields = tags.map { |tag|
