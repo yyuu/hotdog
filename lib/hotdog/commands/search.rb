@@ -25,6 +25,7 @@ module Hotdog
         if 0 < result.length
           result, fields = get_hosts(result)
           STDOUT.print(format(result, fields: fields))
+          logger.debug("found %d host(s)." % result.length)
         else
           STDERR.puts("no match found: #{args.join(" ")}")
           exit(1)
