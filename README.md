@@ -28,7 +28,7 @@ Setup environment variables of `DATADOG_API_KEY` and `DATADOG_APPLICATION_KEY`.
 Then, create and initialize host information. This may take several minutes.
 
 ```sh
-$ hotdog init
+$ hotdog update
 ```
 
 List all registered hosts.

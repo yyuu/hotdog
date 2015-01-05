@@ -4,6 +4,7 @@ module Hotdog
   module Commands
     class Update < BaseCommand
       def run(args=[])
+        application.run_command("init")
         options[:max_time] = -1
         if 0 < args.length
           args.each do |host_name|
