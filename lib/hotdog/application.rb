@@ -40,7 +40,10 @@ module Hotdog
     def main(argv=[])
       config = File.join(@confdir, "config.yml")
       if File.file?(config)
-        @options = @options.merge(Hash[YAML.load(File.read(config)).map { |key, value| [Symbol === key ? key : key.to_s.to_sym, value] }])
+        loaded = YAML.load(File.read(config))
+        if Hash === loaded
+          @options = @options.merge(Hash[loaded.map { |key, value| [Symbol === key ? key : key.to_s.to_sym, value] }])
+        end
       end
       args = @optparse.parse(argv)
 
