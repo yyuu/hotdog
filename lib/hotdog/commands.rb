@@ -65,13 +65,13 @@ module Hotdog
                 @get_hosts_q6 ||= @db.prepare(<<-EOS)
                   SELECT expires_at FROM hosts_tags WHERE host_id = ? LIMIT 1;
                 EOS
-                logger.debug("get_hosts_q6()")
+                logger.debug("get_hosts_q6(%s)" % [host_id.inspect])
                 @get_hosts_q6.execute(host_id).map { |row| Time.at(row.first).strftime("%Y-%m-%dT%H:%M:%S") }.first
               when "host"
                 @get_hosts_q1 ||= @db.prepare(<<-EOS)
                   SELECT name FROM hosts WHERE id = ? LIMIT 1;
                 EOS
-                logger.debug("get_hosts_q1()")
+                logger.debug("get_hosts_q1(%s)" % [host_id.inspect])
                 @get_hosts_q1.execute(host_id).map { |row| row.first }.first
               else
                 if not glob?(tag_name)
@@ -80,7 +80,7 @@ module Hotdog
                       INNER JOIN tags ON hosts_tags.tag_id = tags.id
                         WHERE hosts_tags.host_id = ? AND tags.name = ?;
                   EOS
-                  logger.debug("get_hosts_q2()")
+                  logger.debug("get_hosts_q2(%s, %s)" % [host_id.inspect, tag_name.inspect])
                   @get_hosts_q2.execute(host_id, tag_name).map { |row| row.first }.join(",")
                 else
                   @get_hosts_q5 ||= @db.prepare(<<-EOS)
@@ -88,7 +88,7 @@ module Hotdog
                       INNER JOIN tags ON hosts_tags.tag_id = tags.id
                         WHERE hosts_tags.host_id = ? AND tags.name GLOB ?;
                   EOS
-                  logger.debug("get_hosts_q5()")
+                  logger.debug("get_hosts_q5(%s, %s)", host_id.inspect, tag_name.inspect)
                   @get_hosts_q5.execute(host_id, tag_name).map { |row| row.first }.join(",")
                 end
               end
@@ -109,7 +109,7 @@ module Hotdog
                   INNER JOIN tags ON hosts_tags.tag_id = tags.id
                     WHERE hosts_tags.host_id = ?;
               EOS
-              logger.debug("get_hosts_q3()")
+              logger.debug("get_hosts_q3(%s)" % [host_id.inspect])
               tag_names = @get_hosts_q3.execute(host_id).map { |row| row.first }
               tag_names.each do |tag_name|
                 fields << tag_name unless fields.index(tag_name)
@@ -203,7 +203,7 @@ module Hotdog
               SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
                 WHERE hosts_tags.expires_at < ?;
             EOS
-            logger.debug("update_tags_q2()")
+            logger.debug("update_tags_q2(%s)" % [Time.new.to_i])
             hosts = @update_tags_q2.execute(Time.new.to_i)
           end
           hosts.each_with_index do |host_id, i|
