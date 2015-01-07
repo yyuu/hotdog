@@ -17,14 +17,14 @@ module Hotdog
         debug: false,
         environment: "default",
         minimum_expiry: 3600, # 1 hour
-        random_expiry: 604800, # 7 days
+        random_expiry: 5940, # 99 hours
         fixed_string: false,
         force: false,
         format: "plain",
         headers: false,
         listing: false,
         logger: Logger.new(STDERR),
-        max_time: 10,
+        max_time: 5,
         api_key: ENV["DATADOG_API_KEY"],
         application_key: ENV["DATADOG_APPLICATION_KEY"],
         print0: false,
