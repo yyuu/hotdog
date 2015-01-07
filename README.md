@@ -22,10 +22,27 @@ Or install it yourself as:
 $ gem install hotdog
 ```
 
+Then, setup API key and application key of Datadog. The keys can be configured in environment variables or configuration file.
+
+```sh
+export DATADOG_API_KEY="abcdefghijklmnopqrstuvwxyzabcdef"
+export DATADOG_APPLICATION_KEY="abcdefghijklmnopqrstuvwxyzabcdefghijklmn"
+```
+
+Or,
+
+```
+$ mkdir ~/.hotdog
+$ cat <<EOF
+---
+api_key: abcdefghijklmnopqrstuvwxyzabcdef
+application_key: abcdefghijklmnopqrstuvwxyzabcdefghijklmn
+EOF
+```
+
 ## Usage
 
-Setup environment variables of `DATADOG_API_KEY` and `DATADOG_APPLICATION_KEY`.
-Then, create and initialize host information. This may take several minutes.
+Initialize host information. This may take several minutes.
 
 ```sh
 $ hotdog update
