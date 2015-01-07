@@ -44,7 +44,7 @@ module Hotdog
         end
         if 0 < result.length
           STDOUT.print(format(result, fields: fields))
-          logger.debug("found %d tag(s)." % result.length)
+          logger.info("found %d tag(s)." % result.length)
         end
       end
     end
