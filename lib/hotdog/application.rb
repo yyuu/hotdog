@@ -14,12 +14,13 @@ module Hotdog
       @confdir = find_confdir(File.expand_path("."))
       @optparse = OptionParser.new
       @options = {
+        debug: false,
         environment: "default",
         minimum_expiry: 3600, # 1 hour
         random_expiry: 604800, # 7 days
         fixed_string: false,
         force: false,
-        formatter: get_formatter("plain").new,
+        format: "plain",
         headers: false,
         listing: false,
         logger: Logger.new(STDERR),
@@ -29,6 +30,7 @@ module Hotdog
         print0: false,
         print1: true,
         tags: [],
+        verbose: false,
       }
       @options[:logger].level = Logger::INFO
       define_options
@@ -38,7 +40,7 @@ module Hotdog
     def main(argv=[])
       config = File.join(@confdir, "config.yml")
       if File.file?(config)
-        @options = @options.merge(YAML.load(File.read(config)))
+        @options = @options.merge(Hash[YAML.load(File.read(config)).map { |key, value| [Symbol === key ? key : key.to_s.to_sym, value] }])
       end
       args = @optparse.parse(argv)
 
@@ -48,6 +50,14 @@ module Hotdog
 
       unless options[:application_key]
         raise("DATADOG_APPLICATION_KEY is not set")
+      end
+
+      options[:formatter] = get_formatter(options[:format]).new
+
+      if options[:debug] or options[:verbose]
+        options[:logger].level = Logger::DEBUG
+      else
+        options[:logger].level = Logger::INFO
       end
 
       sqlite = File.expand_path(File.join(@confdir, "#{options[:environment]}.db"))
@@ -90,7 +100,7 @@ module Hotdog
         options[:max_time] = -1
       end
       @optparse.on("-d", "--[no-]debug", "Enable debug mode") do |v|
-        options[:logger].level = v ? Logger::DEBUG : Logger::INFO
+        options[:debug] = v
       end
       @optparse.on("-E ENVIRONMENT", "--environment ENVIRONMENT", "Specify environment") do |environment|
         options[:environment] = environment
@@ -102,7 +112,7 @@ module Hotdog
         options[:force] = v
       end
       @optparse.on("-F FORMAT", "--format FORMAT", "Specify output format") do |format|
-        options[:formatter] = get_formatter(format).new
+        options[:format] = format
       end
       @optparse.on("-h", "--[no-]headers", "Display headeres for each columns") do |v|
         options[:headers] = v
@@ -117,7 +127,7 @@ module Hotdog
         options[:max_time] = seconds
       end
       @optparse.on("-V", "--[no-]verbose", "Enable verbose mode") do |v|
-        options[:logger].level = v ? Logger::DEBUG : Logger::INFO
+        options[:verbose] = v
       end
     end
 
