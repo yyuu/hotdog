@@ -138,8 +138,7 @@ module Hotdog
       def update_hosts(options={})
         if suspended?
           return
-        end
-        @db.transaction do
+        else
           if not options[:force]
             # Update host list on every expirations to update frequently.
             @update_hosts_q1 ||= @db.prepare("SELECT MIN(expires_at) FROM hosts_tags;")
@@ -188,8 +187,7 @@ module Hotdog
       def update_tags(options={})
         if suspended?
           return
-        end
-        @db.transaction do
+        else
           resume_host_tags
 
           if options[:force]
@@ -231,21 +229,23 @@ module Hotdog
       EMPTY_EXPIRES_AT = Time.at(0).to_i
 
       def suspend_host_tags()
-        @suspended = true
-        @suspend_host_tags_q1 ||= @db.prepare("INSERT OR IGNORE INTO hosts (name) VALUES (?);")
-        logger.debug("suspend_host_tags_q1(%s)" % [EMPTY_HOST_NAME.inspect])
-        @suspend_host_tags_q1.execute(EMPTY_HOST_NAME)
-        @suspend_host_tags_q2 ||= @db.prepare("INSERT OR IGNORE INTO tags (name, value) VALUES (?, ?);")
-        logger.debug("suspend_host_tags_q2(%s, %s)" % [EMPTY_TAG_NAME.inspect, EMPTY_TAG_VALUE.inspect])
-        @suspend_host_tags_q2.execute(EMPTY_TAG_NAME, EMPTY_TAG_VALUE)
-        @suspend_host_tags_q3 ||= @db.prepare(<<-EOS)
-          INSERT OR REPLACE INTO hosts_tags (host_id, tag_id, expires_at)
-            SELECT host.id, tag.id, ? FROM
-              ( SELECT id FROM hosts WHERE name = ?) AS host,
-              ( SELECT id FROM tags WHERE name = ? AND value = ? ) AS tag;
-        EOS
-        logger.debug("suspend_host_tags_q3(%s, %s, %s, %s)" % [EMPTY_EXPIRES_AT.inspect, EMPTY_HOST_NAME.inspect, EMPTY_TAG_NAME.inspect, EMPTY_TAG_VALUE.inspect])
-        @suspend_host_tags_q3.execute(EMPTY_EXPIRES_AT, EMPTY_HOST_NAME, EMPTY_TAG_NAME, EMPTY_TAG_VALUE)
+        @db.transaction do
+          @suspended = true
+          @suspend_host_tags_q1 ||= @db.prepare("INSERT OR IGNORE INTO hosts (name) VALUES (?);")
+          logger.debug("suspend_host_tags_q1(%s)" % [EMPTY_HOST_NAME.inspect])
+          @suspend_host_tags_q1.execute(EMPTY_HOST_NAME)
+          @suspend_host_tags_q2 ||= @db.prepare("INSERT OR IGNORE INTO tags (name, value) VALUES (?, ?);")
+          logger.debug("suspend_host_tags_q2(%s, %s)" % [EMPTY_TAG_NAME.inspect, EMPTY_TAG_VALUE.inspect])
+          @suspend_host_tags_q2.execute(EMPTY_TAG_NAME, EMPTY_TAG_VALUE)
+          @suspend_host_tags_q3 ||= @db.prepare(<<-EOS)
+            INSERT OR REPLACE INTO hosts_tags (host_id, tag_id, expires_at)
+              SELECT host.id, tag.id, ? FROM
+                ( SELECT id FROM hosts WHERE name = ?) AS host,
+                ( SELECT id FROM tags WHERE name = ? AND value = ? ) AS tag;
+          EOS
+          logger.debug("suspend_host_tags_q3(%s, %s, %s, %s)" % [EMPTY_EXPIRES_AT.inspect, EMPTY_HOST_NAME.inspect, EMPTY_TAG_NAME.inspect, EMPTY_TAG_VALUE.inspect])
+          @suspend_host_tags_q3.execute(EMPTY_EXPIRES_AT, EMPTY_HOST_NAME, EMPTY_TAG_NAME, EMPTY_TAG_VALUE)
+        end
       end
 
       def resume_host_tags()
@@ -261,76 +261,79 @@ module Hotdog
         if suspended?
           # stop updating if the `update_host_tags` has already been suspended
           return
-        end
-        if Integer === host_name
-          host_id = host_name
-          @update_host_tags_q1 ||= @db.prepare("SELECT name FROM hosts WHERE id = ? LIMIT 1;")
-          logger.debug("update_host_tags_q1(%s)" % [host_id.inspect])
-          host_name = @update_host_tags_q1.execute(host_id).map { |row| row.first }.first
         else
-          @update_host_tags_q2 ||= @db.prepare("SELECT id, name FROM hosts WHERE LOWER(name) = LOWER(?) LIMIT 1;")
-          logger.debug("update_host_tags_q2(%s)" % [host_name.inspect])
-          host_id, host_name = @update_host_tags_q2.execute(host_name).map { |row| row }.first
-        end
+          if Integer === host_name
+            host_id = host_name
+            @update_host_tags_q1 ||= @db.prepare("SELECT name FROM hosts WHERE id = ? LIMIT 1;")
+            logger.debug("update_host_tags_q1(%s)" % [host_id.inspect])
+            host_name = @update_host_tags_q1.execute(host_id).map { |row| row.first }.first
+          else
+            @update_host_tags_q2 ||= @db.prepare("SELECT id, name FROM hosts WHERE LOWER(name) = LOWER(?) LIMIT 1;")
+            logger.debug("update_host_tags_q2(%s)" % [host_name.inspect])
+            host_id, host_name = @update_host_tags_q2.execute(host_name).map { |row| row }.first
+          end
 
-        if not options[:force]
-          # Update host tags less frequently.
-          # Don't need to run updates on every expiration.
-          @update_host_tags_q3 ||= @db.prepare("SELECT AVG(expires_at) FROM hosts_tags WHERE host_id = ?;")
-          logger.debug("update_host_tags_q3(%s)" % [host_id.inspect])
-          if expires_at = @update_host_tags_q3.execute(host_id).map { |row| row.first }.first
-            if Time.new.to_i < expires_at
-              logger.debug("%s: next update will run after %s." % [host_name, Time.at(expires_at)])
-              return
+          if not options[:force]
+            # Update host tags less frequently.
+            # Don't need to run updates on every expiration.
+            @update_host_tags_q3 ||= @db.prepare("SELECT AVG(expires_at) FROM hosts_tags WHERE host_id = ?;")
+            logger.debug("update_host_tags_q3(%s)" % [host_id.inspect])
+            if expires_at = @update_host_tags_q3.execute(host_id).map { |row| row.first }.first
+              if Time.new.to_i < expires_at
+                logger.debug("%s: next update will run after %s." % [host_name, Time.at(expires_at)])
+                return
+              else
+                logger.debug("%s: average expires_at was %s. start updating." % [host_name, Time.at(expires_at)])
+              end
             else
-              logger.debug("%s: average expires_at was %s. start updating." % [host_name, Time.at(expires_at)])
+              logger.debug("%s: expires_at not found. start updateing." % [host_name])
             end
-          else
-            logger.debug("%s: expires_at not found. start updateing." % [host_name])
           end
-        end
 
-        code, result = @dog.host_tags(host_name)
-        logger.debug("dog.host_tags(%s) #==> [%s, %s]" % [host_name.inspect, code.inspect, result.inspect])
-        if code.to_i / 100 != 2
-          case code.to_i
-          when 404 # host not found on datadog
-            @update_host_tags_q7 ||= @db.prepare("DELETE FROM hosts_tags WHERE host_id IN ( SELECT id FROM hosts WHERE LOWER(name) = LOWER(?) );")
-            logger.debug("update_host_tags_q7(%s)" % [host_name.inspect])
-            @update_host_tags_q7.execute(host_name)
+          code, result = @dog.host_tags(host_name)
+          logger.debug("dog.host_tags(%s) #==> [%s, %s]" % [host_name.inspect, code.inspect, result.inspect])
+          if code.to_i / 100 != 2
+            case code.to_i
+            when 404 # host not found on datadog
+              @update_host_tags_q7 ||= @db.prepare("DELETE FROM hosts_tags WHERE host_id IN ( SELECT id FROM hosts WHERE LOWER(name) = LOWER(?) );")
+              logger.debug("update_host_tags_q7(%s)" % [host_name.inspect])
+              @update_host_tags_q7.execute(host_name)
+            end
+            raise("dog.host_tags(%s) returns (%s: %s)" % [host_name.inspect, code.inspect, result.inspect])
           end
-          raise("dog.host_tags(%s) returns (%s: %s)" % [host_name.inspect, code.inspect, result.inspect])
-        end
 
-        expires_at = Time.new.to_i + (options[:minimum_expiry] + rand(options[:random_expiry]))
-        logger.debug("%s: expires_at=%s" % [host_name, Time.at(expires_at)])
+          expires_at = Time.new.to_i + (options[:minimum_expiry] + rand(options[:random_expiry]))
+          logger.debug("%s: expires_at=%s" % [host_name, Time.at(expires_at)])
 
-        result["tags"].each do |tag|
-          tag_name, tag_value = tag.split(":", 2)
-          tag_value ||= ""
+          @db.transaction do
+            result["tags"].each do |tag|
+              tag_name, tag_value = tag.split(":", 2)
+              tag_value ||= ""
 
-          if options.has_key?(:tags) and not options[:tags].empty? and not options[:tags].index(tag_name)
-            next
-          else
-            @update_host_tags_q4 ||= @db.prepare("INSERT OR IGNORE INTO tags (name, value) VALUES (?, ?);")
-            logger.debug("update_host_tags_q4(%s, %s)" % [tag_name.inspect, tag_value.inspect])
-            @update_host_tags_q4.execute(tag_name, tag_value)
-            @update_host_tags_q5 ||= @db.prepare(<<-EOS)
-              INSERT OR REPLACE INTO hosts_tags (host_id, tag_id, expires_at)
-                SELECT host.id, tag.id, ? FROM
-                  ( SELECT id FROM hosts WHERE name = ? ) AS host,
-                  ( SELECT id FROM tags WHERE name = ? AND value = ? ) AS tag;
+              if options.has_key?(:tags) and not options[:tags].empty? and not options[:tags].index(tag_name)
+                next
+              else
+                @update_host_tags_q4 ||= @db.prepare("INSERT OR IGNORE INTO tags (name, value) VALUES (?, ?);")
+                logger.debug("update_host_tags_q4(%s, %s)" % [tag_name.inspect, tag_value.inspect])
+                @update_host_tags_q4.execute(tag_name, tag_value)
+                @update_host_tags_q5 ||= @db.prepare(<<-EOS)
+                  INSERT OR REPLACE INTO hosts_tags (host_id, tag_id, expires_at)
+                    SELECT host.id, tag.id, ? FROM
+                      ( SELECT id FROM hosts WHERE name = ? ) AS host,
+                      ( SELECT id FROM tags WHERE name = ? AND value = ? ) AS tag;
+                EOS
+                logger.debug("update_host_tags_q5(%s, %s)" % [expires_at, host_name, tag_name, tag_value])
+                @update_host_tags_q5.execute(expires_at, host_name, tag_name, tag_value)
+              end
+            end
+
+            @update_host_tags_q6 ||= @db.prepare(<<-EOS)
+              DELETE FROM hosts_tags WHERE host_id = ? and expires_at <= ?;
             EOS
-            logger.debug("update_host_tags_q5(%s, %s)" % [expires_at, host_name, tag_name, tag_value])
-            @update_host_tags_q5.execute(expires_at, host_name, tag_name, tag_value)
+            logger.debug("update_host_tags_q6(%s, %s)" % [host_id.inspect, Time.new.to_i.inspect])
+            @update_host_tags_q6.execute(host_id, Time.new.to_i)
           end
         end
-
-        @update_host_tags_q6 ||= @db.prepare(<<-EOS)
-          DELETE FROM hosts_tags WHERE host_id = ? and expires_at <= ?;
-        EOS
-        logger.debug("update_host_tags_q6(%s, %s)" % [host_id.inspect, Time.new.to_i.inspect])
-        @update_host_tags_q6.execute(host_id, Time.new.to_i)
       end
     end
   end
