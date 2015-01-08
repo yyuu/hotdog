@@ -202,7 +202,7 @@ module Hotdog
                 WHERE hosts_tags.expires_at < ?;
             EOS
             logger.debug("update_tags_q2(%s)" % [Time.new.to_i])
-            hosts = @update_tags_q2.execute(Time.new.to_i)
+            hosts = @update_tags_q2.execute(Time.new.to_i).map { |row| row.first }
           end
           hosts.each_with_index do |host_id, i|
             @update_tags_q3 ||= @db.prepare("DELETE FROM hosts_tags WHERE host_id = ? AND hosts_tags.expires_at < ?;")
