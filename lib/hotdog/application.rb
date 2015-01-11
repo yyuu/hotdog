@@ -15,9 +15,6 @@ module Hotdog
       @optparse = OptionParser.new
       @options = {
         debug: false,
-        environment: "default",
-        minimum_expiry: 3600, # 1 hour
-        random_expiry: 5940, # 99 hours
         fixed_string: false,
         force: false,
         format: "plain",
@@ -63,10 +60,6 @@ module Hotdog
         options[:logger].level = Logger::INFO
       end
 
-#     sqlite = File.expand_path(File.join(@confdir, "#{options[:environment]}.db"))
-#     FileUtils.mkdir_p(File.dirname(sqlite))
-#     @db = SQLite3::Database.new(sqlite)
-#     @db.synchronous = "off"
       @db = SQLite3::Database.new(":memory:")
       run_command("init")
 
@@ -101,14 +94,8 @@ module Hotdog
       @optparse.on("-1", "Use newline as separator") do |v|
         options[:print1] = v
       end
-      @optparse.on("-B", "--blocking", "Enable blocking mode") do
-        options[:max_time] = -1
-      end
       @optparse.on("-d", "--[no-]debug", "Enable debug mode") do |v|
         options[:debug] = v
-      end
-      @optparse.on("-E ENVIRONMENT", "--environment ENVIRONMENT", "Specify environment") do |environment|
-        options[:environment] = environment
       end
       @optparse.on("--fixed-string", "Interpret pattern as fixed string") do |v|
         options[:fixed_string] = v
@@ -127,9 +114,6 @@ module Hotdog
       end
       @optparse.on("-a TAG", "-t TAG", "--tag TAG", "Use specified tag name/value") do |tag|
         options[:tags] += [tag]
-      end
-      @optparse.on("-m SECONDS", "--max-time SECONDS", Integer, "Maximum time in seconds") do |seconds|
-        options[:max_time] = seconds
       end
       @optparse.on("-V", "--[no-]verbose", "Enable verbose mode") do |v|
         options[:verbose] = v
