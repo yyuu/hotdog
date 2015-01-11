@@ -4,6 +4,8 @@ module Hotdog
   module Commands
     class Hosts < BaseCommand
       def run(args=[])
+        init_tables
+
         if args.empty?
           @hosts_q1 ||= @db.prepare(<<-EOS)
             SELECT DISTINCT host_id FROM hosts_tags;

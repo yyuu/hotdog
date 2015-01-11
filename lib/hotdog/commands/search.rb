@@ -18,6 +18,9 @@ module Hotdog
           STDERR.puts("syntax error: " + error.cause.ascii_tree)
           exit(1)
         end
+
+        init_tables
+
         result = evaluate(node, self).sort
         if 0 < result.length
           result, fields = get_hosts(result)

@@ -61,7 +61,6 @@ module Hotdog
       end
 
       @db = SQLite3::Database.new(":memory:")
-      run_command("init")
 
       begin
         command = ( args.shift || "help" )
