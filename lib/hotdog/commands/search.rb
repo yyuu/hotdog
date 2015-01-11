@@ -19,7 +19,7 @@ module Hotdog
           exit(1)
         end
 
-        init_tables
+        update
 
         result = evaluate(node, self).sort
         if 0 < result.length

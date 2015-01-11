@@ -4,7 +4,7 @@ module Hotdog
   module Commands
     class Tags < BaseCommand
       def run(args=[])
-        init_tables
+        update
 
         if 0 < tags.length
           fields = tags.map { |tag|

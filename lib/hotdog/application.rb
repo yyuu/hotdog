@@ -64,10 +64,7 @@ module Hotdog
 
       begin
         command = ( args.shift || "help" )
-        c = run_command(command, args)
-        if c.suspended?
-          exit(2)
-        end
+        run_command(command, args)
       rescue Errno::EPIPE
         # nop
       end
