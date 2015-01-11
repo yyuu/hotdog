@@ -1,6 +1,8 @@
 #!/usr/bin/env ruby
 
+require "fileutils"
 require "dogapi"
+require "json"
 require "logger"
 
 module Hotdog
@@ -123,10 +125,19 @@ module Hotdog
           CREATE UNIQUE INDEX IF NOT EXISTS hosts_tags_host_id_tag_id ON hosts_tags ( host_id, tag_id );
         EOS
 
-        code, result = @dog.all_tags()
-        logger.debug("dog.all_tags() #==> [%s, ...]" % [code.inspect])
-        if code.to_i / 100 != 2
-          raise("dog.all_tags() returns (%s: ...)" % [code.inspect])
+        all_tags_cache = File.join(@options[:confdir], "all_tags.json")
+        FileUtils.mkdir_p(File.dirname(all_tags_cache))
+
+        if File.exist?(all_tags_cache) and Time.new < File.mtime(all_tags_cache) + @options[:ttl]
+          result = JSON.load(File.read(all_tags_cache))
+        else
+          code, result = @dog.all_tags()
+          logger.debug("dog.all_tags() #==> [%s, ...]" % [code.inspect])
+          if code.to_i / 100 == 2
+            File.write(all_tags_cache, JSON.generate(result))
+          else
+            raise("dog.all_tags() returns (%s: ...)" % [code.inspect])
+          end
         end
 
         result["tags"].each do |tag, hosts|

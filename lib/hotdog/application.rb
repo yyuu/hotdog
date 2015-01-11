@@ -11,31 +11,33 @@ require "hotdog/formatters"
 module Hotdog
   class Application
     def initialize()
-      @confdir = find_confdir(File.expand_path("."))
       @optparse = OptionParser.new
       @options = {
+        confdir: find_confdir(File.expand_path(".")),
         debug: false,
         fixed_string: false,
         force: false,
         format: "plain",
         headers: false,
         listing: false,
-        logger: Logger.new(STDERR),
+        logger: Logger.new(STDERR).tap { |logger|
+          logger.level = Logger::INFO
+        },
         max_time: 5,
         api_key: ENV["DATADOG_API_KEY"],
         application_key: ENV["DATADOG_APPLICATION_KEY"],
         print0: false,
         print1: true,
         tags: [],
+        ttl: 300,
         verbose: false,
       }
-      @options[:logger].level = Logger::INFO
       define_options
     end
     attr_reader :options
 
     def main(argv=[])
-      config = File.join(@confdir, "config.yml")
+      config = File.join(options[:confdir], "config.yml")
       if File.file?(config)
         loaded = YAML.load(File.read(config))
         if Hash === loaded
