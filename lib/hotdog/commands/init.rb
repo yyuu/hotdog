@@ -26,19 +26,14 @@ module Hotdog
         execute(<<-EOS)
           CREATE TABLE IF NOT EXISTS hosts_tags (
             host_id INTEGER NOT NULL,
-            tag_id INTEGER NOT NULL,
-            expires_at INTEGER NOT NULL
+            tag_id INTEGER NOT NULL
           );
         EOS
         execute(<<-EOS)
           CREATE UNIQUE INDEX IF NOT EXISTS hosts_tags_host_id_tag_id ON hosts_tags ( host_id, tag_id );
         EOS
-        execute(<<-EOS)
-          CREATE INDEX IF NOT EXISTS hosts_tags_expires_at ON hosts_tags ( expires_at );
-        EOS
-        execute(<<-EOS)
-          CREATE INDEX IF NOT EXISTS hosts_tags_host_id_expires_at ON hosts_tags ( host_id, expires_at );
-        EOS
+
+        application.run_command("update")
       end
     end
   end

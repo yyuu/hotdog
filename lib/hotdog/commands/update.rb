@@ -4,15 +4,7 @@ module Hotdog
   module Commands
     class Update < BaseCommand
       def run(args=[])
-        application.run_command("init")
-        options[:max_time] = -1
-        if 0 < args.length
-          args.each do |host_name|
-            update_host_tags(host_name, @options.dup)
-          end
-        else
-          update_hosts(@options.dup)
-        end
+        update_tags(@options.dup)
       end
     end
   end

@@ -63,10 +63,12 @@ module Hotdog
         options[:logger].level = Logger::INFO
       end
 
-      sqlite = File.expand_path(File.join(@confdir, "#{options[:environment]}.db"))
-      FileUtils.mkdir_p(File.dirname(sqlite))
-      @db = SQLite3::Database.new(sqlite)
-      @db.synchronous = "off"
+#     sqlite = File.expand_path(File.join(@confdir, "#{options[:environment]}.db"))
+#     FileUtils.mkdir_p(File.dirname(sqlite))
+#     @db = SQLite3::Database.new(sqlite)
+#     @db.synchronous = "off"
+      @db = SQLite3::Database.new(":memory:")
+      run_command("init")
 
       begin
         command = ( args.shift || "help" )
