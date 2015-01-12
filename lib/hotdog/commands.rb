@@ -9,22 +9,24 @@ module Hotdog
   module Commands
     class BaseCommand
       def initialize(options={})
+        @application = options[:application]
         @confdir = options[:confdir]
+        @expiry = options[:expiry]
         @fixed_string = options[:fixed_string]
         @force = options[:force]
         @formatter = options[:formatter]
+        @listing = options[:listing]
         @logger = options[:logger]
         @tags = options[:tags]
-        @application = options[:application]
         @options = options
         @dog = Dogapi::Client.new(options[:api_key], options[:application_key])
-        @expiry = options[:expiry]
       end
       attr_reader :application
       attr_reader :confdir
       attr_reader :expiry
       attr_reader :force
       attr_reader :formatter
+      attr_reader :listing
       attr_reader :logger
       attr_reader :tags
       attr_reader :options
@@ -76,12 +78,9 @@ module Hotdog
           }
           fields = tags
         else
-          if options[:listing]
-
+          if @listing
             fields = []
-            hosts = execute(<<-EOS % hosts.map { "?" }.join(", "), hosts)
-              SELECT id, name FROM hosts WHERE id IN (%s) ORDER BY name;
-            EOS
+            hosts = execute("SELECT id, name FROM hosts WHERE id IN (%s)" % hosts.map { "?" }.join(", "), hosts)
             result = hosts.map { |host_id, host_name|
               tag_names = select_tag_names_from_hosts_tags_by_host_id(@db, host_id)
               tag_names.each do |tag_name|
@@ -94,9 +93,7 @@ module Hotdog
             fields = ["host"] + fields
           else
             fields = ["host"]
-            result = execute(<<-EOS % hosts.map { "?" }.join(", "), hosts)
-              SELECT name FROM hosts WHERE id IN (%s) ORDER BY name; 
-            EOS
+            result = execute("SELECT name FROM hosts WHERE id IN (%s)" % hosts.map { "?" }.join(", "), hosts)
           end
         end
         [result, fields]
@@ -189,7 +186,7 @@ module Hotdog
       end
 
       def select_from_hosts_tags(db)
-        logger.debug("from_hosts_tags()")
+        logger.debug("select_from_hosts_tags()")
         db.execute("SELECT host_id, tag_id FROM hosts_tags")
       end
 
@@ -201,11 +198,6 @@ module Hotdog
             name VARCHAR(255) NOT NULL
           );
         EOS
-      end
-
-      def drop_table_hosts(db)
-        logger.debug("drop_table_hosts()")
-        db.execute("DROP TABLE IF EXISTS hosts")
       end
 
       def create_index_hosts(db)
@@ -224,11 +216,6 @@ module Hotdog
         EOS
       end
 
-      def drop_table_tags(db)
-        logger.debug("drop_table_tags()")
-        db.execute("DROP TABLE IF EXISTS tags")
-      end
-
       def create_index_tags(db)
         logger.debug("create_index_tags()")
         db.execute("CREATE UNIQUE INDEX IF NOT EXISTS tags_name_value ON tags ( name, value )")
@@ -242,11 +229,6 @@ module Hotdog
             tag_id INTEGER NOT NULL
           );
         EOS
-      end
-
-      def drop_table_hosts_tags(db)
-        logger.debug("drop_table_hosts_tags()")
-        db.execute("DROP TABLE IF EXISTS hosts_tags")
       end
 
       def create_index_hosts_tags(db)

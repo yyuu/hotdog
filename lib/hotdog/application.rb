@@ -11,6 +11,8 @@ module Hotdog
     def initialize()
       @optparse = OptionParser.new
       @options = {
+        api_key: ENV["DATADOG_API_KEY"],
+        application_key: ENV["DATADOG_APPLICATION_KEY"],
         application: self,
         confdir: find_confdir(File.expand_path(".")),
         debug: false,
@@ -24,8 +26,6 @@ module Hotdog
           logger.level = Logger::INFO
         },
         max_time: 5,
-        api_key: ENV["DATADOG_API_KEY"],
-        application_key: ENV["DATADOG_APPLICATION_KEY"],
         print0: false,
         print1: true,
         tags: [],
