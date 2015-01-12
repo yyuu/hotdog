@@ -2,8 +2,6 @@
 
 require "logger"
 require "optparse"
-require "shellwords"
-require "sqlite3"
 require "yaml"
 require "hotdog/commands"
 require "hotdog/formatters"

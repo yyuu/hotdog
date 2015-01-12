@@ -3,7 +3,7 @@
 require "fileutils"
 require "dogapi"
 require "json"
-require "logger"
+require "sqlite3"
 
 module Hotdog
   module Commands
