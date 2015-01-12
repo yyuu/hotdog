@@ -42,12 +42,6 @@ EOF
 
 ## Usage
 
-Initialize host information. This may take several minutes.
-
-```sh
-$ hotdog update
-```
-
 List all registered hosts.
 
 ```sh
