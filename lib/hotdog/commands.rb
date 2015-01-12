@@ -9,6 +9,7 @@ module Hotdog
   module Commands
     class BaseCommand
       def initialize(options={})
+        @confdir = options[:confdir]
         @fixed_string = options[:fixed_string]
         @force = options[:force]
         @formatter = options[:formatter]
@@ -20,6 +21,7 @@ module Hotdog
         @expiry = options[:expiry]
       end
       attr_reader :application
+      attr_reader :confdir
       attr_reader :expiry
       attr_reader :force
       attr_reader :formatter
@@ -102,8 +104,8 @@ module Hotdog
 
       def update_db(options={})
         if @db.nil?
-          FileUtils.mkdir_p(@options[:confdir])
-          persistent = File.join(@options[:confdir], "persistent.db")
+          FileUtils.mkdir_p(confdir)
+          persistent = File.join(confdir, "persistent.db")
 
           if not @force and File.exist?(persistent) and Time.new < File.mtime(persistent) + expiry
             begin
