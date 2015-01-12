@@ -289,7 +289,7 @@ module Hotdog
 
       def select_name_from_hosts_by_id(db, host_id)
         logger.debug("select_name_from_hosts_by_id(%s)" % [host_id.inspect])
-        db.execute("SELEC name FROM hosts WHERE id = ? LIMIT 1", host_id).map { |row| row.first }.first
+        db.execute("SELECT name FROM hosts WHERE id = ? LIMIT 1", host_id).map { |row| row.first }.first
       end
 
       def select_tag_values_from_hosts_tags_by_host_id_and_tag_name_glob(db, host_id, tag_name)
