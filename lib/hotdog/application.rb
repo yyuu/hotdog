@@ -15,6 +15,7 @@ module Hotdog
       @options = {
         confdir: find_confdir(File.expand_path(".")),
         debug: false,
+        expiry: 180,
         fixed_string: false,
         force: false,
         format: "plain",
@@ -29,7 +30,6 @@ module Hotdog
         print0: false,
         print1: true,
         tags: [],
-        ttl: 300,
         verbose: false,
       }
       define_options

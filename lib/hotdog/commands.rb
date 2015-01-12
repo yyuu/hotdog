@@ -10,15 +10,18 @@ module Hotdog
     class BaseCommand
       def initialize(options={})
         @fixed_string = options[:fixed_string]
+        @force = options[:force]
         @formatter = options[:formatter]
         @logger = options[:logger]
         @tags = options[:tags]
         @application = options[:application]
         @options = options
         @dog = Dogapi::Client.new(options[:api_key], options[:application_key])
-        @ttl = options[:ttl]
+        @expiry = options[:expiry]
       end
       attr_reader :application
+      attr_reader :expiry
+      attr_reader :force
       attr_reader :formatter
       attr_reader :logger
       attr_reader :tags
@@ -102,10 +105,9 @@ module Hotdog
           FileUtils.mkdir_p(@options[:confdir])
           persistent = File.join(@options[:confdir], "persistent.db")
 
-          if File.exist?(persistent) and Time.new < File.mtime(persistent) + @ttl
+          if not @force and File.exist?(persistent) and Time.new < File.mtime(persistent) + expiry
             begin
               persistent_db = SQLite3::Database.new(persistent)
-              persistent_db.synchronous = "off"
               persistent_db.execute("SELECT id, name FROM hosts LIMIT 1")
               persistent_db.execute("SELECT id, name, value FROM tags LIMIT 1")
               persistent_db.execute("SELECT host_id, tag_id FROM hosts_tags LIMIT 1")
@@ -140,12 +142,12 @@ module Hotdog
             end
           end
 
+          # backup in-memory db to file
           FileUtils.rm_f(persistent)
           persistent_db = SQLite3::Database.new(persistent)
-          persistent_db.synchronous = "off"
           copy_db(memory_db, persistent_db)
-          memory_db.close
-          @db = persistent_db
+          persistent_db.close
+          @db = memory_db
         else
           @db
         end
@@ -153,24 +155,26 @@ module Hotdog
 
       def copy_db(src, dst)
         # create index later for better insert performance
-        create_table_hosts(dst)
-        create_table_tags(dst)
-        create_table_hosts_tags(dst)
+        dst.transaction do
+          create_table_hosts(dst)
+          create_table_tags(dst)
+          create_table_hosts_tags(dst)
 
-        select_from_hosts(src).each do |host_id, host_name|
-          insert_into_hosts(dst, host_id, host_name)
-        end
-        select_from_tags(src).each do |tag_id, tag_name, tag_value|
-          insert_into_tags(dst, tag_id, tag_name, tag_value)
-        end
-        select_from_hosts_tags(src).each do |host_id, tag_id|
-          insert_into_hosts_tags(dst, host_id, tag_id)
-        end
+          select_from_hosts(src).each do |host_id, host_name|
+            insert_into_hosts(dst, host_id, host_name)
+          end
+          select_from_tags(src).each do |tag_id, tag_name, tag_value|
+            insert_into_tags(dst, tag_id, tag_name, tag_value)
+          end
+          select_from_hosts_tags(src).each do |host_id, tag_id|
+            insert_into_hosts_tags(dst, host_id, tag_id)
+          end
 
-        create_index_hosts(dst)
-        create_index_tags(dst)
-        create_index_hosts_tags(dst)
-       end
+          create_index_hosts(dst)
+          create_index_tags(dst)
+          create_index_hosts_tags(dst)
+        end
+      end
 
       def select_from_hosts(db)
         logger.debug("select_from_hosts()")
