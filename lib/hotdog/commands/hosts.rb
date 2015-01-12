@@ -7,11 +7,6 @@ module Hotdog
         if args.empty?
           result = execute("SELECT DISTINCT host_id FROM hosts_tags").to_a.reduce(:+)
         else
-          if args.map { |host_name| glob?(host_name) }.all?
-            args.each do |host_name|
-              execute("INSERT OR IGNORE INTO hosts (name) VALUES (?)", host_name)
-            end
-          end
           result = args.map { |host_name|
             if glob?(host_name)
               execute(<<-EOS, host_name).map { |row| row.first }
