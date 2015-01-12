@@ -30,7 +30,7 @@ module Hotdog
         else
           fields = ["tag"]
           result = execute(<<-EOS).map { |name, value| [0 < value.length ? "#{name}:#{value}" : name] }
-            SELECT tags.name, tags.value FROM hosts_tags
+            SELECT DISTINCT tags.name, tags.value FROM hosts_tags
               INNER JOIN tags ON hosts_tags.tag_id = tags.id;
           EOS
         end
