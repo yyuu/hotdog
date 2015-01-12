@@ -19,8 +19,6 @@ module Hotdog
           exit(1)
         end
 
-        update
-
         result = evaluate(node, self).sort
         if 0 < result.length
           result, fields = get_hosts(result)

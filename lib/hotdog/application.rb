@@ -62,8 +62,6 @@ module Hotdog
         options[:logger].level = Logger::INFO
       end
 
-      @db = SQLite3::Database.new(":memory:")
-
       begin
         command = ( args.shift || "help" )
         run_command(command, args)
@@ -73,7 +71,7 @@ module Hotdog
     end
 
     def run_command(command, args=[])
-      get_command(command).new(@db, options.merge(application: self)).tap do |c|
+      get_command(command).new(options.merge(application: self)).tap do |c|
         c.run(args)
       end
     end
