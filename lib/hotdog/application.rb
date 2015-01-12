@@ -11,6 +11,7 @@ module Hotdog
     def initialize()
       @optparse = OptionParser.new
       @options = {
+        application: self,
         confdir: find_confdir(File.expand_path(".")),
         debug: false,
         expiry: 180,
@@ -62,15 +63,11 @@ module Hotdog
 
       begin
         command = ( args.shift || "help" )
-        run_command(command, args)
+        get_command(command).new(@options.dup).tap do |cmd|
+          cmd.run(args)
+        end
       rescue Errno::EPIPE
         # nop
-      end
-    end
-
-    def run_command(command, args=[])
-      get_command(command).new(options.merge(application: self)).tap do |c|
-        c.run(args)
       end
     end
 
