@@ -125,19 +125,42 @@ module Hotdog
           create_table_hosts_tags(memory_db)
           create_index_hosts_tags(memory_db)
 
-          code, result = @dog.all_tags()
+          code, all_tags = @dog.all_tags()
           logger.debug("dog.all_tags() #==> [%s, ...]" % [code.inspect])
           if code.to_i / 100 != 2
-            raise("dog.all_tags() returns (%s: ...)" % [code.inspect])
+            raise("dog.all_tags() returns [%s, ...]" % [code.inspect])
           end
 
-          result["tags"].each do |tag, hosts|
+          code, all_downtimes = @dog.get_all_downtimes()
+          logger.debug("dog.get_all_downtimes() #==> [%s, ...]" % [code.inspect])
+          if code.to_i / 100 != 2
+            raise("dog.get_all_downtimes() returns [%s, ...]" % [code.inspect])
+          end
+
+          now = Time.new.to_i
+          downs = all_downtimes.select { |downtime|
+            # active downtimes
+            downtime["active"] and ( downtime["start"].nil? or downtime["start"] < now ) and ( downtime["end"].nil? or now <= downtime["end"] )
+          }.map { |downtime|
+            # find host scopes
+            downtime["scope"].select { |scope| scope.start_with?("host:") }
+          }.reduce(:+).map { |scope|
+            scope.sub(/\Ahost:/, "")
+          }.uniq
+
+          if not downs.empty?
+            logger.info("ignore host(s) with scheduled downtimes: #{downs.inspect}")
+          end
+
+          all_tags["tags"].each do |tag, hosts|
             tag_name, tag_value = tag.split(":", 2)
             tag_value ||= ""
             insert_or_ignore_into_tags(memory_db, tag_name, tag_value)
             hosts.each do |host_name|
-              insert_or_ignore_into_hosts(memory_db, host_name)
-              insert_or_replace_into_hosts_tags(memory_db, host_name, tag_name, tag_value)
+              if not downs.include?(host_name)
+                insert_or_ignore_into_hosts(memory_db, host_name)
+                insert_or_replace_into_hosts_tags(memory_db, host_name, tag_name, tag_value)
+              end
             end
           end
 
