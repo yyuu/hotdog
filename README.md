@@ -33,7 +33,7 @@ Or,
 
 ```
 $ mkdir ~/.hotdog
-$ cat <<EOF
+$ cat <<EOF > ~/.hotdog/config.yml
 ---
 api_key: abcdefghijklmnopqrstuvwxyzabcdef
 application_key: abcdefghijklmnopqrstuvwxyzabcdefghijklmn
