@@ -143,10 +143,9 @@ module Hotdog
             downtime["active"] and ( downtime["start"].nil? or downtime["start"] < now ) and ( downtime["end"].nil? or now <= downtime["end"] )
           }.map { |downtime|
             # find host scopes
-            downtime["scope"].select { |scope| scope.start_with?("host:") }
-          }.reduce(:+).map { |scope|
-            scope.sub(/\Ahost:/, "")
-          }.uniq
+            downtime["scope"].select { |scope| scope.start_with?("host:") }.map { |scope| scope.sub(/\Ahost:/, "") }
+          }.reduce(:+)
+          downs ||= []
 
           if not downs.empty?
             logger.info("ignore host(s) with scheduled downtimes: #{downs.inspect}")
