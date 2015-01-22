@@ -136,7 +136,8 @@ module Hotdog
           load library
           Hotdog::Commands.const_get(const_name(File.basename(library, ".rb")))
         else
-          raise(NameError.new("unknown command: #{name}"))
+          require "hotdog/commands/help"
+          Hotdog::Commands::Help
         end
       end
     end
