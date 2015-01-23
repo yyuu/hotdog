@@ -8,6 +8,8 @@ require "sqlite3"
 module Hotdog
   module Commands
     class BaseCommand
+      PERSISTENT_DB = "persistent.db"
+
       def initialize(options={})
         @application = options[:application]
         @confdir = options[:confdir]
@@ -58,6 +60,11 @@ module Hotdog
         s.index('*') or s.index('?') or s.index('[') or s.index(']')
       end
 
+      def host?(host_id)
+        host_id = execute("SELECT id FROM hosts WHERE name = %s LIMIT 1", s)
+        not host_id.nil?
+      end
+
       def get_hosts(hosts=[])
         update_db
         if 0 < tags.length
@@ -102,7 +109,7 @@ module Hotdog
       def update_db(options={})
         if @db.nil?
           FileUtils.mkdir_p(confdir)
-          persistent = File.join(confdir, "persistent.db")
+          persistent = File.join(confdir, PERSISTENT_DB)
 
           if not @force and File.exist?(persistent) and Time.new < File.mtime(persistent) + expiry
             begin
