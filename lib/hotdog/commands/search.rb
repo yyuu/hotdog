@@ -208,8 +208,12 @@ module Hotdog
 
       class TagExpressionNode < ExpressionNode
         def initialize(identifier, attribute)
-          @identifier = identifier
-          @attribute = attribute
+          if identifier == "host"
+            @identifier = attribute
+          else
+            @identifier = identifier
+            @attribute = attribute
+          end
         end
         attr_reader :identifier
         attr_reader :attribute
