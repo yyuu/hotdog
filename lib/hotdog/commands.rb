@@ -154,6 +154,9 @@ module Hotdog
           }.reduce(:+)
           downs ||= []
 
+          # for case-insensitive match of hostname
+          downs = downs.map { |down| down.downcase }
+
           if not downs.empty?
             logger.info("ignore host(s) with scheduled downtimes: #{downs.inspect}")
           end
@@ -163,7 +166,7 @@ module Hotdog
             tag_value ||= ""
             insert_or_ignore_into_tags(memory_db, tag_name, tag_value)
             hosts.each do |host_name|
-              if not downs.include?(host_name)
+              if not downs.include?(host_name.downcase)
                 insert_or_ignore_into_hosts(memory_db, host_name)
                 insert_or_replace_into_hosts_tags(memory_db, host_name, tag_name, tag_value)
               end
