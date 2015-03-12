@@ -59,7 +59,7 @@ module Hotdog
         rule(:unary_expression) {
           ( spacing.maybe >> str('!').as(:unary_op) >> atom.as(:expression) \
           | spacing.maybe >> str('~').as(:unary_op) >> atom.as(:expression) \
-          | spacing.maybe >> str('not').as(:unary_op) >> atom.as(:expression) \
+          | spacing.maybe >> (match('[Nn]') >> match('[Oo]') >> match('[Tt]')).as(:unary_op) >> atom.as(:expression) \
           )
         }
         rule(:term) {
