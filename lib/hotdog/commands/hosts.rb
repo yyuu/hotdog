@@ -4,6 +4,7 @@ module Hotdog
   module Commands
     class Hosts < BaseCommand
       def run(args=[])
+        args = optparse.parse(args)
         if args.empty?
           result = execute("SELECT DISTINCT host_id FROM hosts_tags").to_a.reduce(:+)
         else

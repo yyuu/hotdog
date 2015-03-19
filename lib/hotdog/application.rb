@@ -34,6 +34,7 @@ module Hotdog
       define_options
     end
     attr_reader :options
+    attr_reader :optparse
 
     def main(argv=[])
       config = File.join(options[:confdir], "config.yml")
