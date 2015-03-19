@@ -6,14 +6,25 @@ module Hotdog
   module Commands
     class Down < BaseCommand
       def run(args=[])
+        if args.index("--start").nil?
+          start = Time.new
+        else
+          start = Time.parse(args[args.index("--start") + 1])
+          args.slice!(args.index("--start"), 2)
+        end
+        if args.index("--downtime").nil?
+          downtime = 86400
+        else
+          downtime = args[args.index("--downtime") + 1].to_i
+          args.slice!(args.index("--downtime"), 2)
+        end
+
         args.each do |arg|
           if arg.index(":").nil?
             scope = "host:#{arg}"
           else
             scope = arg
           end
-          start = Time.new
-          downtime = 86400 # TODO: make configurable
           code, schedule = @dog.schedule_downtime(scope, :start => start.to_i, :end => (start+downtime).to_i)
           logger.debug("dog.schedule_donwtime(%s, :start => %s, :end => %s) #==> [%s, %s]" % [scope.inspect, start.to_i, (start+downtime).to_i, code.inspect, schedule.inspect])
           if code.to_i / 100 != 2
