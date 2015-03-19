@@ -56,6 +56,10 @@ module Hotdog
         @formatter.format(result, @options.merge(options))
       end
 
+      def optparse()
+        @application.optparse
+      end
+
       def glob?(s)
         s.index('*') or s.index('?') or s.index('[') or s.index(']')
       end

@@ -34,6 +34,7 @@ module Hotdog
       define_options
     end
     attr_reader :options
+    attr_reader :optparse
 
     def main(argv=[])
       config = File.join(options[:confdir], "config.yml")
@@ -43,7 +44,7 @@ module Hotdog
           @options = @options.merge(Hash[loaded.map { |key, value| [Symbol === key ? key : key.to_s.to_sym, value] }])
         end
       end
-      args = @optparse.parse(argv)
+      args = @optparse.order(argv)
 
       unless options[:api_key]
         raise("DATADOG_API_KEY is not set")

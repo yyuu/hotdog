@@ -7,6 +7,7 @@ module Hotdog
   module Commands
     class Search < BaseCommand
       def run(args=[])
+        args = optparse.parse(args)
         expression = args.join(" ").strip
         if expression.empty?
           exit(1)
