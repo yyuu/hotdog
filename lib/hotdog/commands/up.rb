@@ -32,7 +32,7 @@ module Hotdog
         # Remove persistent.db to schedule update on next invocation
         if not @db.nil?
           @db.close
-          FileUtils.rm_f(File.join(confdir, PERSISTENT_DB))
+          FileUtils.rm_f(File.join(@options[:confdir], PERSISTENT_DB))
         end
       end
     end

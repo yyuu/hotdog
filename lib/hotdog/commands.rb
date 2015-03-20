@@ -10,27 +10,14 @@ module Hotdog
     class BaseCommand
       PERSISTENT_DB = "persistent.db"
 
-      def initialize(options={})
-        @application = options[:application]
-        @confdir = options[:confdir]
-        @expiry = options[:expiry]
-        @fixed_string = options[:fixed_string]
-        @force = options[:force]
-        @formatter = options[:formatter]
-        @listing = options[:listing]
-        @logger = options[:logger]
-        @tags = options[:tags]
-        @options = options
+      def initialize(application)
+        @application = application
+        @logger = application.options[:logger]
+        @options = application.options
         @dog = Dogapi::Client.new(options[:api_key], options[:application_key])
       end
       attr_reader :application
-      attr_reader :confdir
-      attr_reader :expiry
-      attr_reader :force
-      attr_reader :formatter
-      attr_reader :listing
       attr_reader :logger
-      attr_reader :tags
       attr_reader :options
 
       def run(args=[])
@@ -48,12 +35,12 @@ module Hotdog
       end
 
       def fixed_string?()
-        @fixed_string
+        @options[:fixed_string]
       end
 
       private
       def format(result, options={})
-        @formatter.format(result, @options.merge(options))
+        @options[:formatter].format(result, @options.merge(options))
       end
 
       def optparse()
@@ -71,9 +58,9 @@ module Hotdog
 
       def get_hosts(hosts=[])
         update_db
-        if 0 < tags.length
+        if 0 < @options[:tags].length
           result = hosts.map { |host_id|
-            tags.map { |tag|
+            @options[:tags].map { |tag|
               tag_name, tag_value = tag.split(":", 2)
               case tag_name
               when "host"
@@ -87,9 +74,9 @@ module Hotdog
               end
             }
           }
-          fields = tags
+          fields = @options[:tags]
         else
-          if @listing
+          if @options[:listing]
             fields = []
             hosts = execute("SELECT id, name FROM hosts WHERE id IN (%s)" % hosts.map { "?" }.join(", "), hosts)
             result = hosts.map { |host_id, host_name|
@@ -112,10 +99,10 @@ module Hotdog
 
       def update_db(options={})
         if @db.nil?
-          FileUtils.mkdir_p(confdir)
-          persistent = File.join(confdir, PERSISTENT_DB)
+          FileUtils.mkdir_p(@options[:confdir])
+          persistent = File.join(@options[:confdir], PERSISTENT_DB)
 
-          if not @force and File.exist?(persistent) and Time.new < File.mtime(persistent) + expiry
+          if not @options[:force] and File.exist?(persistent) and Time.new < File.mtime(persistent) + @options[:expiry]
             begin
               persistent_db = SQLite3::Database.new(persistent)
               persistent_db.execute("SELECT id, name FROM hosts LIMIT 1")

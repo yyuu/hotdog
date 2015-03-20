@@ -64,7 +64,7 @@ module Hotdog
 
       begin
         command = ( args.shift || "help" )
-        get_command(command).new(@options.dup).tap do |cmd|
+        get_command(command).new(self).tap do |cmd|
           cmd.run(args)
         end
       rescue Errno::EPIPE
