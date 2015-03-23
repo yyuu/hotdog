@@ -20,9 +20,19 @@ module Hotdog
           exit(1)
         end
 
+        drilldown = ->(n){
+          case
+          when n[:left] && n[:right] then drilldown.(n[:left]) + drilldown.(n[:right])
+          when n[:expression] then drilldown.(n[:expression])
+          when n[:identifier] then [n[:identifier]]
+          else []
+          end
+        }
+        identifiers = drilldown.call(node).map(&:to_s)
+
         result = evaluate(node, self).sort
         if 0 < result.length
-          result, fields = get_hosts(result)
+          result, fields = get_hosts(result, @options[:display_search_tags] ? identifiers : [])
           STDOUT.print(format(result, fields: fields))
           logger.info("found %d host(s)." % result.length)
         else
@@ -158,6 +168,8 @@ module Hotdog
       end
 
       class BinaryExpressionNode < ExpressionNode
+        attr_reader :left, :right
+
         def initialize(op, left, right)
           @op = op
           @left = left
@@ -184,6 +196,8 @@ module Hotdog
       end
 
       class UnaryExpressionNode < ExpressionNode
+        attr_reader :expression
+
         def initialize(op, expression)
           @op = op
           @expression = expression

@@ -29,6 +29,7 @@ module Hotdog
         print0: false,
         print1: true,
         tags: [],
+        display_search_tags: false,
         verbose: false,
       }
       define_options
@@ -106,6 +107,9 @@ module Hotdog
       end
       @optparse.on("-a TAG", "-t TAG", "--tag TAG", "Use specified tag name/value") do |tag|
         options[:tags] += [tag]
+      end
+      @optparse.on("-x", "--display-search-tags", "Show tags used in search expression") do |v|
+        options[:display_search_tags] = v
       end
       @optparse.on("-V", "--[no-]verbose", "Enable verbose mode") do |v|
         options[:verbose] = v
