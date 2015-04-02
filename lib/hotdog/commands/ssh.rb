@@ -59,7 +59,7 @@ module Hotdog
             result = result.each_with_index.map {|host,i| [i] + host }
             fields = ["index"] + fields
 
-            STDOUT.print(format(result, fields: fields))
+            STDERR.print(format(result, fields: fields))
             logger.info("found %d host(s)." % result.length)
             exit(1)
           end
