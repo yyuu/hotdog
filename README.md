@@ -86,6 +86,12 @@ $ hotdog search availability-zone:us-east-1b and 'name:web-*'
 i-03cb56ed
 ```
 
+Login to the matching host using ssh.
+
+```sh
+$ hotdog ssh availability-zone:us-east-1b and 'name:web-*' -t public_ipv4 -u username
+```
+
 
 ## Expression
 

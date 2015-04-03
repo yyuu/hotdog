@@ -20,6 +20,18 @@ module Hotdog
           exit(1)
         end
 
+        result = evaluate(node, self).sort
+        if 0 < result.length
+          result, fields = get_hosts_with_search_tags(result, node)
+          STDOUT.print(format(result, fields: fields))
+          logger.info("found %d host(s)." % result.length)
+        else
+          STDERR.puts("no match found: #{args.join(" ")}")
+          exit(1)
+        end
+      end
+
+      def get_hosts_with_search_tags(result, node)
         drilldown = ->(n){
           case
           when n[:left] && n[:right] then drilldown.(n[:left]) + drilldown.(n[:right])
@@ -30,15 +42,7 @@ module Hotdog
         }
         identifiers = drilldown.call(node).map(&:to_s)
 
-        result = evaluate(node, self).sort
-        if 0 < result.length
-          result, fields = get_hosts(result, @options[:display_search_tags] ? identifiers : [])
-          STDOUT.print(format(result, fields: fields))
-          logger.info("found %d host(s)." % result.length)
-        else
-          STDERR.puts("no match found: #{args.join(" ")}")
-          exit(1)
-        end
+        get_hosts(result, @options[:display_search_tags] ? identifiers : [])
       end
 
       def parse(expression)
