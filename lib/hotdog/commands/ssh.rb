@@ -78,13 +78,13 @@ module Hotdog
           cmdline << "-i" << Shellwords.escape(path)
         end
         if user = ssh_option[:user]
-          cmdline << (Shellwords.escape(user) + "@" + address)
+          cmdline << (user + "@" + address)
         else
           cmdline << address
         end
         cmdline.concat(args)
 
-        exec cmdline.join(" ")
+        exec *cmdline
         exit(127)
       end
     end
