@@ -13,7 +13,9 @@ module Hotdog
           index: nil,
           options: [],
           user: nil,
+          port: nil,
           identity_file: nil,
+          forward_agent: false,
         }
 
         optparse.on("-n", "--index INDEX", "Use this index of host if multiple servers are found", Integer) do |index|
@@ -24,6 +26,12 @@ module Hotdog
         end
         optparse.on("-i SSH_IDENTITY_FILE", "SSH identity file path") do |path|
           ssh_option[:identity_file] = path
+        end
+        optparse.on("-A", "Enable agent forwarding", TrueClass) do |b|
+          ssh_option[:forward_agent] = b
+        end
+        optparse.on("-p PORT", "Port of the remote host", Integer) do |port|
+          ssh_option[:port] = port
         end
         optparse.on("-u SSH_USER", "SSH login user name") do |user|
           ssh_option[:user] = user
@@ -75,6 +83,12 @@ module Hotdog
         end
         if path = ssh_option[:identity_file]
           cmdline << "-i" << Shellwords.escape(path)
+        end
+        if port = ssh_option[:port]
+          cmdline << "-p" << port.to_s
+        end
+        if ssh_option[:forward_agent]
+          cmdline << "-A"
         end
         if user = ssh_option[:user]
           cmdline << (Shellwords.escape(user) + "@" + address)
