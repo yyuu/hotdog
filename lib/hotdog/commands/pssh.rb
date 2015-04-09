@@ -34,6 +34,8 @@ module Hotdog
           ssh_option[:max_parallelism] = n
         end
 
+        use_color = STDOUT.tty?
+
         search_args = []
         optparse.order!(args) {|search_arg| search_args.push(search_arg) }
         expression = search_args.join(" ").strip
@@ -79,6 +81,12 @@ module Hotdog
 
         threads = ssh_option[:max_parallelism] || addresses.size
         stats = Parallel.map(addresses, in_threads: threads) do |address,name|
+          if use_color
+            header = "\e[0;36m#{name}\e[00m"
+          else
+            header = name
+          end
+
           c = cmdline.dup
           if user
             c << (user + "@" + address)
@@ -90,7 +98,7 @@ module Hotdog
 
           IO.popen([*c, in: :close, err: [:child, :out]]) do |io|
             io.each_line {|line|
-              STDOUT.write "#{name}: #{line}"
+              STDOUT.write "#{header}: #{line}"
             }
           end
           $?.success?  # $? is thread-local variable
