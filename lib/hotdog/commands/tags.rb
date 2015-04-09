@@ -25,7 +25,7 @@ module Hotdog
               EOS
             end
           }
-          result = (0..result1.reduce(0) { |max, values| [max, values.length].max }).map { |field_index|
+          result = (0...result1.reduce(0) { |max, values| [max, values.length].max }).map { |field_index|
             result1.map { |values| values[field_index] }
           }
         else
