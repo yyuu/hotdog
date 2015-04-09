@@ -37,8 +37,9 @@ module Hotdog
           ssh_option[:user] = user
         end
 
-        args = optparse.parse(args)
-        expression = args.join(" ").strip
+        search_args = []
+        optparse.order!(args) {|search_arg| search_args.push(search_arg) }
+        expression = search_args.join(" ").strip
         if expression.empty?
           exit(1)
         end
@@ -55,7 +56,7 @@ module Hotdog
         if result.length == 1
           host = result[0]
         elsif result.empty?
-          STDERR.puts("no match found: #{args.join(" ")}")
+          STDERR.puts("no match found: #{search_args.join(" ")}")
           exit(1)
         else
           if ssh_option[:index] && result.length > ssh_option[:index]
@@ -91,12 +92,13 @@ module Hotdog
           cmdline << "-A"
         end
         if user = ssh_option[:user]
-          cmdline << (Shellwords.escape(user) + "@" + address)
+          cmdline << (user + "@" + address)
         else
           cmdline << address
         end
+        cmdline.concat(args)
 
-        exec cmdline.join(" ")
+        exec *cmdline
         exit(127)
       end
     end
