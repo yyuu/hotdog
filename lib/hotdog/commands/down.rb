@@ -6,19 +6,15 @@ module Hotdog
   module Commands
     class Down < BaseCommand
       def run(args=[])
-        if args.index("--start").nil?
-          start = Time.new
-        else
-          start = Time.parse(args[args.index("--start") + 1])
-          args.slice!(args.index("--start"), 2)
+        downtime = 86400
+        start = Time.new
+        optparse.on("--downtime DURATION") do |v|
+          downtime = v.to_i
         end
-        if args.index("--downtime").nil?
-          downtime = 86400
-        else
-          downtime = args[args.index("--downtime") + 1].to_i
-          args.slice!(args.index("--downtime"), 2)
+        optparse.on("--start TIME") do |v|
+          start = Time.parse(v)
         end
-
+        args = optparse.parse(args)
         args.each do |arg|
           if arg.index(":").nil?
             scope = "host:#{arg}"
