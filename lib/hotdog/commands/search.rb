@@ -41,7 +41,7 @@ module Hotdog
           end
         }
         identifiers = drilldown.call(node).map(&:to_s)
-        tags = @options[:display_search_tags] ? identifiers : @options[:tags]
+        tags = @options[:display_search_tags] ? identifiers : nil
         get_hosts(result, tags)
       end
 

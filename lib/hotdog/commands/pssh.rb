@@ -51,7 +51,7 @@ module Hotdog
         end
 
         result = evaluate(node, self).sort
-        result, fields = get_hosts(result, @options[:tags])
+        result, fields = get_hosts(result)
 
         if result.empty?
           STDERR.puts("no match found: #{search_args.join(" ")}")
