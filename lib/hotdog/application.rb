@@ -5,11 +5,13 @@ require "optparse"
 require "yaml"
 require "hotdog/commands"
 require "hotdog/formatters"
+require "hotdog/version"
 
 module Hotdog
   class Application
     def initialize()
       @optparse = OptionParser.new
+      @optparse.version = Hotdog::VERSION
       @options = {
         api_key: ENV["DATADOG_API_KEY"],
         application_key: ENV["DATADOG_APPLICATION_KEY"],
