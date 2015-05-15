@@ -56,14 +56,10 @@ module Hotdog
         not host_id.nil?
       end
 
-      def get_hosts(hosts=[], identifiers=[])
+      def get_hosts(hosts, tags=nil)
+        tags ||= @options[:tags]
         update_db
-        if 0 < @options[:tags].length || 0 < identifiers.length
-          tags = if 0 < @options[:tags].length
-                   @options[:tags] + identifiers
-                 else
-                   ["host"] + identifiers
-                 end
+        if 0 < tags.length
           result = hosts.map { |host_id|
             tags.map { |tag|
               tag_name, tag_value = tag.split(":", 2)
@@ -82,6 +78,7 @@ module Hotdog
           fields = tags
         else
           if @options[:listing]
+            # TODO: should respect `:primary_tag`
             fields = []
             hosts = execute("SELECT id, name FROM hosts WHERE id IN (%s)" % hosts.map { "?" }.join(", "), hosts)
             result = hosts.map { |host_id, host_name|
@@ -95,8 +92,21 @@ module Hotdog
             }
             fields = ["host"] + fields
           else
-            fields = ["host"]
-            result = execute("SELECT name FROM hosts WHERE id IN (%s)" % hosts.map { "?" }.join(", "), hosts)
+            if @options[:primary_tag]
+              fields = [@options[:primary_tag]]
+              tag_name, tag_value = @options[:primary_tag].split(":", 2)
+              case tag_name
+              when "host"
+                result = execute("SELECT name FROM hosts WHERE id IN (%s)" % hosts.map { "?" }.join(", "), hosts)
+              else
+                result = hosts.map { |host_id|
+                  [select_tag_values_from_hosts_tags_by_host_id_and_tag_name_glob(@db, host_id, tag_name)]
+                }
+              end
+            else
+              fields = ["host"]
+              result = execute("SELECT name FROM hosts WHERE id IN (%s)" % hosts.map { "?" }.join(", "), hosts)
+            end
           end
         end
         [result, fields]
@@ -305,7 +315,7 @@ module Hotdog
       end
 
       def select_tag_values_from_hosts_tags_by_host_id_and_tag_name_glob(db, host_id, tag_name)
-        logger.debug("select_tag_values_from_hosts_tags_by_host_id_and_tag_name_glob(%s, %s)", host_id.inspect, tag_name.inspect)
+        logger.debug("select_tag_values_from_hosts_tags_by_host_id_and_tag_name_glob(%s, %s)" % [host_id.inspect, tag_name.inspect])
         db.execute(<<-EOS, host_id, tag_name).map { |row| row.first }.join(",")
           SELECT tags.value FROM hosts_tags
             INNER JOIN tags ON hosts_tags.tag_id = tags.id

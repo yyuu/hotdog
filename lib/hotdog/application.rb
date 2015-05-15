@@ -28,6 +28,7 @@ module Hotdog
         max_time: 5,
         print0: false,
         print1: true,
+        primary_tag: nil,
         tags: [],
         display_search_tags: false,
         verbose: false,
@@ -107,6 +108,9 @@ module Hotdog
       end
       @optparse.on("-a TAG", "-t TAG", "--tag TAG", "Use specified tag name/value") do |tag|
         options[:tags] += [tag]
+      end
+      @optparse.on("--primary-tag TAG", "Use specified tag as the primary tag") do |tag|
+        options[:primary_tag] = tag
       end
       @optparse.on("-x", "--display-search-tags", "Show tags used in search expression") do |v|
         options[:display_search_tags] = v
