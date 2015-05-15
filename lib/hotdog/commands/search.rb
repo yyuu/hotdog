@@ -40,8 +40,16 @@ module Hotdog
           else []
           end
         }
-        identifiers = drilldown.call(node).map(&:to_s)
-        tags = @options[:display_search_tags] ? identifiers : nil
+        if @options[:display_search_tags]
+          identifiers = drilldown.call(node).map(&:to_s)
+          if @options[:primary_tag]
+            tags = [@options[:primary_tag]] + identifiers
+          else
+            tags = identifiers
+          end
+        else
+          tags = nil
+        end
         get_hosts(result, tags)
       end
 
