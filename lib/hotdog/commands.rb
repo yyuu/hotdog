@@ -56,14 +56,9 @@ module Hotdog
         not host_id.nil?
       end
 
-      def get_hosts(hosts=[], identifiers=[])
+      def get_hosts(hosts, tags)
         update_db
-        if 0 < @options[:tags].length || 0 < identifiers.length
-          tags = if 0 < @options[:tags].length
-                   @options[:tags] + identifiers
-                 else
-                   ["host"] + identifiers
-                 end
+        if 0 < tags.length
           result = hosts.map { |host_id|
             tags.map { |tag|
               tag_name, tag_value = tag.split(":", 2)

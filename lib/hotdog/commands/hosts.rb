@@ -25,7 +25,7 @@ module Hotdog
           }.reduce(:+)
         end
         if 0 < result.length
-          result, fields = get_hosts(result)
+          result, fields = get_hosts(result, @options[:tags])
           STDOUT.print(format(result, fields: fields))
           logger.info("found %d host(s)." % result.length)
         else
