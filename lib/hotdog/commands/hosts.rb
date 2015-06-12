@@ -24,7 +24,7 @@ module Hotdog
             end
           }.reduce(:+)
         end
-        if 0 < result.length
+        if result && (0 < result.length)
           result, fields = get_hosts(result)
           STDOUT.print(format(result, fields: fields))
           logger.info("found %d host(s)." % result.length)
