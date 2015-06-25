@@ -77,6 +77,7 @@ module Hotdog
           | term.as(:left) >> spacing.maybe >> (str('|') >> str('|').maybe).as(:binary_op) >> spacing.maybe >> expression.as(:right) \
           | term.as(:left) >> spacing.maybe >> (match('[Aa]') >> match('[Nn]') >> match('[Dd]')).as(:binary_op) >> spacing.maybe >> expression.as(:right) \
           | term.as(:left) >> spacing.maybe >> (match('[Oo]') >> match('[Rr]')).as(:binary_op) >> spacing.maybe >> expression.as(:right) \
+          | term.as(:left) >> spacing.maybe.as(:binary_op) >> expression.as(:right) \
           )
         }
         rule(:unary_expression) {
@@ -184,6 +185,7 @@ module Hotdog
 
         def initialize(op, left, right)
           @op = op
+          @op ||= "or" # use OR expression by default
           @left = left
           @right = right
         end
@@ -202,7 +204,7 @@ module Hotdog
             right_values = @right.evaluate(environment)
             (left_values | right_values).uniq
           else
-            raise(SyntaxError.new("unknown binary operator: #{@op}"))
+            raise(SyntaxError.new("unknown binary operator: #{@op.inspect}"))
           end
         end
       end
@@ -228,7 +230,7 @@ module Hotdog
               EOS
             end
           else
-            raise(SyntaxError.new("unknown unary operator: #{@op}"))
+            raise(SyntaxError.new("unknown unary operator: #{@op.inspect}"))
           end
         end
       end
