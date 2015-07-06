@@ -296,7 +296,6 @@ module Hotdog
                 INNER JOIN hosts ON hosts_tags.host_id = hosts.id
                 INNER JOIN tags ON hosts_tags.tag_id = tags.id
                   WHERE LOWER(hosts.name) GLOB LOWER(?) OR LOWER(tags.name) GLOB LOWER(?) OR LOWER(tags.value) GLOB LOWER(?);
-
             EOS
           end
           if not environment.fixed_string? and values.empty?
