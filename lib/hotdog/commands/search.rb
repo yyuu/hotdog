@@ -7,6 +7,11 @@ module Hotdog
   module Commands
     class Search < BaseCommand
       def run(args=[])
+        search_options = {
+        }
+        optparse.on("-n", "--limit LIMIT", "Limit result set to specified size at most", Integer) do |limit|
+          search_options[:limit] = limit
+        end
         args = optparse.parse(args)
         expression = args.join(" ").strip
         if expression.empty?
@@ -22,9 +27,14 @@ module Hotdog
 
         result = evaluate(node, self).sort
         if 0 < result.length
-          result, fields = get_hosts_with_search_tags(result, node)
+          _result, fields = get_hosts_with_search_tags(result, node)
+          result = _result.take(search_options.fetch(:limit, _result.size))
           STDOUT.print(format(result, fields: fields))
-          logger.info("found %d host(s)." % result.length)
+          if _result.length == result.length
+            logger.info("found %d host(s)." % result.length)
+          else
+            logger.info("found %d host(s), limited to %d in result." % [_result.length, result.length])
+          end
         else
           STDERR.puts("no match found: #{args.join(" ")}")
           exit(1)
