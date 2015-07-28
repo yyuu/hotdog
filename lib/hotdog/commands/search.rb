@@ -108,9 +108,12 @@ module Hotdog
           | spacing.maybe >> identifier_glob.as(:identifier_glob) >> separator >> attribute_glob.as(:attribute_glob) >> spacing.maybe \
           | spacing.maybe >> identifier_glob.as(:identifier_glob) >> separator >> attribute.as(:attribute) >> spacing.maybe \
           | spacing.maybe >> identifier_glob.as(:identifier_glob) >> spacing.maybe \
-          | spacing.maybe >> identifier.as(:identifier)>> separator >> attribute_glob.as(:attribute_glob) >> spacing.maybe \
-          | spacing.maybe >> identifier.as(:identifier)>> separator >> attribute.as(:attribute) >> spacing.maybe \
+          | spacing.maybe >> identifier.as(:identifier) >> separator >> attribute_glob.as(:attribute_glob) >> spacing.maybe \
+          | spacing.maybe >> identifier.as(:identifier) >> separator >> attribute.as(:attribute) >> spacing.maybe \
           | spacing.maybe >> identifier.as(:identifier) >> spacing.maybe \
+          | spacing.maybe >> attribute_regexp.as(:attribute_regexp) >> spacing.maybe \
+          | spacing.maybe >> attribute_glob.as(:attribute_glob) >> spacing.maybe \
+          | spacing.maybe >> attribute.as(:attribute) >> spacing.maybe \
           )
         }
         rule(:identifier_regexp) {
@@ -182,6 +185,15 @@ module Hotdog
         rule(:identifier => simple(:identifier)) {
           TagExpressionNode.new(identifier.to_s, nil)
         }
+        rule(:attribute_regexp => simple(:attribute_regexp)) {
+          TagRegexpExpressionNode.new(nil, attribute_regexp.to_s)
+        }
+        rule(:attribute_glob => simple(:attribute_glob)) {
+          TagGlobExpressionNode.new(nil, attribute_glob.to_s)
+        }
+        rule(:attribute => simple(:attribute)) {
+          TagExpressionNode.new(nil, attribute.to_s)
+        }
       end
 
       class ExpressionNode
@@ -247,11 +259,17 @@ module Hotdog
 
       class TagExpressionNode < ExpressionNode
         def initialize(identifier, attribute)
-          if identifier == "host"
-            @identifier = attribute
+          if identifier
+            if identifier == "host"
+              # TODO: this should perform lookup from `hosts` table
+              @identifier = attribute
+            else
+              @identifier = identifier
+              @attribute = attribute
+            end
           else
-            @identifier = identifier
-            @attribute = attribute
+            # TODO: this should attempt reverse-lookup from the attribute value
+            @identifier = attribute
           end
         end
         attr_reader :identifier
