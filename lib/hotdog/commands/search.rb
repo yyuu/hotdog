@@ -259,50 +259,58 @@ module Hotdog
 
       class TagExpressionNode < ExpressionNode
         def initialize(identifier, attribute)
-          if identifier
-            if identifier == "host"
-              # TODO: this should perform lookup from `hosts` table
-              @identifier = attribute
-            else
-              @identifier = identifier
-              @attribute = attribute
-            end
-          else
-            # TODO: this should attempt reverse-lookup from the attribute value
-            @identifier = attribute
-          end
+          @identifier = identifier
+          @attribute = attribute
         end
         attr_reader :identifier
         attr_reader :attribute
+        def identifier?
+          !identifier.nil?
+        end
         def attribute?
           !attribute.nil?
         end
         def evaluate(environment)
-          if attribute?
-            values = environment.execute(<<-EOS, identifier, attribute).map { |row| row.first }
-              SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
-                INNER JOIN tags ON hosts_tags.tag_id = tags.id
-                  WHERE LOWER(tags.name) = LOWER(?) AND LOWER(tags.value) = LOWER(?);
-            EOS
+          if identifier?
+            if attribute?
+              case identifier
+              when /\Ahost\z/i
+                values = environment.execute(<<-EOS, attribute).map { |row| row.first }
+                  SELECT hosts_tags.id FROM hosts
+                    WHERE LOWER(hosts.name) = LOWER(?);
+                EOS
+              else
+                values = environment.execute(<<-EOS, identifier, attribute).map { |row| row.first }
+                  SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
+                    INNER JOIN tags ON hosts_tags.tag_id = tags.id
+                      WHERE LOWER(tags.name) = LOWER(?) AND LOWER(tags.value) = LOWER(?);
+                EOS
+              end
+            else
+              values = environment.execute(<<-EOS, identifier, identifier, identifier).map { |row| row.first }
+                SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
+                  INNER JOIN hosts ON hosts_tags.host_id = hosts.id
+                  INNER JOIN tags ON hosts_tags.tag_id = tags.id
+                    WHERE LOWER(hosts.name) = LOWER(?) OR LOWER(tags.name) = LOWER(?) OR LOWER(tags.value) = LOWER(?);
+              EOS
+            end
           else
-            values = environment.execute(<<-EOS, identifier, identifier, identifier).map { |row| row.first }
-              SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
-                INNER JOIN hosts ON hosts_tags.host_id = hosts.id
-                INNER JOIN tags ON hosts_tags.tag_id = tags.id
-                  WHERE LOWER(hosts.name) = LOWER(?) OR LOWER(tags.name) = LOWER(?) OR LOWER(tags.value) = LOWER(?);
-            EOS
+            if attribute?
+              values = environment.execute(<<-EOS, attribute).map { |row| row.first }
+                SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
+                  INNER JOIN tags ON hosts_tags.tag_id = tags.id
+                    WHERE LOWER(tags.value) = LOWER(?);
+              EOS
+            else
+              values = []
+            end
           end
           if not environment.fixed_string? and values.empty?
             # fallback to glob expression
-            identifier_glob = identifier.gsub(/[-.\/_]/, "?")
-            if identifier != identifier_glob
-              if attribute?
-                attribute_glob = attribute.gsub(/[-.\/:_]/, "?")
-                environment.logger.info("fallback to glob expression: %s:%s" % [identifier_glob, attribute_glob])
-              else
-                attribute_glob = nil
-                environment.logger.info("fallback to glob expression: %s" % [identifier_glob])
-              end
+            identifier_glob = identifier.gsub(/[-.\/_]/, "?") if identifier?
+            attribute_glob = attribute.gsub(/[-.\/_]/, "?") if attribute?
+            if (identifier? and identifier != identifier_glob) or (attribute? and attribute != attribute_glob)
+              environment.logger.info("fallback to glob expression: %s:%s" % [identifier_glob, attribute_glob])
               values = TagGlobExpressionNode.new(identifier_glob, attribute_glob).evaluate(environment)
             end
           end
@@ -312,31 +320,46 @@ module Hotdog
 
       class TagGlobExpressionNode < TagExpressionNode
         def evaluate(environment)
-          if attribute?
-            values = environment.execute(<<-EOS, identifier, attribute).map { |row| row.first }
-              SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
-                INNER JOIN tags ON hosts_tags.tag_id = tags.id
-                  WHERE LOWER(tags.name) GLOB LOWER(?) AND LOWER(tags.value) GLOB LOWER(?);
-            EOS
+          if identifier?
+            if attribute?
+              case identifier
+              when /\Ahost\z/i
+                values = environment.execute(<<-EOS, attribute).map { |row| row.first }
+                  SELECT hosts.id FROM hosts
+                    WHERE LOWER(hosts.name) GLOB LOWER(?);
+                EOS
+              else
+                values = environment.execute(<<-EOS, identifier, attribute).map { |row| row.first }
+                  SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
+                    INNER JOIN tags ON hosts_tags.tag_id = tags.id
+                      WHERE LOWER(tags.name) GLOB LOWER(?) AND LOWER(tags.value) GLOB LOWER(?);
+                EOS
+              end
+            else
+              values = environment.execute(<<-EOS, identifier, identifier, identifier).map { |row| row.first }
+                SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
+                  INNER JOIN hosts ON hosts_tags.host_id = hosts.id
+                  INNER JOIN tags ON hosts_tags.tag_id = tags.id
+                    WHERE LOWER(hosts.name) GLOB LOWER(?) OR LOWER(tags.name) GLOB LOWER(?) OR LOWER(tags.value) GLOB LOWER(?);
+              EOS
+            end
           else
-            values = environment.execute(<<-EOS, identifier, identifier, identifier).map { |row| row.first }
-              SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
-                INNER JOIN hosts ON hosts_tags.host_id = hosts.id
-                INNER JOIN tags ON hosts_tags.tag_id = tags.id
-                  WHERE LOWER(hosts.name) GLOB LOWER(?) OR LOWER(tags.name) GLOB LOWER(?) OR LOWER(tags.value) GLOB LOWER(?);
-            EOS
+            if attribute?
+              values = environment.execute(<<-EOS, attribute).map { |row| row.first }
+                SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
+                  INNER JOIN tags ON hosts_tags.tag_id = tags.id
+                    WHERE LOWER(tags.value) GLOB LOWER(?);
+              EOS
+            else
+              values = []
+            end
           end
           if not environment.fixed_string? and values.empty?
             # fallback to glob expression
-            identifier_glob = identifier.gsub(/[-.\/_]/, "?")
-            if identifier != identifier_glob
-              if attribute?
-                attribute_glob = attribute.gsub(/[-.\/:_]/, "?")
-                environment.logger.info("fallback to glob expression: %s:%s" % [identifier_glob, attribute_glob])
-              else
-                attribute_glob = nil
-                environment.logger.info("fallback to glob expression: %s" % [identifier_glob])
-              end
+            identifier_glob = identifier.gsub(/[-.\/_]/, "?") if identifier?
+            attribute_glob = attribute.gsub(/[-.\/:_]/, "?") if attribute?
+            if (identifier? and identifier != identifier_glob) or (attribute? and attribute != attribute_glob)
+              environment.logger.info("fallback to glob expression: %s:%s" % [identifier_glob, attribute_glob])
               values = TagGlobExpressionNode.new(identifier_glob, attribute_glob).evaluate(environment)
             end
           end
@@ -351,20 +374,41 @@ module Hotdog
           super(identifier, attribute)
         end
         def evaluate(environment)
-          if attribute?
-            environment.execute(<<-EOS, identifier, attribute).map { |row| row.first }
-              SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
-                INNER JOIN tags ON hosts_tags.tag_id = tags.id
-                  WHERE LOWER(tags.name) REGEXP LOWER(?) AND LOWER(tags.value) REGEXP LOWER(?);
-            EOS
+          if identifier?
+            if attribute?
+              case identifier
+              when /\Ahost\z/i
+                values = environment.execute(<<-EOS, attribute).map { |row| row.first }
+                  SELECT hosts_tags.id FROM hosts
+                    WHERE LOWER(hosts.name) REGEXP LOWER(?);
+                EOS
+              else
+                environment.execute(<<-EOS, identifier, attribute).map { |row| row.first }
+                  SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
+                    INNER JOIN tags ON hosts_tags.tag_id = tags.id
+                      WHERE LOWER(tags.name) REGEXP LOWER(?) AND LOWER(tags.value) REGEXP LOWER(?);
+                EOS
+              end
+            else
+              environment.execute(<<-EOS, identifier, identifier, identifier).map { |row| row.first }
+                SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
+                  INNER JOIN hosts ON hosts_tags.host_id = hosts.id
+                  INNER JOIN tags ON hosts_tags.tag_id = tags.id
+                    WHERE LOWER(hosts.name) REGEXP LOWER(?) OR LOWER(tags.name) REGEXP LOWER(?) OR LOWER(tags.value) REGEXP LOWER(?);
+              EOS
+            end
           else
-            environment.execute(<<-EOS, identifier, identifier, identifier).map { |row| row.first }
-              SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
-                INNER JOIN hosts ON hosts_tags.host_id = hosts.id
-                INNER JOIN tags ON hosts_tags.tag_id = tags.id
-                  WHERE LOWER(hosts.name) REGEXP LOWER(?) OR LOWER(tags.name) REGEXP LOWER(?) OR LOWER(tags.value) REGEXP LOWER(?);
-            EOS
+            if attribute?
+              values = environment.execute(<<-EOS, attribute).map { |row| row.first }
+                SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
+                  INNER JOIN tags ON hosts_tags.tag_id = tags.id
+                    WHERE LOWER(tags.value) REGEXP LOWER(?);
+              EOS
+            else
+              values = []
+            end
           end
+          values
         end
       end
     end
