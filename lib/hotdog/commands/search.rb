@@ -104,13 +104,18 @@ module Hotdog
         rule(:atom) {
           ( spacing.maybe >> str('(') >> expression >> str(')') >> spacing.maybe \
           | spacing.maybe >> identifier_regexp.as(:identifier_regexp) >> separator >> attribute_regexp.as(:attribute_regexp) >> spacing.maybe \
+          | spacing.maybe >> identifier_regexp.as(:identifier_regexp) >> separator >> spacing.maybe \
           | spacing.maybe >> identifier_regexp.as(:identifier_regexp) >> spacing.maybe \
           | spacing.maybe >> identifier_glob.as(:identifier_glob) >> separator >> attribute_glob.as(:attribute_glob) >> spacing.maybe \
           | spacing.maybe >> identifier_glob.as(:identifier_glob) >> separator >> attribute.as(:attribute) >> spacing.maybe \
+          | spacing.maybe >> identifier_glob.as(:identifier_glob) >> separator >> spacing.maybe \
           | spacing.maybe >> identifier_glob.as(:identifier_glob) >> spacing.maybe \
           | spacing.maybe >> identifier.as(:identifier) >> separator >> attribute_glob.as(:attribute_glob) >> spacing.maybe \
           | spacing.maybe >> identifier.as(:identifier) >> separator >> attribute.as(:attribute) >> spacing.maybe \
+          | spacing.maybe >> identifier.as(:identifier) >> separator >> spacing.maybe \
           | spacing.maybe >> identifier.as(:identifier) >> spacing.maybe \
+          | spacing.maybe >> separator >> attribute_glob.as(:attribute_glob) >> spacing.maybe \
+          | spacing.maybe >> separator >> attribute.as(:attribute_glob) >> spacing.maybe \
           | spacing.maybe >> attribute_regexp.as(:attribute_regexp) >> spacing.maybe \
           | spacing.maybe >> attribute_glob.as(:attribute_glob) >> spacing.maybe \
           | spacing.maybe >> attribute.as(:attribute) >> spacing.maybe \
@@ -265,10 +270,10 @@ module Hotdog
         attr_reader :identifier
         attr_reader :attribute
         def identifier?
-          !identifier.nil?
+          !(identifier.nil? or identifier.to_s.empty?)
         end
         def attribute?
-          !attribute.nil?
+          !(attribute.nil? or attribute.to_s.empty?)
         end
         def evaluate(environment)
           if identifier?
