@@ -281,7 +281,7 @@ module Hotdog
               case identifier
               when /\Ahost\z/i
                 values = environment.execute(<<-EOS, attribute).map { |row| row.first }
-                  SELECT hosts_tags.id FROM hosts
+                  SELECT hosts.id FROM hosts
                     WHERE LOWER(hosts.name) = LOWER(?);
                 EOS
               else
@@ -384,7 +384,7 @@ module Hotdog
               case identifier
               when /\Ahost\z/i
                 values = environment.execute(<<-EOS, attribute).map { |row| row.first }
-                  SELECT hosts_tags.id FROM hosts
+                  SELECT hosts.id FROM hosts
                     WHERE LOWER(hosts.name) REGEXP LOWER(?);
                 EOS
               else
