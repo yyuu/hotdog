@@ -87,7 +87,11 @@ module Hotdog
                 fields << tag_name unless fields.index(tag_name)
               end
               [host_name] + fields.map { |tag_name|
-                select_tag_values_from_hosts_tags_by_host_id_and_tag_name(@db, host_id, tag_name)
+                if glob?(tag_name)
+                  select_tag_values_from_hosts_tags_by_host_id_and_tag_name_glob(@db, host_id, tag_name)
+                else
+                  select_tag_values_from_hosts_tags_by_host_id_and_tag_name(@db, host_id, tag_name)
+                end
               }
             }
             fields = ["host"] + fields
@@ -100,7 +104,11 @@ module Hotdog
                 result = execute("SELECT name FROM hosts WHERE id IN (%s)" % hosts.map { "?" }.join(", "), hosts)
               else
                 result = hosts.map { |host_id|
-                  [select_tag_values_from_hosts_tags_by_host_id_and_tag_name_glob(@db, host_id, tag_name)]
+                  if glob?(tag_name)
+                    [select_tag_values_from_hosts_tags_by_host_id_and_tag_name_glob(@db, host_id, tag_name)]
+                  else
+                    [select_tag_values_from_hosts_tags_by_host_id_and_tag_name(@db, host_id, tag_name)]
+                  end
                 }
               end
             else
