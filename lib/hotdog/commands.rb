@@ -9,6 +9,8 @@ module Hotdog
   module Commands
     class BaseCommand
       PERSISTENT_DB = "persistent.db"
+      MASK_DATABASE = 0xffff0000
+      MASK_QUERY = 0x0000ffff
 
       def initialize(application)
         @application = application
@@ -41,10 +43,7 @@ module Hotdog
 
       def reload(options={})
         if @db
-          @prepared_statements.values.each do |statement|
-            statement.close()
-          end
-          @db.close()
+          close_db(@db)
           @db = nil
         end
         update_db(options)
@@ -52,7 +51,7 @@ module Hotdog
 
       private
       def prepare(db, query)
-        k = (db.hash & 0xffff0000) | (query.hash & 0x0000ffff)
+        k = (db.hash & MASK_DATABASE) | (query.hash & MASK_QUERY)
         @prepared_statements[k] ||= db.prepare(query)
       end
 
@@ -137,6 +136,15 @@ module Hotdog
         [result, fields]
       end
 
+      def close_db(db, options={})
+        @prepared_statements = @prepared_statements.reject { |k, statement|
+          (db.hash & MASK_DATABASE == k & MASK_DATABASE).tap do |delete_p|
+            statement.close() if delete_p
+          end
+        }
+        db.close()
+      end
+
       def update_db(options={})
         options = @options.merge(options)
         if @db.nil?
@@ -209,10 +217,7 @@ module Hotdog
           FileUtils.rm_f(persistent)
           persistent_db = SQLite3::Database.new(persistent)
           copy_db(memory_db, persistent_db)
-          @prepared_statements.values.each do |statement|
-            statement.close()
-          end
-          persistent_db.close
+          close_db(persistent_db)
           @db = memory_db
         else
           @db
