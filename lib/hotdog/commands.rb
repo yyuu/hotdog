@@ -41,6 +41,9 @@ module Hotdog
 
       def reload(options={})
         if @db
+          @prepared_statements.values.each do |statement|
+            statement.close()
+          end
           @db.close()
           @db = nil
         end
@@ -206,6 +209,9 @@ module Hotdog
           FileUtils.rm_f(persistent)
           persistent_db = SQLite3::Database.new(persistent)
           copy_db(memory_db, persistent_db)
+          @prepared_statements.values.each do |statement|
+            statement.close()
+          end
           persistent_db.close
           @db = memory_db
         else
