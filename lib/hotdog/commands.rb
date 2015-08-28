@@ -38,6 +38,14 @@ module Hotdog
         @options[:fixed_string]
       end
 
+      def reload(options={})
+        if @db
+          @db.close()
+          @db = nil
+        end
+        update_db(options)
+      end
+
       private
       def format(result, options={})
         @options[:formatter].format(result, @options.merge(options))
@@ -121,11 +129,12 @@ module Hotdog
       end
 
       def update_db(options={})
+        options = @options.merge(options)
         if @db.nil?
-          FileUtils.mkdir_p(@options[:confdir])
-          persistent = File.join(@options[:confdir], PERSISTENT_DB)
+          FileUtils.mkdir_p(options[:confdir])
+          persistent = File.join(options[:confdir], PERSISTENT_DB)
 
-          if not @options[:force] and File.exist?(persistent) and Time.new < File.mtime(persistent) + @options[:expiry]
+          if not options[:force] and File.exist?(persistent) and Time.new < File.mtime(persistent) + options[:expiry]
             begin
               persistent_db = SQLite3::Database.new(persistent)
               persistent_db.execute("SELECT id, name FROM hosts LIMIT 1")

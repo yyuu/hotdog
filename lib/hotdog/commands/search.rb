@@ -202,7 +202,7 @@ module Hotdog
       end
 
       class ExpressionNode
-        def evaluate(environment)
+        def evaluate(environment, options={})
           raise(NotImplementedError)
         end
       end
@@ -216,7 +216,7 @@ module Hotdog
           @left = left
           @right = right
         end
-        def evaluate(environment)
+        def evaluate(environment, options={})
           case @op
           when "&&", "&", /\Aand\z/i
             left_values = @left.evaluate(environment)
@@ -243,7 +243,7 @@ module Hotdog
           @op = op
           @expression = expression
         end
-        def evaluate(environment)
+        def evaluate(environment, options={})
           case @op
           when "!", "~", /\Anot\z/i
             values = @expression.evaluate(environment)
@@ -275,7 +275,7 @@ module Hotdog
         def attribute?
           !(attribute.nil? or attribute.to_s.empty?)
         end
-        def evaluate(environment)
+        def evaluate(environment, options={})
           if identifier?
             if attribute?
               case identifier
@@ -307,24 +307,51 @@ module Hotdog
                     WHERE LOWER(tags.value) = LOWER(?);
               EOS
             else
-              values = []
+              return []
             end
           end
-          if not environment.fixed_string? and values.empty?
+          if values.empty?
+            fallback(environment, options)
+          else
+            values
+          end
+        end
+
+        def fallback(environment, options={})
+          if environment.fixed_string?
+            []
+          else
             # fallback to glob expression
             identifier_glob = identifier.gsub(/[-.\/_]/, "?") if identifier?
             attribute_glob = attribute.gsub(/[-.\/_]/, "?") if attribute?
             if (identifier? and identifier != identifier_glob) or (attribute? and attribute != attribute_glob)
               environment.logger.info("fallback to glob expression: %s:%s" % [identifier_glob, attribute_glob])
-              values = TagGlobExpressionNode.new(identifier_glob, attribute_glob).evaluate(environment)
+              values = TagGlobExpressionNode.new(identifier_glob, attribute_glob).evaluate(environment, options)
+              if values.empty?
+                reload(environment, options)
+              else
+                values
+              end
+            else
+              []
             end
           end
-          values
+        end
+
+        def reload(environment, options={})
+          ttl = options.fetch(:ttl, 1)
+          if 0 < ttl
+            environment.logger.info("force reloading all hosts and tags.")
+            environment.reload(force: true)
+            self.class.new(identifier, attribute).evaluate(environment, options.merge(ttl: ttl-1))
+          else
+            []
+          end
         end
       end
 
       class TagGlobExpressionNode < TagExpressionNode
-        def evaluate(environment)
+        def evaluate(environment, options={})
           if identifier?
             if attribute?
               case identifier
@@ -356,19 +383,14 @@ module Hotdog
                     WHERE LOWER(tags.value) GLOB LOWER(?);
               EOS
             else
-              values = []
+              return []
             end
           end
-          if not environment.fixed_string? and values.empty?
-            # fallback to glob expression
-            identifier_glob = identifier.gsub(/[-.\/_]/, "?") if identifier?
-            attribute_glob = attribute.gsub(/[-.\/:_]/, "?") if attribute?
-            if (identifier? and identifier != identifier_glob) or (attribute? and attribute != attribute_glob)
-              environment.logger.info("fallback to glob expression: %s:%s" % [identifier_glob, attribute_glob])
-              values = TagGlobExpressionNode.new(identifier_glob, attribute_glob).evaluate(environment)
-            end
+          if values.empty?
+            fallback(environment, options)
+          else
+            values
           end
-          values
         end
       end
 
@@ -378,7 +400,7 @@ module Hotdog
           attribute = attribute.sub(%r{\A/(.*)/\z}) { $1 } if attribute
           super(identifier, attribute)
         end
-        def evaluate(environment)
+        def evaluate(environment, options={})
           if identifier?
             if attribute?
               case identifier
@@ -388,14 +410,14 @@ module Hotdog
                     WHERE LOWER(hosts.name) REGEXP LOWER(?);
                 EOS
               else
-                environment.execute(<<-EOS, identifier, attribute).map { |row| row.first }
+                values = environment.execute(<<-EOS, identifier, attribute).map { |row| row.first }
                   SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
                     INNER JOIN tags ON hosts_tags.tag_id = tags.id
                       WHERE LOWER(tags.name) REGEXP LOWER(?) AND LOWER(tags.value) REGEXP LOWER(?);
                 EOS
               end
             else
-              environment.execute(<<-EOS, identifier, identifier, identifier).map { |row| row.first }
+              values = environment.execute(<<-EOS, identifier, identifier, identifier).map { |row| row.first }
                 SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
                   INNER JOIN hosts ON hosts_tags.host_id = hosts.id
                   INNER JOIN tags ON hosts_tags.tag_id = tags.id
@@ -410,10 +432,14 @@ module Hotdog
                     WHERE LOWER(tags.value) REGEXP LOWER(?);
               EOS
             else
-              values = []
+              return []
             end
           end
-          values
+          if values.empty?
+            reload(environment)
+          else
+            values
+          end
         end
       end
     end
