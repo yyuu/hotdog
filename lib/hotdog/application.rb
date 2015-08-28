@@ -18,7 +18,7 @@ module Hotdog
         application: self,
         confdir: find_confdir(File.expand_path(".")),
         debug: false,
-        expiry: 300,
+        expiry: 1800,
         fixed_string: false,
         force: false,
         format: "plain",
