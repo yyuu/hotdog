@@ -12,13 +12,13 @@ module Hotdog
           }
           result1 = fields.map { |tag_name|
             if not glob?(tag_name)
-              execute(<<-EOS, tag_name).map { |row| row.join(",") }
+              execute(<<-EOS, [tag_name]).map { |row| row.join(",") }
                 SELECT DISTINCT tags.value FROM hosts_tags
                   INNER JOIN tags ON hosts_tags.tag_id = tags.id
                     WHERE tags.name = LOWER(?);
               EOS
             else
-              execute(<<-EOS, tag_name).map { |row| row.join(",") }
+              execute(<<-EOS, [tag_name]).map { |row| row.join(",") }
                 SELECT DISTINCT tags.value FROM hosts_tags
                   INNER JOIN tags ON hosts_tags.tag_id = tags.id
                     WHERE tags.name GLOB LOWER(?);

@@ -27,7 +27,7 @@ module Hotdog
         raise(NotImplementedError)
       end
 
-      def execute(query, *args)
+      def execute(query, args=[])
         update_db
         q = query.strip
         if 0 < args.length
@@ -68,7 +68,7 @@ module Hotdog
       end
 
       def host?(host_id)
-        host_id = execute("SELECT id FROM hosts WHERE name = %s LIMIT 1", s)
+        host_id = execute("SELECT id FROM hosts WHERE name = %s LIMIT 1", [s])
         not host_id.nil?
       end
 
