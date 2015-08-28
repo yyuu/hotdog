@@ -15,6 +15,7 @@ module Hotdog
         @logger = application.options[:logger]
         @options = application.options
         @dog = Dogapi::Client.new(options[:api_key], options[:application_key])
+        @prepared_statements = {}
       end
       attr_reader :application
       attr_reader :logger
@@ -31,7 +32,7 @@ module Hotdog
           q += " -- VALUES (#{args.map { |arg| Array === arg ? "(#{arg.join(", ")})" : arg.inspect }.join(", ")})"
         end
         logger.debug(q)
-        @db.execute(query, args)
+        prepare(@db, query).execute(args)
       end
 
       def fixed_string?()
@@ -47,6 +48,11 @@ module Hotdog
       end
 
       private
+      def prepare(db, query)
+        k = (db.hash & 0xffff0000) | (query.hash & 0x0000ffff)
+        @prepared_statements[k] ||= db.prepare(query)
+      end
+
       def format(result, options={})
         @options[:formatter].format(result, @options.merge(options))
       end
@@ -232,17 +238,17 @@ module Hotdog
 
       def select_from_hosts(db)
         logger.debug("select_from_hosts()")
-        db.execute("SELECT id, name FROM hosts")
+        prepare(db, "SELECT id, name FROM hosts").execute()
       end
 
       def select_from_tags(db)
         logger.debug("select_from_tags()")
-        db.execute("SELECT id, name, value FROM tags")
+        prepare(db, "SELECT id, name, value FROM tags").execute()
       end
 
       def select_from_hosts_tags(db)
         logger.debug("select_from_hosts_tags()")
-        db.execute("SELECT host_id, tag_id FROM hosts_tags")
+        prepare(db, "SELECT host_id, tag_id FROM hosts_tags").execute()
       end
 
       def create_table_hosts(db)
@@ -293,32 +299,32 @@ module Hotdog
 
       def insert_into_tags(db, tag_id, tag_name, tag_value)
         logger.debug("insert_into_tags(%s, %s, %s)" % [tag_id.inspect, tag_name.inspect, tag_value.inspect])
-        db.execute("INSERT INTO tags (id, name, value) VALUES (?, ?, ?)", tag_id, tag_name, tag_value)
+        prepare(db, "INSERT INTO tags (id, name, value) VALUES (?, ?, ?)").execute(tag_id, tag_name, tag_value)
       end
 
       def insert_or_ignore_into_tags(db, tag_name, tag_value)
         logger.debug("insert_or_ignore_into_tags(%s, %s)" % [tag_name.inspect, tag_value.inspect])
-        db.execute("INSERT OR IGNORE INTO tags (name, value) VALUES (?, ?)", tag_name, tag_value)
+        prepare(db, "INSERT OR IGNORE INTO tags (name, value) VALUES (?, ?)").execute(tag_name, tag_value)
       end
 
       def insert_into_hosts(db, host_id, host_name)
         logger.debug("insert_into_hosts(%s, %s)" % [host_id.inspect, host_name.inspect])
-        db.execute("INSERT INTO hosts (id, name) VALUES (?, ?)", host_id, host_name)
+        prepare(db, "INSERT INTO hosts (id, name) VALUES (?, ?)").execute(host_id, host_name)
       end
 
       def insert_or_ignore_into_hosts(db, host_name)
         logger.debug("insert_or_ignore_into_hosts(%s)" % [host_name.inspect])
-        db.execute("INSERT OR IGNORE INTO hosts (name) VALUES (?)", host_name)
+        prepare(db, "INSERT OR IGNORE INTO hosts (name) VALUES (?)").execute(host_name)
       end
 
       def insert_into_hosts_tags(db, host_id, tag_id)
         logger.debug("insert_into_hosts_tags(%s, %s)" % [host_id.inspect, tag_id.inspect])
-        db.execute("INSERT INTO hosts_tags (host_id, tag_id) VALUES (?, ?)", host_id, tag_id)
+        prepare(db, "INSERT INTO hosts_tags (host_id, tag_id) VALUES (?, ?)").execute(host_id, tag_id)
       end
 
       def insert_or_replace_into_hosts_tags(db, host_name, tag_name, tag_value)
         logger.debug("insert_or_replace_into_hosts_tags(%s, %s, %s)" % [host_name.inspect, tag_name.inspect, tag_value.inspect])
-        db.execute(<<-EOS, host_name, tag_name, tag_value)
+        prepare(db, <<-EOS).execute(host_name, tag_name, tag_value)
           INSERT OR REPLACE INTO hosts_tags (host_id, tag_id)
             SELECT host.id, tag.id FROM
               ( SELECT id FROM hosts WHERE LOWER(name) = LOWER(?) ) AS host,
@@ -328,12 +334,12 @@ module Hotdog
 
       def select_name_from_hosts_by_id(db, host_id)
         logger.debug("select_name_from_hosts_by_id(%s)" % [host_id.inspect])
-        db.execute("SELECT name FROM hosts WHERE id = ? LIMIT 1", host_id).map { |row| row.first }.first
+        prepare(db, "SELECT name FROM hosts WHERE id = ? LIMIT 1").execute(host_id).map { |row| row.first }.first
       end
 
       def select_tag_values_from_hosts_tags_by_host_id_and_tag_name_glob(db, host_id, tag_name)
         logger.debug("select_tag_values_from_hosts_tags_by_host_id_and_tag_name_glob(%s, %s)" % [host_id.inspect, tag_name.inspect])
-        db.execute(<<-EOS, host_id, tag_name).map { |row| row.first }.join(",")
+        prepare(db, <<-EOS).execute(host_id, tag_name).map { |row| row.first }.join(",")
           SELECT tags.value FROM hosts_tags
             INNER JOIN tags ON hosts_tags.tag_id = tags.id
               WHERE hosts_tags.host_id = ? AND LOWER(tags.name) GLOB LOWER(?);
@@ -342,7 +348,7 @@ module Hotdog
 
       def select_tag_values_from_hosts_tags_by_host_id_and_tag_name(db, host_id, tag_name)
         logger.debug("select_tag_values_from_hosts_tags_by_host_id_and_tag_name(%s, %s)" % [host_id.inspect, tag_name.inspect])
-        db.execute(<<-EOS, host_id, tag_name).map { |row| row.first }.join(",")
+        prepare(db, <<-EOS).execute(host_id, tag_name).map { |row| row.first }.join(",")
           SELECT tags.value FROM hosts_tags
             INNER JOIN tags ON hosts_tags.tag_id = tags.id
               WHERE hosts_tags.host_id = ? AND LOWER(tags.name) = LOWER(?);
@@ -351,7 +357,7 @@ module Hotdog
 
       def select_tag_names_from_hosts_tags_by_host_id(db, host_id)
         logger.debug("select_tag_names_from_hosts_tags_by_host_id(%s)" % [host_id.inspect])
-        db.execute(<<-EOS, host_id).map { |row| row.first }
+        prepare(db, <<-EOS).execute(host_id).map { |row| row.first }
           SELECT DISTINCT tags.name FROM hosts_tags
             INNER JOIN tags ON hosts_tags.tag_id = tags.id
               WHERE hosts_tags.host_id = ?;
