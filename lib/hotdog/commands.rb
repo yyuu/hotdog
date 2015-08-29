@@ -201,15 +201,25 @@ module Hotdog
             logger.info("ignore host(s) with scheduled downtimes: #{downs.inspect}")
           end
 
+          known_tags = all_tags["tags"].keys.map { |tag| split_tag(tag) }.uniq
+          prepare(memory_db, <<-EOS % known_tags.map { "(?, ?)" }.join(", ")).execute(known_tags)
+            INSERT OR IGNORE INTO tags (name, value) VALUES %s;
+          EOS
+
+          known_hosts = all_tags["tags"].values.map { |hosts| up_hosts(hosts, downs) }.reduce(:+).uniq
+          prepare(memory_db, <<-EOS % known_hosts.map { "(?)" }.join(", ")).execute(known_hosts)
+            INSERT OR IGNORE INTO hosts (name) VALUES %s;
+          EOS
+
           all_tags["tags"].each do |tag, hosts|
-            tag_name, tag_value = tag.split(":", 2)
-            tag_value ||= ""
-            insert_or_ignore_into_tags(memory_db, tag_name, tag_value)
-            hosts.each do |host_name|
-              if not downs.include?(host_name.downcase)
-                insert_or_ignore_into_hosts(memory_db, host_name)
-                insert_or_replace_into_hosts_tags(memory_db, host_name, tag_name, tag_value)
-              end
+            tag_name, tag_value = split_tag(tag)
+            up_hosts(hosts, downs).each do |host_name|
+              prepare(memory_db, <<-EOS).execute(host_name, tag_name, tag_value)
+                INSERT OR REPLACE INTO hosts_tags (host_id, tag_id)
+                  SELECT host.id, tag.id FROM
+                    ( SELECT id FROM hosts WHERE name = ? LIMIT 1 ) AS host,
+                    ( SELECT id FROM tags WHERE name = ? AND value = ? LIMIT 1 ) AS tag;
+              EOS
             end
           end
 
@@ -224,6 +234,15 @@ module Hotdog
         end
       end
 
+      def split_tag(tag)
+        tag_name, tag_value = tag.split(":", 2)
+        [tag_name, tag_value || ""]
+      end
+
+      def up_hosts(hosts, downs=[])
+        hosts.reject { |host| downs.include?(host.downcase) }
+      end
+
       def copy_db(src, dst)
         # create index later for better insert performance
         dst.transaction do
@@ -231,35 +250,25 @@ module Hotdog
           create_table_tags(dst)
           create_table_hosts_tags(dst)
 
-          select_from_hosts(src).each do |host_id, host_name|
-            insert_into_hosts(dst, host_id, host_name)
-          end
-          select_from_tags(src).each do |tag_id, tag_name, tag_value|
-            insert_into_tags(dst, tag_id, tag_name, tag_value)
-          end
-          select_from_hosts_tags(src).each do |host_id, tag_id|
-            insert_into_hosts_tags(dst, host_id, tag_id)
-          end
+          hosts = prepare(src, "SELECT id, name FROM hosts").execute().to_a
+          prepare(dst, <<-EOS % hosts.map { "(?, ?)" }.join(", ")).execute(hosts)
+            INSERT INTO hosts (id, name) VALUES %s;
+          EOS
+
+          tags = prepare(src, "SELECT id, name, value FROM tags").execute().to_a
+          prepare(dst, <<-EOS % tags.map { "(?, ?, ?)" }.join(", ")).execute(tags)
+            INSERT INTO tags (id, name, value) VALUES %s;
+          EOS
+
+          hosts_tags = prepare(src, "SELECT host_id, tag_id FROM hosts_tags").to_a
+          prepare(dst, <<-EOS % hosts_tags.map { "(?, ?)" }.join(", ")).execute(hosts_tags)
+            INSERT INTO hosts_tags (host_id, tag_id) VALUES %s;
+          EOS
 
           create_index_hosts(dst)
           create_index_tags(dst)
           create_index_hosts_tags(dst)
         end
-      end
-
-      def select_from_hosts(db)
-        logger.debug("select_from_hosts()")
-        prepare(db, "SELECT id, name FROM hosts").execute()
-      end
-
-      def select_from_tags(db)
-        logger.debug("select_from_tags()")
-        prepare(db, "SELECT id, name, value FROM tags").execute()
-      end
-
-      def select_from_hosts_tags(db)
-        logger.debug("select_from_hosts_tags()")
-        prepare(db, "SELECT host_id, tag_id FROM hosts_tags").execute()
       end
 
       def create_table_hosts(db)
@@ -306,41 +315,6 @@ module Hotdog
       def create_index_hosts_tags(db)
         logger.debug("create_index_hosts_tags()")
         db.execute("CREATE UNIQUE INDEX IF NOT EXISTS hosts_tags_host_id_tag_id ON hosts_tags ( host_id, tag_id )")
-      end
-
-      def insert_into_tags(db, tag_id, tag_name, tag_value)
-        logger.debug("insert_into_tags(%s, %s, %s)" % [tag_id.inspect, tag_name.inspect, tag_value.inspect])
-        prepare(db, "INSERT INTO tags (id, name, value) VALUES (?, ?, ?)").execute(tag_id, tag_name, tag_value)
-      end
-
-      def insert_or_ignore_into_tags(db, tag_name, tag_value)
-        logger.debug("insert_or_ignore_into_tags(%s, %s)" % [tag_name.inspect, tag_value.inspect])
-        prepare(db, "INSERT OR IGNORE INTO tags (name, value) VALUES (?, ?)").execute(tag_name, tag_value)
-      end
-
-      def insert_into_hosts(db, host_id, host_name)
-        logger.debug("insert_into_hosts(%s, %s)" % [host_id.inspect, host_name.inspect])
-        prepare(db, "INSERT INTO hosts (id, name) VALUES (?, ?)").execute(host_id, host_name)
-      end
-
-      def insert_or_ignore_into_hosts(db, host_name)
-        logger.debug("insert_or_ignore_into_hosts(%s)" % [host_name.inspect])
-        prepare(db, "INSERT OR IGNORE INTO hosts (name) VALUES (?)").execute(host_name)
-      end
-
-      def insert_into_hosts_tags(db, host_id, tag_id)
-        logger.debug("insert_into_hosts_tags(%s, %s)" % [host_id.inspect, tag_id.inspect])
-        prepare(db, "INSERT INTO hosts_tags (host_id, tag_id) VALUES (?, ?)").execute(host_id, tag_id)
-      end
-
-      def insert_or_replace_into_hosts_tags(db, host_name, tag_name, tag_value)
-        logger.debug("insert_or_replace_into_hosts_tags(%s, %s, %s)" % [host_name.inspect, tag_name.inspect, tag_value.inspect])
-        prepare(db, <<-EOS).execute(host_name, tag_name, tag_value)
-          INSERT OR REPLACE INTO hosts_tags (host_id, tag_id)
-            SELECT host.id, tag.id FROM
-              ( SELECT id FROM hosts WHERE name = ? ) AS host,
-              ( SELECT id FROM tags WHERE name = ? AND value = ? ) AS tag;
-        EOS
       end
 
       def select_name_from_hosts_by_id(db, host_id)
