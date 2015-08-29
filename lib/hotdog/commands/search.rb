@@ -282,13 +282,13 @@ module Hotdog
               when /\Ahost\z/i
                 values = environment.execute(<<-EOS, [attribute]).map { |row| row.first }
                   SELECT hosts.id FROM hosts
-                    WHERE LOWER(hosts.name) = LOWER(?);
+                    WHERE hosts.name = ?;
                 EOS
               else
                 values = environment.execute(<<-EOS, [identifier, attribute]).map { |row| row.first }
                   SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
                     INNER JOIN tags ON hosts_tags.tag_id = tags.id
-                      WHERE LOWER(tags.name) = LOWER(?) AND LOWER(tags.value) = LOWER(?);
+                      WHERE tags.name = ? AND tags.value = ?;
                 EOS
               end
             else
@@ -296,7 +296,7 @@ module Hotdog
                 SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
                   INNER JOIN hosts ON hosts_tags.host_id = hosts.id
                   INNER JOIN tags ON hosts_tags.tag_id = tags.id
-                    WHERE LOWER(hosts.name) = LOWER(?) OR LOWER(tags.name) = LOWER(?) OR LOWER(tags.value) = LOWER(?);
+                    WHERE hosts.name = ? OR tags.name = ? OR tags.value = ?;
               EOS
             end
           else
@@ -304,7 +304,7 @@ module Hotdog
               values = environment.execute(<<-EOS, [attribute]).map { |row| row.first }
                 SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
                   INNER JOIN tags ON hosts_tags.tag_id = tags.id
-                    WHERE LOWER(tags.value) = LOWER(?);
+                    WHERE tags.value = ?;
               EOS
             else
               return []
@@ -358,13 +358,13 @@ module Hotdog
               when /\Ahost\z/i
                 values = environment.execute(<<-EOS, [attribute]).map { |row| row.first }
                   SELECT hosts.id FROM hosts
-                    WHERE LOWER(hosts.name) GLOB LOWER(?);
+                    WHERE hosts.name GLOB ?;
                 EOS
               else
                 values = environment.execute(<<-EOS, [identifier, attribute]).map { |row| row.first }
                   SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
                     INNER JOIN tags ON hosts_tags.tag_id = tags.id
-                      WHERE LOWER(tags.name) GLOB LOWER(?) AND LOWER(tags.value) GLOB LOWER(?);
+                      WHERE tags.name GLOB ? AND tags.value GLOB ?;
                 EOS
               end
             else
@@ -372,7 +372,7 @@ module Hotdog
                 SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
                   INNER JOIN hosts ON hosts_tags.host_id = hosts.id
                   INNER JOIN tags ON hosts_tags.tag_id = tags.id
-                    WHERE LOWER(hosts.name) GLOB LOWER(?) OR LOWER(tags.name) GLOB LOWER(?) OR LOWER(tags.value) GLOB LOWER(?);
+                    WHERE hosts.name GLOB ? OR tags.name GLOB ? OR tags.value GLOB ?;
               EOS
             end
           else
@@ -380,7 +380,7 @@ module Hotdog
               values = environment.execute(<<-EOS, [attribute]).map { |row| row.first }
                 SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
                   INNER JOIN tags ON hosts_tags.tag_id = tags.id
-                    WHERE LOWER(tags.value) GLOB LOWER(?);
+                    WHERE tags.value GLOB ?;
               EOS
             else
               return []
@@ -407,13 +407,13 @@ module Hotdog
               when /\Ahost\z/i
                 values = environment.execute(<<-EOS, [attribute]).map { |row| row.first }
                   SELECT hosts.id FROM hosts
-                    WHERE LOWER(hosts.name) REGEXP LOWER(?);
+                    WHERE hosts.name REGEXP ?;
                 EOS
               else
                 values = environment.execute(<<-EOS, [identifier, attribute]).map { |row| row.first }
                   SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
                     INNER JOIN tags ON hosts_tags.tag_id = tags.id
-                      WHERE LOWER(tags.name) REGEXP LOWER(?) AND LOWER(tags.value) REGEXP LOWER(?);
+                      WHERE tags.name REGEXP ? AND tags.value REGEXP ?;
                 EOS
               end
             else
@@ -421,7 +421,7 @@ module Hotdog
                 SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
                   INNER JOIN hosts ON hosts_tags.host_id = hosts.id
                   INNER JOIN tags ON hosts_tags.tag_id = tags.id
-                    WHERE LOWER(hosts.name) REGEXP LOWER(?) OR LOWER(tags.name) REGEXP LOWER(?) OR LOWER(tags.value) REGEXP LOWER(?);
+                    WHERE hosts.name REGEXP ? OR tags.name REGEXP ? OR tags.value REGEXP ?;
               EOS
             end
           else
@@ -429,7 +429,7 @@ module Hotdog
               values = environment.execute(<<-EOS, [attribute]).map { |row| row.first }
                 SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
                   INNER JOIN tags ON hosts_tags.tag_id = tags.id
-                    WHERE LOWER(tags.value) REGEXP LOWER(?);
+                    WHERE tags.value REGEXP ?;
               EOS
             else
               return []

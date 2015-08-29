@@ -267,7 +267,7 @@ module Hotdog
         db.execute(<<-EOS)
           CREATE TABLE IF NOT EXISTS hosts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name VARCHAR(255) NOT NULL
+            name VARCHAR(255) NOT NULL COLLATE NOCASE
           );
         EOS
       end
@@ -282,8 +282,8 @@ module Hotdog
         db.execute(<<-EOS)
           CREATE TABLE IF NOT EXISTS tags (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name VARCHAR(200) NOT NULL,
-            value VARCHAR(200) NOT NULL DEFAULT ""
+            name VARCHAR(200) NOT NULL COLLATE NOCASE,
+            value VARCHAR(200) NOT NULL COLLATE NOCASE DEFAULT ""
           );
         EOS
       end
@@ -338,8 +338,8 @@ module Hotdog
         prepare(db, <<-EOS).execute(host_name, tag_name, tag_value)
           INSERT OR REPLACE INTO hosts_tags (host_id, tag_id)
             SELECT host.id, tag.id FROM
-              ( SELECT id FROM hosts WHERE LOWER(name) = LOWER(?) ) AS host,
-              ( SELECT id FROM tags WHERE LOWER(name) = LOWER(?) AND LOWER(value) = LOWER(?) ) AS tag;
+              ( SELECT id FROM hosts WHERE name = ? ) AS host,
+              ( SELECT id FROM tags WHERE name = ? AND value = ? ) AS tag;
         EOS
       end
 
@@ -353,7 +353,7 @@ module Hotdog
         prepare(db, <<-EOS).execute(host_id, tag_name).map { |row| row.first }.join(",")
           SELECT tags.value FROM hosts_tags
             INNER JOIN tags ON hosts_tags.tag_id = tags.id
-              WHERE hosts_tags.host_id = ? AND LOWER(tags.name) GLOB LOWER(?);
+              WHERE hosts_tags.host_id = ? AND tags.name GLOB ?;
         EOS
       end
 
@@ -362,7 +362,7 @@ module Hotdog
         prepare(db, <<-EOS).execute(host_id, tag_name).map { |row| row.first }.join(",")
           SELECT tags.value FROM hosts_tags
             INNER JOIN tags ON hosts_tags.tag_id = tags.id
-              WHERE hosts_tags.host_id = ? AND LOWER(tags.name) = LOWER(?);
+              WHERE hosts_tags.host_id = ? AND tags.name = ?;
         EOS
       end
 

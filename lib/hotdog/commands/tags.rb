@@ -15,13 +15,13 @@ module Hotdog
               execute(<<-EOS, [tag_name]).map { |row| row.join(",") }
                 SELECT DISTINCT tags.value FROM hosts_tags
                   INNER JOIN tags ON hosts_tags.tag_id = tags.id
-                    WHERE tags.name = LOWER(?);
+                    WHERE tags.name = ?;
               EOS
             else
               execute(<<-EOS, [tag_name]).map { |row| row.join(",") }
                 SELECT DISTINCT tags.value FROM hosts_tags
                   INNER JOIN tags ON hosts_tags.tag_id = tags.id
-                    WHERE tags.name GLOB LOWER(?);
+                    WHERE tags.name GLOB ?;
               EOS
             end
           }
