@@ -70,9 +70,9 @@ module Hotdog
         end
       end
 
-      def evaluate(node, environment)
-        node = ExpressionTransformer.new.apply(node)
-        node.evaluate(environment)
+      def evaluate(data, environment)
+        node = ExpressionTransformer.new.apply(data)
+        node.optimize.evaluate(environment)
       end
 
       class ExpressionParser < Parslet::Parser
@@ -213,6 +213,9 @@ module Hotdog
       class ExpressionNode
         def evaluate(environment, options={})
           raise(NotImplementedError)
+        end
+        def optimize(options={})
+          self
         end
       end
 
