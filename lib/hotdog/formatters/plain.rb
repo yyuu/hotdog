@@ -27,7 +27,7 @@ module Hotdog
             },
           ] + result.map { |row|
             row.zip(field_length).map { |field, length|
-              padding = length - ((field.nil?) ? 0 : field.length)
+              padding = length - ((field.nil?) ? 0 : field.to_s.length)
               field.to_s + (" " * padding)
             }
           }
