@@ -1,5 +1,7 @@
 # Hotdog
 
+[![Build Status](https://travis-ci.org/yyuu/hotdog.svg)](https://travis-ci.org/yyuu/hotdog)
+
 Yet another command-line tools for [Datadog](https://www.datadoghq.com/).
 
 ## Installation
