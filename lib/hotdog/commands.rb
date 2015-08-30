@@ -213,14 +213,13 @@ module Hotdog
 
           all_tags["tags"].each do |tag, hosts|
             tag_name, tag_value = split_tag(tag)
-            up_hosts(hosts, downs).each do |host_name|
-              prepare(memory_db, <<-EOS).execute(host_name, tag_name, tag_value)
-                INSERT OR REPLACE INTO hosts_tags (host_id, tag_id)
-                  SELECT host.id, tag.id FROM
-                    ( SELECT id FROM hosts WHERE name = ? LIMIT 1 ) AS host,
-                    ( SELECT id FROM tags WHERE name = ? AND value = ? LIMIT 1 ) AS tag;
-              EOS
-            end
+            ups = up_hosts(hosts, downs)
+            prepare(memory_db, <<-EOS % ups.map { "?" }.join(", ")).execute(ups + [tag_name, tag_value])
+              INSERT OR REPLACE INTO hosts_tags (host_id, tag_id)
+                SELECT host.id, tag.id FROM
+                  ( SELECT id FROM hosts WHERE name IN (%s) ) AS host,
+                  ( SELECT id FROM tags WHERE name = ? AND value = ? LIMIT 1 ) AS tag;
+            EOS
           end
 
           # backup in-memory db to file
@@ -251,17 +250,17 @@ module Hotdog
           create_table_hosts_tags(dst)
 
           hosts = prepare(src, "SELECT id, name FROM hosts").execute().to_a
-          prepare(dst, <<-EOS % hosts.map { "(?, ?)" }.join(", ")).execute(hosts)
+          prepare(dst, <<-EOS % hosts.map { "(?, ?)" }.join(", ")).execute(hosts) unless hosts.empty?
             INSERT INTO hosts (id, name) VALUES %s;
           EOS
 
           tags = prepare(src, "SELECT id, name, value FROM tags").execute().to_a
-          prepare(dst, <<-EOS % tags.map { "(?, ?, ?)" }.join(", ")).execute(tags)
+          prepare(dst, <<-EOS % tags.map { "(?, ?, ?)" }.join(", ")).execute(tags) unless tags.empty?
             INSERT INTO tags (id, name, value) VALUES %s;
           EOS
 
           hosts_tags = prepare(src, "SELECT host_id, tag_id FROM hosts_tags").to_a
-          prepare(dst, <<-EOS % hosts_tags.map { "(?, ?)" }.join(", ")).execute(hosts_tags)
+          prepare(dst, <<-EOS % hosts_tags.map { "(?, ?)" }.join(", ")).execute(hosts_tags) unless hosts_tags.empty?
             INSERT INTO hosts_tags (host_id, tag_id) VALUES %s;
           EOS
 
