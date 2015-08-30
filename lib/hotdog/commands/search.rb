@@ -217,7 +217,7 @@ module Hotdog
       end
 
       class BinaryExpressionNode < ExpressionNode
-        attr_reader :left, :right
+        attr_reader :op, :left, :right
 
         def initialize(op, left, right)
           @op = op
@@ -246,7 +246,7 @@ module Hotdog
       end
 
       class UnaryExpressionNode < ExpressionNode
-        attr_reader :expression
+        attr_reader :op, :expression
 
         def initialize(op, expression)
           @op = op
@@ -285,36 +285,33 @@ module Hotdog
           !(attribute.nil? or attribute.to_s.empty?)
         end
         def evaluate(environment, options={})
+          q = []
           if identifier?
             if attribute?
               case identifier
               when /\Ahost\z/i
-                values = environment.execute(<<-EOS, [attribute]).map { |row| row.first }
-                  SELECT hosts.id FROM hosts
-                    WHERE hosts.name = ?;
-                EOS
+                q << "SELECT hosts.id FROM hosts"
+                q <<   "WHERE hosts.name = ?;"
+                values = environment.execute(q.join(" "), [attribute]).map { |row| row.first }
               else
-                values = environment.execute(<<-EOS, [identifier, attribute]).map { |row| row.first }
-                  SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
-                    INNER JOIN tags ON hosts_tags.tag_id = tags.id
-                      WHERE tags.name = ? AND tags.value = ?;
-                EOS
+                q << "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags"
+                q <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
+                q <<     "WHERE tags.name = ? AND tags.value = ?;"
+                values = environment.execute(q.join(" "), [identifier, attribute]).map { |row| row.first }
               end
             else
-              values = environment.execute(<<-EOS, [identifier, identifier, identifier]).map { |row| row.first }
-                SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
-                  INNER JOIN hosts ON hosts_tags.host_id = hosts.id
-                  INNER JOIN tags ON hosts_tags.tag_id = tags.id
-                    WHERE hosts.name = ? OR tags.name = ? OR tags.value = ?;
-              EOS
+              q << "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags"
+              q <<   "INNER JOIN hosts ON hosts_tags.host_id = hosts.id"
+              q <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
+              q <<     "WHERE hosts.name = ? OR tags.name = ? OR tags.value = ?;"
+              values = environment.execute(q.join(" "), [identifier, identifier, identifier]).map { |row| row.first }
             end
           else
             if attribute?
-              values = environment.execute(<<-EOS, [attribute]).map { |row| row.first }
-                SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
-                  INNER JOIN tags ON hosts_tags.tag_id = tags.id
-                    WHERE tags.value = ?;
-              EOS
+               q << "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags"
+               q <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
+               q <<     "WHERE tags.value = ?;"
+              values = environment.execute(q.join(" "), [attribute]).map { |row| row.first }
             else
               return []
             end
@@ -361,36 +358,33 @@ module Hotdog
 
       class TagGlobExpressionNode < TagExpressionNode
         def evaluate(environment, options={})
+          q = []
           if identifier?
             if attribute?
               case identifier
               when /\Ahost\z/i
-                values = environment.execute(<<-EOS, [attribute]).map { |row| row.first }
-                  SELECT hosts.id FROM hosts
-                    WHERE hosts.name GLOB ?;
-                EOS
+                q << "SELECT hosts.id FROM hosts"
+                q <<   "WHERE hosts.name GLOB ?;"
+                values = environment.execute(q.join(" "), [attribute]).map { |row| row.first }
               else
-                values = environment.execute(<<-EOS, [identifier, attribute]).map { |row| row.first }
-                  SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
-                    INNER JOIN tags ON hosts_tags.tag_id = tags.id
-                      WHERE tags.name GLOB ? AND tags.value GLOB ?;
-                EOS
+                q << "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags"
+                q <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
+                q <<     "WHERE tags.name GLOB ? AND tags.value GLOB ?;"
+                values = environment.execute(q.join(" "), [identifier, attribute]).map { |row| row.first }
               end
             else
-              values = environment.execute(<<-EOS, [identifier, identifier, identifier]).map { |row| row.first }
-                SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
-                  INNER JOIN hosts ON hosts_tags.host_id = hosts.id
-                  INNER JOIN tags ON hosts_tags.tag_id = tags.id
-                    WHERE hosts.name GLOB ? OR tags.name GLOB ? OR tags.value GLOB ?;
-              EOS
+              q << "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags"
+              q <<   "INNER JOIN hosts ON hosts_tags.host_id = hosts.id"
+              q <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
+              q <<     "WHERE hosts.name GLOB ? OR tags.name GLOB ? OR tags.value GLOB ?;"
+              values = environment.execute(q.join(" "), [identifier, identifier, identifier]).map { |row| row.first }
             end
           else
             if attribute?
-              values = environment.execute(<<-EOS, [attribute]).map { |row| row.first }
-                SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
-                  INNER JOIN tags ON hosts_tags.tag_id = tags.id
-                    WHERE tags.value GLOB ?;
-              EOS
+              q << "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags"
+              q <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
+              q <<     "WHERE tags.value GLOB ?;"
+              values = environment.execute(q.join(" "), [attribute]).map { |row| row.first }
             else
               return []
             end
@@ -410,36 +404,33 @@ module Hotdog
           super(identifier, attribute)
         end
         def evaluate(environment, options={})
+          q = []
           if identifier?
             if attribute?
               case identifier
               when /\Ahost\z/i
-                values = environment.execute(<<-EOS, [attribute]).map { |row| row.first }
-                  SELECT hosts.id FROM hosts
-                    WHERE hosts.name REGEXP ?;
-                EOS
+                q << "SELECT hosts.id FROM hosts"
+                q <<   "WHERE hosts.name REGEXP ?;"
+                values = environment.execute(q.join(" "), [attribute]).map { |row| row.first }
               else
-                values = environment.execute(<<-EOS, [identifier, attribute]).map { |row| row.first }
-                  SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
-                    INNER JOIN tags ON hosts_tags.tag_id = tags.id
-                      WHERE tags.name REGEXP ? AND tags.value REGEXP ?;
-                EOS
+                q << "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags"
+                q <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
+                q <<     "WHERE tags.name REGEXP ? AND tags.value REGEXP ?;"
+                values = environment.execute(q.join(" "), [identifier, attribute]).map { |row| row.first }
               end
             else
-              values = environment.execute(<<-EOS, [identifier, identifier, identifier]).map { |row| row.first }
-                SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
-                  INNER JOIN hosts ON hosts_tags.host_id = hosts.id
-                  INNER JOIN tags ON hosts_tags.tag_id = tags.id
-                    WHERE hosts.name REGEXP ? OR tags.name REGEXP ? OR tags.value REGEXP ?;
-              EOS
+              q << "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags"
+              q <<   "INNER JOIN hosts ON hosts_tags.host_id = hosts.id"
+              q <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
+              q <<     "WHERE hosts.name REGEXP ? OR tags.name REGEXP ? OR tags.value REGEXP ?;"
+              values = environment.execute(q.join(" "), [identifier, identifier, identifier]).map { |row| row.first }
             end
           else
             if attribute?
-              values = environment.execute(<<-EOS, [attribute]).map { |row| row.first }
-                SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
-                  INNER JOIN tags ON hosts_tags.tag_id = tags.id
-                    WHERE tags.value REGEXP ?;
-              EOS
+              q << "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags"
+              q <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
+              q <<     "WHERE tags.value REGEXP ?;"
+              values = environment.execute(q.join(" "), [attribute]).map { |row| row.first }
             else
               return []
             end

@@ -4,7 +4,7 @@ require "hotdog/commands"
 require "hotdog/commands/search"
 require "parslet"
 
-describe "search" do
+describe "parser" do
   let(:cmd) {
     Hotdog::Commands::Search.new(Hotdog::Application.new)
   }
