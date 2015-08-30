@@ -214,6 +214,7 @@ module Hotdog
         def evaluate(environment, options={})
           raise(NotImplementedError)
         end
+
         def optimize(options={})
           self
         end
@@ -223,14 +224,21 @@ module Hotdog
         attr_reader :op, :left, :right
 
         def initialize(op, left, right)
-          @op = op
-          @op ||= "or" # use OR expression by default
+          case op || "or"
+          when "&&", "&", /\Aand\z/i
+            @op = :AND
+          when "||", "|", /\Aor\z/i
+            @op = :OR
+          else
+            raise(SyntaxError.new("unknown binary operator: #{op.inspect}"))
+          end
           @left = left
           @right = right
         end
+
         def evaluate(environment, options={})
           case @op
-          when "&&", "&", /\Aand\z/i
+          when :AND
             left_values = @left.evaluate(environment)
             if left_values.empty?
               []
@@ -238,13 +246,27 @@ module Hotdog
               right_values = @right.evaluate(environment)
               (left_values & right_values)
             end
-          when "||", "|", /\Aor\z/i
+          when :OR
             left_values = @left.evaluate(environment)
             right_values = @right.evaluate(environment)
             (left_values | right_values).uniq
           else
-            raise(SyntaxError.new("unknown binary operator: #{@op.inspect}"))
+            []
           end
+        end
+
+        def optimize(options={})
+          @left = @left.optimize(options)
+          @right = @right.optimize(options)
+          if @left == @right
+            @left
+          else
+            self
+          end
+        end
+
+        def ==(other)
+          self.class === other and @op == other.op and @left == other.left and @right == other.right
         end
       end
 
@@ -252,12 +274,18 @@ module Hotdog
         attr_reader :op, :expression
 
         def initialize(op, expression)
-          @op = op
+          case op
+          when "!", "~", /\Anot\z/i
+            @op = :NOT
+          else
+            raise(SyntaxError.new("unknown unary operator: #{@op.inspect}"))
+          end
           @expression = expression
         end
+
         def evaluate(environment, options={})
           case @op
-          when "!", "~", /\Anot\z/i
+          when :NOT
             values = @expression.evaluate(environment)
             if values.empty?
               environment.execute(<<-EOS).map { |row| row.first }
@@ -269,8 +297,25 @@ module Hotdog
               EOS
             end
           else
-            raise(SyntaxError.new("unknown unary operator: #{@op.inspect}"))
+            []
           end
+        end
+
+        def optimize(options={})
+          @expression = @expression.optimize(options)
+          if UnaryExpressionNode === @expression
+            if @op == :NOT and @expression.op == :NOT
+              @expression
+            else
+              self
+            end
+          else
+            self
+          end
+        end
+
+        def ==(other)
+          self.class === other and @op == other.op and @expression == other.expression
         end
       end
 
@@ -281,12 +326,15 @@ module Hotdog
         end
         attr_reader :identifier
         attr_reader :attribute
+
         def identifier?
           !(identifier.nil? or identifier.to_s.empty?)
         end
+
         def attribute?
           !(attribute.nil? or attribute.to_s.empty?)
         end
+
         def evaluate(environment, options={})
           q = []
           if identifier?
@@ -324,6 +372,10 @@ module Hotdog
           else
             values
           end
+        end
+
+        def ==(other)
+          self.class == other.class and @identifier == other.identifier and @attribute == other.attribute
         end
 
         def fallback(environment, options={})
@@ -406,6 +458,7 @@ module Hotdog
           attribute = attribute.sub(%r{\A/(.*)/\z}) { $1 } if attribute
           super(identifier, attribute)
         end
+
         def evaluate(environment, options={})
           q = []
           if identifier?
