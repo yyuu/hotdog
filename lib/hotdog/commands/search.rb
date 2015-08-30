@@ -114,8 +114,9 @@ module Hotdog
           | spacing.maybe >> identifier.as(:identifier) >> separator >> attribute.as(:attribute) >> spacing.maybe \
           | spacing.maybe >> identifier.as(:identifier) >> separator >> spacing.maybe \
           | spacing.maybe >> identifier.as(:identifier) >> spacing.maybe \
+          | spacing.maybe >> separator >> attribute_regexp.as(:attribute_regexp) >> spacing.maybe \
           | spacing.maybe >> separator >> attribute_glob.as(:attribute_glob) >> spacing.maybe \
-          | spacing.maybe >> separator >> attribute.as(:attribute_glob) >> spacing.maybe \
+          | spacing.maybe >> separator >> attribute.as(:attribute) >> spacing.maybe \
           | spacing.maybe >> attribute_regexp.as(:attribute_regexp) >> spacing.maybe \
           | spacing.maybe >> attribute_glob.as(:attribute_glob) >> spacing.maybe \
           | spacing.maybe >> attribute.as(:attribute) >> spacing.maybe \
