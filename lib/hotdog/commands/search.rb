@@ -82,18 +82,26 @@ module Hotdog
           | term \
           )
         }
+        rule(:binary_op) {
+          ( str('&') >> str('&').maybe \
+          | str('|') >> str('|').maybe \
+          | match('[Aa]') >> match('[Nn]') >> match('[Dd]') \
+          | match('[Oo]') >> match('[Rr]') \
+          )
+        }
         rule(:binary_expression) {
-          ( term.as(:left) >> spacing.maybe >> (str('&') >> str('&').maybe).as(:binary_op) >> spacing.maybe >> expression.as(:right) \
-          | term.as(:left) >> spacing.maybe >> (str('|') >> str('|').maybe).as(:binary_op) >> spacing.maybe >> expression.as(:right) \
-          | term.as(:left) >> spacing.maybe >> (match('[Aa]') >> match('[Nn]') >> match('[Dd]')).as(:binary_op) >> spacing.maybe >> expression.as(:right) \
-          | term.as(:left) >> spacing.maybe >> (match('[Oo]') >> match('[Rr]')).as(:binary_op) >> spacing.maybe >> expression.as(:right) \
+          ( term.as(:left) >> spacing.maybe >> binary_op.as(:binary_op) >> spacing.maybe >> expression.as(:right) \
           | term.as(:left) >> spacing.maybe.as(:binary_op) >> expression.as(:right) \
           )
         }
+        rule(:unary_op) {
+          ( str('!') \
+          | str('~') \
+          | match('[Nn]') >> match('[Oo]') >> match('[Tt]') \
+          )
+        }
         rule(:unary_expression) {
-          ( spacing.maybe >> str('!').as(:unary_op) >> atom.as(:expression) \
-          | spacing.maybe >> str('~').as(:unary_op) >> atom.as(:expression) \
-          | spacing.maybe >> (match('[Nn]') >> match('[Oo]') >> match('[Tt]')).as(:unary_op) >> atom.as(:expression) \
+          ( spacing.maybe >> unary_op.as(:unary_op) >> expression.as(:expression) \
           )
         }
         rule(:term) {
@@ -127,11 +135,11 @@ module Hotdog
           )
         }
         rule(:identifier_glob) {
-          ( identifier.repeat(0) >> (glob >> identifier.maybe).repeat(1) \
+          ( unary_op.absent? >> binary_op.absent? >> identifier.repeat(0) >> (glob >> identifier.maybe).repeat(1) \
           )
         }
         rule(:identifier) {
-          ( match('[A-Za-z]') >> match('[-./0-9A-Z_a-z]').repeat(0) \
+          ( unary_op.absent? >> binary_op.absent? >> match('[A-Za-z]') >> match('[-./0-9A-Z_a-z]').repeat(0) \
           )
         }
         rule(:separator) {
@@ -144,11 +152,11 @@ module Hotdog
           )
         }
         rule(:attribute_glob) {
-          ( attribute.repeat(0) >> (glob >> attribute.maybe).repeat(1) \
+          ( unary_op.absent? >> binary_op.absent? >> attribute.repeat(0) >> (glob >> attribute.maybe).repeat(1) \
           )
         }
         rule(:attribute) {
-          ( match('[-./0-9:A-Z_a-z]').repeat(1) \
+          ( unary_op.absent? >> binary_op.absent? >> match('[-./0-9:A-Z_a-z]').repeat(1) \
           )
         }
         rule(:glob) {

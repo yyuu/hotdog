@@ -94,6 +94,14 @@ describe "search" do
     expect(cmd.parse("( ( foo ) )")).to eq({identifier: "foo"})
   end
 
+  it "parses 'foo bar'" do
+    expect(cmd.parse("foo bar")).to eq({left: {identifier: "foo"}, binary_op: nil, right: {identifier: "bar"}})
+  end
+
+  it "parses 'foo bar baz'" do
+    expect(cmd.parse("foo bar baz")).to eq({left: {identifier: "foo"}, binary_op: nil, right: {left: {identifier: "bar"}, binary_op: nil, right: {identifier: "baz"}}})
+  end
+
   it "parses 'not foo'" do
     expect(cmd.parse("not foo")).to eq({unary_op: "not", expression: {identifier: "foo"}})
   end
@@ -118,25 +126,25 @@ describe "search" do
     expect(cmd.parse("~(~foo)")).to eq({unary_op: "~", expression: {unary_op: "~", expression: {identifier: "foo"}}})
   end
 
-# it "parses 'not not foo'" do
-#   expect(cmd.parse("not not foo")).to eq({unary_op: "not", expression: {unary_op: "not", expression: {identifier: "foo"}}})
-# end
+  it "parses 'not not foo'" do
+    expect(cmd.parse("not not foo")).to eq({unary_op: "not", expression: {unary_op: "not", expression: {identifier: "foo"}}})
+  end
 
-# it "parses '!!foo'" do
-#   expect(cmd.parse("!! foo")).to eq({unary_op: "!", expression: {unary_op: "!", expression: {identifier: "foo"}}})
-# end
+  it "parses '!!foo'" do
+    expect(cmd.parse("!! foo")).to eq({unary_op: "!", expression: {unary_op: "!", expression: {identifier: "foo"}}})
+  end
 
-# it "parses '! ! foo'" do
-#   expect(cmd.parse("!! foo")).to eq({unary_op: "!", expression: {unary_op: "!", expression: {identifier: "foo"}}})
-# end
+  it "parses '! ! foo'" do
+    expect(cmd.parse("!! foo")).to eq({unary_op: "!", expression: {unary_op: "!", expression: {identifier: "foo"}}})
+  end
 
-# it "parses '~~foo'" do
-#   expect(cmd.parse("~~ foo")).to eq({unary_op: "~", expression: {unary_op: "~", expression: {identifier: "foo"}}})
-# end
+  it "parses '~~foo'" do
+    expect(cmd.parse("~~ foo")).to eq({unary_op: "~", expression: {unary_op: "~", expression: {identifier: "foo"}}})
+  end
 
-# it "parses '~ ~ foo'" do
-#   expect(cmd.parse("~~ foo")).to eq({unary_op: "~", expression: {unary_op: "~", expression: {identifier: "foo"}}})
-# end
+  it "parses '~ ~ foo'" do
+    expect(cmd.parse("~~ foo")).to eq({unary_op: "~", expression: {unary_op: "~", expression: {identifier: "foo"}}})
+  end
 
   it "parses 'foo and bar'" do
     expect(cmd.parse("foo and bar")).to eq({left: {identifier: "foo"}, binary_op: "and", right: {identifier: "bar"}})
@@ -238,11 +246,11 @@ describe "search" do
     }.to raise_error(Parslet::ParseFailed)
   end
 
-# it "is unable to parse 'foo and'" do
-#   expect {
-#     cmd.parse("foo and")
-#   }.to raise_error(Parslet::ParseFailed)
-# end
+  it "is unable to parse 'foo and'" do
+    expect {
+      cmd.parse("foo and")
+    }.to raise_error(Parslet::ParseFailed)
+  end
 
   it "is unable to parse 'foo &'" do
     expect {
@@ -256,11 +264,11 @@ describe "search" do
     }.to raise_error(Parslet::ParseFailed)
   end
 
-# it "is unable to parse 'and foo'" do
-#   expect {
-#     cmd.parse("and foo")
-#   }.to raise_error(Parslet::ParseFailed)
-# end
+  it "is unable to parse 'and foo'" do
+    expect {
+      cmd.parse("and foo")
+    }.to raise_error(Parslet::ParseFailed)
+  end
 
   it "is unable to parse '& foo'" do
     expect {
