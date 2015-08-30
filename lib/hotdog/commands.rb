@@ -172,49 +172,21 @@ module Hotdog
           create_table_hosts_tags(memory_db)
           create_index_hosts_tags(memory_db)
 
-          code, all_tags = @dog.all_tags()
-          logger.debug("dog.all_tags() #==> [%s, ...]" % [code.inspect])
-          if code.to_i / 100 != 2
-            raise("dog.all_tags() returns [%s, ...]" % [code.inspect])
-          end
+          all_tags = get_all_tags()
 
-          code, all_downtimes = @dog.get_all_downtimes()
-          logger.debug("dog.get_all_downtimes() #==> [%s, ...]" % [code.inspect])
-          if code.to_i / 100 != 2
-            raise("dog.get_all_downtimes() returns [%s, ...]" % [code.inspect])
-          end
-
-          now = Time.new.to_i
-          downs = all_downtimes.select { |downtime|
-            # active downtimes
-            downtime["active"] and ( downtime["start"].nil? or downtime["start"] < now ) and ( downtime["end"].nil? or now <= downtime["end"] )
-          }.map { |downtime|
-            # find host scopes
-            downtime["scope"].select { |scope| scope.start_with?("host:") }.map { |scope| scope.sub(/\Ahost:/, "") }
-          }.reduce(:+)
-          downs ||= []
-
-          # for case-insensitive match of hostname
-          downs = downs.map { |down| down.downcase }
-
-          if not downs.empty?
-            logger.info("ignore host(s) with scheduled downtimes: #{downs.inspect}")
-          end
-
-          known_tags = all_tags["tags"].keys.map { |tag| split_tag(tag) }.uniq
-          prepare(memory_db, <<-EOS % known_tags.map { "(?, ?)" }.join(", ")).execute(known_tags)
+          known_tags = all_tags.keys.map { |tag| split_tag(tag) }.uniq
+          prepare(memory_db, <<-EOS % known_tags.map { "(?, ?)" }.join(", ")).execute(known_tags) unless known_tags.empty?
             INSERT OR IGNORE INTO tags (name, value) VALUES %s;
           EOS
 
-          known_hosts = all_tags["tags"].values.map { |hosts| up_hosts(hosts, downs) }.reduce(:+).uniq
-          prepare(memory_db, <<-EOS % known_hosts.map { "(?)" }.join(", ")).execute(known_hosts)
+          known_hosts = all_tags.values.reduce(:+).uniq
+          prepare(memory_db, <<-EOS % known_hosts.map { "(?)" }.join(", ")).execute(known_hosts) unless known_hosts.empty?
             INSERT OR IGNORE INTO hosts (name) VALUES %s;
           EOS
 
-          all_tags["tags"].each do |tag, hosts|
+          all_tags.each do |tag, hosts|
             tag_name, tag_value = split_tag(tag)
-            ups = up_hosts(hosts, downs)
-            prepare(memory_db, <<-EOS % ups.map { "?" }.join(", ")).execute(ups + [tag_name, tag_value])
+            prepare(memory_db, <<-EOS % hosts.map { "?" }.join(", ")).execute(hosts + [tag_name, tag_value]) unless hosts.empty?
               INSERT OR REPLACE INTO hosts_tags (host_id, tag_id)
                 SELECT host.id, tag.id FROM
                   ( SELECT id FROM hosts WHERE name IN (%s) ) AS host,
@@ -233,13 +205,34 @@ module Hotdog
         end
       end
 
+      def get_all_tags() #==> Hash<Tag,Array<Host>>
+        code, all_tags = @dog.all_tags()
+        logger.debug("dog.all_tags() #==> [%s, ...]" % [code.inspect])
+        if code.to_i / 100 != 2
+          raise("dog.all_tags() returns [%s, ...]" % [code.inspect])
+        end
+        code, all_downtimes = @dog.get_all_downtimes()
+        logger.debug("dog.get_all_downtimes() #==> [%s, ...]" % [code.inspect])
+        if code.to_i / 100 != 2
+          raise("dog.get_all_downtimes() returns [%s, ...]" % [code.inspect])
+        end
+        now = Time.new.to_i
+        downtimes = all_downtimes.select { |downtime|
+          # active downtimes
+          downtime["active"] and ( downtime["start"].nil? or downtime["start"] < now ) and ( downtime["end"].nil? or now <= downtime["end"] )
+        }.map { |downtime|
+          # find host scopes
+          downtime["scope"].select { |scope| scope.start_with?("host:") }.map { |scope| scope.sub(/\Ahost:/, "") }
+        }.reduce(:+) || []
+        if not downtimes.empty?
+          logger.info("ignore host(s) with scheduled downtimes: #{downtimes.inspect}")
+        end
+        Hash[all_tags["tags"].map { |tag, hosts| [tag, hosts.reject { |host| downtimes.include?(host) }] }]
+      end
+
       def split_tag(tag)
         tag_name, tag_value = tag.split(":", 2)
         [tag_name, tag_value || ""]
-      end
-
-      def up_hosts(hosts, downs=[])
-        hosts.reject { |host| downs.include?(host.downcase) }
       end
 
       def copy_db(src, dst)
