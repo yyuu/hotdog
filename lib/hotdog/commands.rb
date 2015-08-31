@@ -96,7 +96,11 @@ module Hotdog
           if @options[:listing]
             # TODO: should respect `:primary_tag`
             fields = []
-            hosts = execute("SELECT id, name FROM hosts WHERE id IN (%s)" % hosts.map { "?" }.join(", "), hosts)
+            if hosts.empty?
+              hosts = []
+            else
+              hosts = execute("SELECT id, name FROM hosts WHERE id IN (%s)" % hosts.map { "?" }.join(", "), hosts)
+            end
             result = hosts.map { |host_id, host_name|
               tag_names = select_tag_names_from_hosts_tags_by_host_id(@db, host_id)
               tag_names.each do |tag_name|
@@ -117,7 +121,11 @@ module Hotdog
               tag_name, tag_value = @options[:primary_tag].split(":", 2)
               case tag_name
               when "host"
-                result = execute("SELECT name FROM hosts WHERE id IN (%s)" % hosts.map { "?" }.join(", "), hosts)
+                if hosts.empty?
+                  result = []
+                else
+                  result = execute("SELECT name FROM hosts WHERE id IN (%s)" % hosts.map { "?" }.join(", "), hosts)
+                end
               else
                 result = hosts.map { |host_id|
                   if glob?(tag_name)
@@ -129,7 +137,11 @@ module Hotdog
               end
             else
               fields = ["host"]
-              result = execute("SELECT name FROM hosts WHERE id IN (%s)" % hosts.map { "?" }.join(", "), hosts)
+              if hosts.empty?
+                result = []
+              else
+                result = execute("SELECT name FROM hosts WHERE id IN (%s)" % hosts.map { "?" }.join(", "), hosts)
+              end
             end
           end
         end
