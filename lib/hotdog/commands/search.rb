@@ -101,7 +101,8 @@ module Hotdog
           )
         }
         rule(:unary_expression) {
-          ( spacing.maybe >> unary_op.as(:unary_op) >> expression.as(:expression) \
+          ( spacing.maybe >> unary_op.as(:unary_op) >> term.as(:expression) \
+          | spacing.maybe >> unary_op.as(:unary_op) >> expression.as(:expression) \
           )
         }
         rule(:term) {

@@ -234,6 +234,22 @@ describe "parser" do
     expect(cmd.parse("foo and (bar or baz)")).to eq({left: {identifier: "foo"}, binary_op: "and", right: {left: {identifier: "bar"}, binary_op: "or", right: {identifier: "baz"}}})
   end
 
+  it "parses 'not foo and bar'" do
+    expect(cmd.parse("not foo and bar")).to eq({left: {unary_op: "not", expression: {identifier: "foo"}}, binary_op: "and", right: {identifier: "bar"}})
+  end
+
+  it "parses '! foo and bar'" do
+    expect(cmd.parse("! foo and bar")).to eq({left: {unary_op: "!", expression: {identifier: "foo"}}, binary_op: "and", right: {identifier: "bar"}})
+  end
+
+  it "parses 'not foo && bar'" do
+    expect(cmd.parse("not foo && bar")).to eq({left: {unary_op: "not", expression: {identifier: "foo"}}, binary_op: "&&", right: {identifier: "bar"}})
+  end
+
+  it "parses '! foo && bar'" do
+    expect(cmd.parse("! foo && bar")).to eq({left: {unary_op: "!", expression: {identifier: "foo"}}, binary_op: "&&", right: {identifier: "bar"}})
+  end
+
   it "is unable to parse ' '" do
     expect {
       cmd.parse(" ")
