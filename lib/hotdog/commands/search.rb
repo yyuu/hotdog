@@ -306,7 +306,7 @@ module Hotdog
           @expression = @expression.optimize(options)
           if UnaryExpressionNode === @expression
             if @op == :NOT and @expression.op == :NOT
-              @expression
+              @expression.expression
             else
               self
             end
