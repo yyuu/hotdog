@@ -12,9 +12,9 @@ describe "ltsv" do
       headers: false,
     }
     expect(fmt.format([["foo", "aaa", 1], ["bar", "bbb", 2], ["baz", "ccc", 3]], options)).to eq(<<-EOS)
-
-
-
+foo\taaa\t1
+bar\tbbb\t2
+baz\tccc\t3
     EOS
   end
 
