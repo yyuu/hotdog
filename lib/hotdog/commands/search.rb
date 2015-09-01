@@ -289,13 +289,9 @@ module Hotdog
           when :NOT
             values = @expression.evaluate(environment)
             if values.empty?
-              environment.execute(<<-EOS).map { |row| row.first }
-                SELECT DISTINCT host_id FROM hosts_tags;
-              EOS
+              environment.execute("SELECT DISTINCT host_id FROM hosts_tags").map { |row| row.first }
             else
-              environment.execute(<<-EOS % values.map { "?" }.join(", "), values).map { |row| row.first }
-                SELECT DISTINCT host_id FROM hosts_tags WHERE host_id NOT IN (%s);
-              EOS
+              environment.execute("SELECT DISTINCT host_id FROM hosts_tags WHERE host_id NOT IN (%s)" % values.map { "?" }.join(", "), values).map { |row| row.first }
             end
           else
             []

@@ -9,19 +9,17 @@ module Hotdog
           result = execute("SELECT DISTINCT host_id FROM hosts_tags").to_a.reduce(:+)
         else
           result = args.map { |host_name|
+            q = []
             if glob?(host_name)
-              execute(<<-EOS, [host_name]).map { |row| row.first }
-                SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
-                  INNER JOIN hosts ON hosts_tags.host_id = hosts.id
-                    WHERE hosts.name GLOB ?;
-              EOS
+              q << "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags"
+              q <<   "INNER JOIN hosts ON hosts_tags.host_id = hosts.id"
+              q <<     "WHERE hosts.name GLOB ?;"
             else
-              execute(<<-EOS, [host_name]).map { |row| row.first }
-                SELECT DISTINCT hosts_tags.host_id FROM hosts_tags
-                  INNER JOIN hosts ON hosts_tags.host_id = hosts.id
-                    WHERE hosts.name = ?;
-              EOS
+              q << "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags"
+              q <<   "INNER JOIN hosts ON hosts_tags.host_id = hosts.id"
+              q <<     "WHERE hosts.name = ?;"
             end
+            execute(q.join(" "), [host_name]).map { |row| row.first }
           }.reduce(:+)
         end
         if result && (0 < result.length)

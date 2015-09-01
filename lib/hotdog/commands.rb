@@ -67,16 +67,11 @@ module Hotdog
         s.index('*') or s.index('?') or s.index('[') or s.index(']')
       end
 
-      def host?(host_id)
-        host_id = execute("SELECT id FROM hosts WHERE name = %s LIMIT 1", [s])
-        not host_id.nil?
-      end
-
-      def get_hosts(hosts, tags=nil)
+      def get_hosts(host_ids, tags=nil)
         tags ||= @options[:tags]
         update_db
         if 0 < tags.length
-          result = hosts.map { |host_id|
+          result = host_ids.map { |host_id|
             tags.map { |tag|
               tag_name, tag_value = tag.split(":", 2)
               case tag_name
@@ -96,10 +91,10 @@ module Hotdog
           if @options[:listing]
             # TODO: should respect `:primary_tag`
             fields = []
-            if hosts.empty?
+            if host_ids.empty?
               hosts = []
             else
-              hosts = execute("SELECT id, name FROM hosts WHERE id IN (%s)" % hosts.map { "?" }.join(", "), hosts)
+              hosts = execute("SELECT id, name FROM hosts WHERE id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids)
             end
             result = hosts.map { |host_id, host_name|
               tag_names = select_tag_names_from_hosts_tags_by_host_id(@db, host_id)
@@ -121,13 +116,13 @@ module Hotdog
               tag_name, tag_value = @options[:primary_tag].split(":", 2)
               case tag_name
               when "host"
-                if hosts.empty?
+                if host_ids.empty?
                   result = []
                 else
-                  result = execute("SELECT name FROM hosts WHERE id IN (%s)" % hosts.map { "?" }.join(", "), hosts)
+                  result = execute("SELECT name FROM hosts WHERE id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids)
                 end
               else
-                result = hosts.map { |host_id|
+                result = host_ids.map { |host_id|
                   if glob?(tag_name)
                     [select_tag_values_from_hosts_tags_by_host_id_and_tag_name_glob(@db, host_id, tag_name)]
                   else
@@ -137,10 +132,10 @@ module Hotdog
               end
             else
               fields = ["host"]
-              if hosts.empty?
+              if host_ids.empty?
                 result = []
               else
-                result = execute("SELECT name FROM hosts WHERE id IN (%s)" % hosts.map { "?" }.join(", "), hosts)
+                result = execute("SELECT name FROM hosts WHERE id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids)
               end
             end
           end
@@ -187,23 +182,24 @@ module Hotdog
           all_tags = get_all_tags()
 
           known_tags = all_tags.keys.map { |tag| split_tag(tag) }.uniq
-          prepare(memory_db, <<-EOS % known_tags.map { "(?, ?)" }.join(", ")).execute(known_tags) unless known_tags.empty?
-            INSERT OR IGNORE INTO tags (name, value) VALUES %s;
-          EOS
+          unless known_tags.empty?
+            prepare(memory_db, "INSERT OR IGNORE INTO tags (name, value) VALUES %s" % known_tags.map { "(?, ?)" }.join(", ")).execute(known_tags)
+          end
 
           known_hosts = all_tags.values.reduce(:+).uniq
-          prepare(memory_db, <<-EOS % known_hosts.map { "(?)" }.join(", ")).execute(known_hosts) unless known_hosts.empty?
-            INSERT OR IGNORE INTO hosts (name) VALUES %s;
-          EOS
+          unless known_hosts.empty?
+            prepare(memory_db, "INSERT OR IGNORE INTO hosts (name) VALUES %s" % known_hosts.map { "(?)" }.join(", ")).execute(known_hosts)
+          end
 
           all_tags.each do |tag, hosts|
-            tag_name, tag_value = split_tag(tag)
-            prepare(memory_db, <<-EOS % hosts.map { "?" }.join(", ")).execute(hosts + [tag_name, tag_value]) unless hosts.empty?
-              INSERT OR REPLACE INTO hosts_tags (host_id, tag_id)
-                SELECT host.id, tag.id FROM
-                  ( SELECT id FROM hosts WHERE name IN (%s) ) AS host,
-                  ( SELECT id FROM tags WHERE name = ? AND value = ? LIMIT 1 ) AS tag;
-            EOS
+            q = []
+            q << "INSERT OR REPLACE INTO hosts_tags (host_id, tag_id)"
+            q <<   "SELECT host.id, tag.id FROM"
+            q <<     "( SELECT id FROM hosts WHERE name IN (%s) ) AS host,"
+            q <<     "( SELECT id FROM tags WHERE name = ? AND value = ? LIMIT 1 ) AS tag;"
+            unless hosts.empty?
+              prepare(memory_db, q.join(" ") % hosts.map { "?" }.join(", ")).execute(hosts + split_tag(tag))
+            end
           end
 
           # backup in-memory db to file
@@ -255,19 +251,13 @@ module Hotdog
           create_table_hosts_tags(dst)
 
           hosts = prepare(src, "SELECT id, name FROM hosts").execute().to_a
-          prepare(dst, <<-EOS % hosts.map { "(?, ?)" }.join(", ")).execute(hosts) unless hosts.empty?
-            INSERT INTO hosts (id, name) VALUES %s;
-          EOS
+          prepare(dst, "INSERT INTO hosts (id, name) VALUES %s" % hosts.map { "(?, ?)" }.join(", ")).execute(hosts) unless hosts.empty?
 
           tags = prepare(src, "SELECT id, name, value FROM tags").execute().to_a
-          prepare(dst, <<-EOS % tags.map { "(?, ?, ?)" }.join(", ")).execute(tags) unless tags.empty?
-            INSERT INTO tags (id, name, value) VALUES %s;
-          EOS
+          prepare(dst, "INSERT INTO tags (id, name, value) VALUES %s" % tags.map { "(?, ?, ?)" }.join(", ")).execute(tags) unless tags.empty?
 
           hosts_tags = prepare(src, "SELECT host_id, tag_id FROM hosts_tags").to_a
-          prepare(dst, <<-EOS % hosts_tags.map { "(?, ?)" }.join(", ")).execute(hosts_tags) unless hosts_tags.empty?
-            INSERT INTO hosts_tags (host_id, tag_id) VALUES %s;
-          EOS
+          prepare(dst, "INSERT INTO hosts_tags (host_id, tag_id) VALUES %s" % hosts_tags.map { "(?, ?)" }.join(", ")).execute(hosts_tags) unless hosts_tags.empty?
 
           create_index_hosts(dst)
           create_index_tags(dst)
@@ -277,12 +267,12 @@ module Hotdog
 
       def create_table_hosts(db)
         logger.debug("create_table_hosts()")
-        db.execute(<<-EOS)
-          CREATE TABLE IF NOT EXISTS hosts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name VARCHAR(255) NOT NULL COLLATE NOCASE
-          );
-        EOS
+        q = []
+        q << "CREATE TABLE IF NOT EXISTS hosts ("
+        q <<   "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        q <<   "name VARCHAR(255) NOT NULL COLLATE NOCASE"
+        q << ");"
+        db.execute(q.join(" "))
       end
 
       def create_index_hosts(db)
@@ -292,13 +282,13 @@ module Hotdog
 
       def create_table_tags(db)
         logger.debug("create_table_tags()")
-        db.execute(<<-EOS)
-          CREATE TABLE IF NOT EXISTS tags (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name VARCHAR(200) NOT NULL COLLATE NOCASE,
-            value VARCHAR(200) NOT NULL COLLATE NOCASE DEFAULT ""
-          );
-        EOS
+        q = []
+        q << "CREATE TABLE IF NOT EXISTS tags ("
+        q <<   "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        q <<   "name VARCHAR(200) NOT NULL COLLATE NOCASE,"
+        q <<   "value VARCHAR(200) NOT NULL COLLATE NOCASE"
+        q << ");"
+        db.execute(q.join(" "))
       end
 
       def create_index_tags(db)
@@ -308,12 +298,12 @@ module Hotdog
 
       def create_table_hosts_tags(db)
         logger.debug("create_table_hosts_tags()")
-        db.execute(<<-EOS)
-          CREATE TABLE IF NOT EXISTS hosts_tags (
-            host_id INTEGER NOT NULL,
-            tag_id INTEGER NOT NULL
-          );
-        EOS
+        q = []
+        q << "CREATE TABLE IF NOT EXISTS hosts_tags ("
+        q <<   "host_id INTEGER NOT NULL,"
+        q <<   "tag_id INTEGER NOT NULL"
+        q << ");"
+        db.execute(q.join(" "))
       end
 
       def create_index_hosts_tags(db)
@@ -328,29 +318,29 @@ module Hotdog
 
       def select_tag_values_from_hosts_tags_by_host_id_and_tag_name_glob(db, host_id, tag_name)
         logger.debug("select_tag_values_from_hosts_tags_by_host_id_and_tag_name_glob(%s, %s)" % [host_id.inspect, tag_name.inspect])
-        prepare(db, <<-EOS).execute(host_id, tag_name).map { |row| row.first }.join(",")
-          SELECT tags.value FROM hosts_tags
-            INNER JOIN tags ON hosts_tags.tag_id = tags.id
-              WHERE hosts_tags.host_id = ? AND tags.name GLOB ?;
-        EOS
+        q = []
+        q << "SELECT tags.value FROM hosts_tags"
+        q <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
+        q <<     "WHERE hosts_tags.host_id = ? AND tags.name GLOB ?;"
+        prepare(db, q.join(" ")).execute(host_id, tag_name).map { |row| row.first }.join(",")
       end
 
       def select_tag_values_from_hosts_tags_by_host_id_and_tag_name(db, host_id, tag_name)
         logger.debug("select_tag_values_from_hosts_tags_by_host_id_and_tag_name(%s, %s)" % [host_id.inspect, tag_name.inspect])
-        prepare(db, <<-EOS).execute(host_id, tag_name).map { |row| row.first }.join(",")
-          SELECT tags.value FROM hosts_tags
-            INNER JOIN tags ON hosts_tags.tag_id = tags.id
-              WHERE hosts_tags.host_id = ? AND tags.name = ?;
-        EOS
+        q = []
+        q << "SELECT tags.value FROM hosts_tags"
+        q <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
+        q <<     "WHERE hosts_tags.host_id = ? AND tags.name = ?;"
+        prepare(db, q.join(" ")).execute(host_id, tag_name).map { |row| row.first }.join(",")
       end
 
       def select_tag_names_from_hosts_tags_by_host_id(db, host_id)
         logger.debug("select_tag_names_from_hosts_tags_by_host_id(%s)" % [host_id.inspect])
-        prepare(db, <<-EOS).execute(host_id).map { |row| row.first }
-          SELECT DISTINCT tags.name FROM hosts_tags
-            INNER JOIN tags ON hosts_tags.tag_id = tags.id
-              WHERE hosts_tags.host_id = ?;
-        EOS
+        q = []
+        q << "SELECT DISTINCT tags.name FROM hosts_tags"
+        q <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
+        q <<     "WHERE hosts_tags.host_id = ?;"
+        prepare(db, q.join(" ")).execute(host_id).map { |row| row.first }
       end
     end
   end
