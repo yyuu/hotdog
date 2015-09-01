@@ -15,7 +15,8 @@ module Hotdog
         args = optparse.parse(args)
         expression = args.join(" ").strip
         if expression.empty?
-          exit(1)
+          # return everything if given expression is empty
+          expression = "*"
         end
 
         begin
