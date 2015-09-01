@@ -6,20 +6,14 @@ module Hotdog
       def run(args=[])
         args = optparse.parse(args)
         if args.empty?
-          result = execute("SELECT DISTINCT host_id FROM hosts_tags").to_a.reduce(:+)
+          result = execute("SELECT id FROM hosts").to_a.reduce(:+)
         else
           result = args.map { |host_name|
-            q = []
             if glob?(host_name)
-              q << "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags"
-              q <<   "INNER JOIN hosts ON hosts_tags.host_id = hosts.id"
-              q <<     "WHERE hosts.name GLOB ?;"
+              execute("SELECT id FROM hosts WHERE name GLOB ?", [host_name]).to_a.reduce(:+)
             else
-              q << "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags"
-              q <<   "INNER JOIN hosts ON hosts_tags.host_id = hosts.id"
-              q <<     "WHERE hosts.name = ?;"
+              execute("SELECT id FROM hosts WHERE name = ?", [host_name]).to_a.reduce(:+)
             end
-            execute(q.join(" "), [host_name]).map { |row| row.first }
           }.reduce(:+)
         end
         if result && (0 < result.length)
