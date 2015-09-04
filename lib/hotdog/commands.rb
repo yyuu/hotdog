@@ -82,19 +82,16 @@ module Hotdog
             if fields == fields_without_host
               host_names = {}
             else
-              host_names = Hash[execute(<<-EOS % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.to_a }]
-                SELECT id, name FROM hosts
-                  WHERE id IN (%s);
-              EOS
+              host_names = Hash[execute("SELECT id, name FROM hosts WHERE id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.to_a }]
             end
+            q1 = []
+            q1 << "SELECT tags.name, GROUP_CONCAT(tags.value, ',') FROM hosts_tags"
+            q1 <<   "INNER JOIN hosts ON hosts_tags.host_id = hosts.id"
+            q1 <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
+            q1 <<     "WHERE hosts_tags.host_id = ? AND tags.name IN (%s)"
+            q1 <<       "GROUP BY tags.name;"
             result = host_ids.map { |host_id|
-              tag_values = Hash[execute(<<-EOS % fields_without_host.map { "?" }.join(", "), [host_id] + fields_without_host).map { |row| row.to_a }]
-                SELECT tags.name, GROUP_CONCAT(tags.value, ',') FROM hosts_tags
-                  INNER JOIN hosts ON hosts_tags.host_id = hosts.id
-                  INNER JOIN tags ON hosts_tags.tag_id = tags.id
-                    WHERE hosts_tags.host_id = ? AND tags.name IN (%s)
-                      GROUP BY tags.name;
-              EOS
+              tag_values = Hash[execute(q1.join(" ") % fields_without_host.map { "?" }.join(", "), [host_id] + fields_without_host).map { |row| row.to_a }]
               fields.map { |tag_name|
                 if tag_name == "host"
                   host_names.fetch(host_id, "")
@@ -107,41 +104,35 @@ module Hotdog
           else
             if @options[:listing]
               # TODO: should respect `:primary_tag`?
-              fields = execute(<<-EOS % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.first }
-                SELECT DISTINCT tags.name FROM hosts_tags
-                  INNER JOIN tags ON hosts_tags.tag_id = tags.id
-                    WHERE hosts_tags.host_id IN (%s);
-              EOS
-              host_names = Hash[execute(<<-EOS % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.to_a }]
-                SELECT id, name FROM hosts
-                  WHERE id IN (%s);
-              EOS
+              q1 = []
+              q1 << "SELECT DISTINCT tags.name FROM hosts_tags"
+              q1 <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
+              q1 <<     "WHERE hosts_tags.host_id IN (%s);"
+              fields = execute(q1.join(" ") % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.first }
+              host_names = Hash[execute("SELECT id, name FROM hosts WHERE id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.to_a }]
+              q2 = []
+              q2 << "SELECT tags.name, GROUP_CONCAT(tags.value, ',') FROM hosts_tags"
+              q2 <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
+              q2 <<     "WHERE hosts_tags.host_id = ? AND tags.name IN (%s)"
+              q2 <<       "GROUP BY tags.name;"
               result = host_ids.map { |host_id|
-                tag_values = Hash[execute(<<-EOS % fields.map { "?" }.join(", "), [host_id] + fields).map { |row| row.to_a }]
-                  SELECT tags.name, GROUP_CONCAT(tags.value, ',') FROM hosts_tags
-                    INNER JOIN tags ON hosts_tags.tag_id = tags.id
-                      WHERE hosts_tags.host_id = ? AND tags.name IN (%s)
-                        GROUP BY tags.name;
-                EOS
+                tag_values = Hash[execute(q2.join(" ") % fields.map { "?" }.join(", "), [host_id] + fields).map { |row| row.to_a }]
                 [host_names.fetch(host_id, "")] + fields.map { |tag_name| tag_values.fetch(tag_name, "") }
               }
               [result, ["host"] + fields]
             else
               if @options[:primary_tag]
                 fields = [@options[:primary_tag]]
-                result = execute(<<-EOS % host_ids.map { "?" }.join(", "), host_ids + [@options[:primary_tag]]).map { |row| row.to_a }
-                  SELECT tags.value FROM hosts_tags
-                    INNER JOIN hosts ON hosts_tags.host_id = hosts.id
-                    INNER JOIN tags ON hosts_tags.tag_id = tags.id
-                      WHERE hosts_tags.host_id IN (%s) AND tags.name = ?;
-                EOS
+                q1 = []
+                q1 << "SELECT tags.value FROM hosts_tags"
+                q1 <<   "INNER JOIN hosts ON hosts_tags.host_id = hosts.id"
+                q1 <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
+                q1 <<     "WHERE hosts_tags.host_id IN (%s) AND tags.name = ?;"
+                result = execute(q1.join(" ") % host_ids.map { "?" }.join(", "), host_ids + [@options[:primary_tag]]).map { |row| row.to_a }
                 [result, fields]
               else
                 fields = ["host"]
-                result = execute(<<-EOS % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.to_a }
-                  SELECT name FROM hosts
-                    WHERE id IN (%s);
-                EOS
+                result = execute("SELECT name FROM hosts WHERE id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.to_a }
                 [result, fields]
               end
             end
