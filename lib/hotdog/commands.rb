@@ -316,38 +316,6 @@ module Hotdog
         logger.debug("create_index_hosts_tags()")
         db.execute("CREATE UNIQUE INDEX IF NOT EXISTS hosts_tags_host_id_tag_id ON hosts_tags ( host_id, tag_id )")
       end
-
-      def select_name_from_hosts_by_id(db, host_id)
-        logger.debug("select_name_from_hosts_by_id(%s)" % [host_id.inspect])
-        prepare(db, "SELECT name FROM hosts WHERE id = ? LIMIT 1").execute(host_id).map { |row| row.first }.first
-      end
-
-      def select_tag_values_from_hosts_tags_by_host_id_and_tag_name_glob(db, host_id, tag_name)
-        logger.debug("select_tag_values_from_hosts_tags_by_host_id_and_tag_name_glob(%s, %s)" % [host_id.inspect, tag_name.inspect])
-        q = []
-        q << "SELECT tags.value FROM hosts_tags"
-        q <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
-        q <<     "WHERE hosts_tags.host_id = ? AND tags.name GLOB ?;"
-        prepare(db, q.join(" ")).execute(host_id, tag_name).map { |row| row.first }.join(",")
-      end
-
-      def select_tag_values_from_hosts_tags_by_host_id_and_tag_name(db, host_id, tag_name)
-        logger.debug("select_tag_values_from_hosts_tags_by_host_id_and_tag_name(%s, %s)" % [host_id.inspect, tag_name.inspect])
-        q = []
-        q << "SELECT tags.value FROM hosts_tags"
-        q <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
-        q <<     "WHERE hosts_tags.host_id = ? AND tags.name = ?;"
-        prepare(db, q.join(" ")).execute(host_id, tag_name).map { |row| row.first }.join(",")
-      end
-
-      def select_tag_names_from_hosts_tags_by_host_id(db, host_id)
-        logger.debug("select_tag_names_from_hosts_tags_by_host_id(%s)" % [host_id.inspect])
-        q = []
-        q << "SELECT DISTINCT tags.name FROM hosts_tags"
-        q <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
-        q <<     "WHERE hosts_tags.host_id = ?;"
-        prepare(db, q.join(" ")).execute(host_id).map { |row| row.first }
-      end
     end
   end
 end
