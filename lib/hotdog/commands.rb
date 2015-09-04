@@ -103,23 +103,40 @@ module Hotdog
             [result, fields]
           else
             if @options[:listing]
-              # TODO: should respect `:primary_tag`?
               q1 = []
               q1 << "SELECT DISTINCT tags.name FROM hosts_tags"
               q1 <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
               q1 <<     "WHERE hosts_tags.host_id IN (%s);"
-              fields = execute(q1.join(" ") % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.first }
+              if @options[:primary_tag]
+                fields = [
+                  @options[:primary_tag],
+                  "host",
+                ] + execute(q1.join(" ") % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.first }.reject { |tag_name|
+                  tag_name == @options[:primary_tag]
+                }
+              else
+                fields = [
+                  "host",
+                ] + execute(q1.join(" ") % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.first }
+              end
               host_names = Hash[execute("SELECT id, name FROM hosts WHERE id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.to_a }]
               q2 = []
               q2 << "SELECT tags.name, GROUP_CONCAT(tags.value, ',') FROM hosts_tags"
               q2 <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
               q2 <<     "WHERE hosts_tags.host_id = ? AND tags.name IN (%s)"
               q2 <<       "GROUP BY tags.name;"
+              fields_without_host = fields.reject { |tag_name| tag_name == "host" }
               result = host_ids.map { |host_id|
-                tag_values = Hash[execute(q2.join(" ") % fields.map { "?" }.join(", "), [host_id] + fields).map { |row| row.to_a }]
-                [host_names.fetch(host_id, "")] + fields.map { |tag_name| tag_values.fetch(tag_name, "") }
+                tag_values = Hash[execute(q2.join(" ") % fields_without_host.map { "?" }.join(", "), [host_id] + fields_without_host).map { |row| row.to_a }]
+                fields.map { |tag_name|
+                  if tag_name == "host"
+                    host_names.fetch(host_id, "")
+                  else
+                    tag_values.fetch(tag_name, "")
+                  end
+                }
               }
-              [result, ["host"] + fields]
+              [result, fields]
             else
               if @options[:primary_tag]
                 fields = [@options[:primary_tag]]
