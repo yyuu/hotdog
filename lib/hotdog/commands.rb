@@ -195,24 +195,26 @@ module Hotdog
 
           all_tags = get_all_tags()
 
-          known_tags = all_tags.keys.map { |tag| split_tag(tag) }.uniq
-          unless known_tags.empty?
-            prepare(memory_db, "INSERT OR IGNORE INTO tags (name, value) VALUES %s" % known_tags.map { "(?, ?)" }.join(", ")).execute(known_tags)
-          end
+          memory_db.transaction do
+            known_tags = all_tags.keys.map { |tag| split_tag(tag) }.uniq
+            known_tags.each_slice(200) do |known_tags|
+              prepare(memory_db, "INSERT OR IGNORE INTO tags (name, value) VALUES %s" % known_tags.map { "(?, ?)" }.join(", ")).execute(known_tags)
+            end
 
-          known_hosts = all_tags.values.reduce(:+).uniq
-          unless known_hosts.empty?
-            prepare(memory_db, "INSERT OR IGNORE INTO hosts (name) VALUES %s" % known_hosts.map { "(?)" }.join(", ")).execute(known_hosts)
-          end
+            known_hosts = all_tags.values.reduce(:+).uniq
+            known_hosts.each_slice(200) do |known_hosts|
+              prepare(memory_db, "INSERT OR IGNORE INTO hosts (name) VALUES %s" % known_hosts.map { "(?)" }.join(", ")).execute(known_hosts)
+            end
 
-          all_tags.each do |tag, hosts|
-            q = []
-            q << "INSERT OR REPLACE INTO hosts_tags (host_id, tag_id)"
-            q <<   "SELECT host.id, tag.id FROM"
-            q <<     "( SELECT id FROM hosts WHERE name IN (%s) ) AS host,"
-            q <<     "( SELECT id FROM tags WHERE name = ? AND value = ? LIMIT 1 ) AS tag;"
-            unless hosts.empty?
-              prepare(memory_db, q.join(" ") % hosts.map { "?" }.join(", ")).execute(hosts + split_tag(tag))
+            all_tags.each do |tag, hosts|
+              q = []
+              q << "INSERT OR REPLACE INTO hosts_tags (host_id, tag_id)"
+              q <<   "SELECT host.id, tag.id FROM"
+              q <<     "( SELECT id FROM hosts WHERE name IN (%s) ) AS host,"
+              q <<     "( SELECT id FROM tags WHERE name = ? AND value = ? LIMIT 1 ) AS tag;"
+              hosts.each_slice(200) do |hosts|
+                prepare(memory_db, q.join(" ") % hosts.map { "?" }.join(", ")).execute(hosts + split_tag(tag))
+              end
             end
           end
 
@@ -265,13 +267,19 @@ module Hotdog
           create_table_hosts_tags(dst)
 
           hosts = prepare(src, "SELECT id, name FROM hosts").execute().to_a
-          prepare(dst, "INSERT INTO hosts (id, name) VALUES %s" % hosts.map { "(?, ?)" }.join(", ")).execute(hosts) unless hosts.empty?
+          hosts.each_slice(200) do |hosts|
+            prepare(dst, "INSERT INTO hosts (id, name) VALUES %s" % hosts.map { "(?, ?)" }.join(", ")).execute(hosts)
+          end
 
           tags = prepare(src, "SELECT id, name, value FROM tags").execute().to_a
-          prepare(dst, "INSERT INTO tags (id, name, value) VALUES %s" % tags.map { "(?, ?, ?)" }.join(", ")).execute(tags) unless tags.empty?
+          tags.each_slice(200) do |tags|
+            prepare(dst, "INSERT INTO tags (id, name, value) VALUES %s" % tags.map { "(?, ?, ?)" }.join(", ")).execute(tags)
+          end
 
           hosts_tags = prepare(src, "SELECT host_id, tag_id FROM hosts_tags").to_a
-          prepare(dst, "INSERT INTO hosts_tags (host_id, tag_id) VALUES %s" % hosts_tags.map { "(?, ?)" }.join(", ")).execute(hosts_tags) unless hosts_tags.empty?
+          hosts_tags.each_slice(200) do |hosts_tags|
+            prepare(dst, "INSERT INTO hosts_tags (host_id, tag_id) VALUES %s" % hosts_tags.map { "(?, ?)" }.join(", ")).execute(hosts_tags)
+          end
 
           create_index_hosts(dst)
           create_index_tags(dst)
