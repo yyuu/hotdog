@@ -290,9 +290,17 @@ module Hotdog
           when :NOT
             values = @expression.evaluate(environment)
             if values.empty?
-              environment.execute("SELECT DISTINCT host_id FROM hosts_tags").map { |row| row.first }
+              environment.execute("SELECT id FROM hosts").map { |row| row.first }
             else
-              environment.execute("SELECT DISTINCT host_id FROM hosts_tags WHERE host_id NOT IN (%s)" % values.map { "?" }.join(", "), values).map { |row| row.first }
+              # workaround for "too many terms in compound SELECT"
+              sorted = values.sort
+              slice = 200
+              (sorted.first / slice).upto(sorted.last / slice).map { |i|
+                min = slice*i
+                max = slice*(i+1)
+                selected = sorted.select { |n| min <= n and n < max }
+                environment.execute("SELECT id FROM hosts WHERE ? <= id AND id < ? AND id NOT IN (%s)" % selected.map { "?" }.join(", "), [min, max] + selected).map { |row| row.first }
+              }.reduce(:+)
             end
           else
             []

@@ -83,7 +83,11 @@ module Hotdog
             if fields == fields_without_host
               host_names = {}
             else
-              host_names = Hash[execute("SELECT id, name FROM hosts WHERE id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.to_a }]
+              host_names = Hash[
+                host_ids.each_slice(MAX_TERMS).map { |host_ids|
+                  execute("SELECT id, name FROM hosts WHERE id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.to_a }
+                }.reduce(:+)
+              ]
             end
             q1 = []
             q1 << "SELECT tags.name, GROUP_CONCAT(tags.value, ',') FROM hosts_tags"
@@ -92,7 +96,11 @@ module Hotdog
             q1 <<     "WHERE hosts_tags.host_id = ? AND tags.name IN (%s)"
             q1 <<       "GROUP BY tags.name;"
             result = host_ids.map { |host_id|
-              tag_values = Hash[execute(q1.join(" ") % fields_without_host.map { "?" }.join(", "), [host_id] + fields_without_host).map { |row| row.to_a }]
+              tag_values = Hash[
+                fields_without_host.each_slice(MAX_TERMS).map { |fields_without_host|
+                  execute(q1.join(" ") % fields_without_host.map { "?" }.join(", "), [host_id] + fields_without_host).map { |row| row.to_a }
+                }.reduce(:+)
+              ]
               fields.map { |tag_name|
                 if tag_name == "host"
                   host_names.fetch(host_id, "")
@@ -112,15 +120,23 @@ module Hotdog
                 fields = [
                   @options[:primary_tag],
                   "host",
-                ] + execute(q1.join(" ") % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.first }.reject { |tag_name|
-                  tag_name == @options[:primary_tag]
-                }
+                ] + host_ids.each_slice(MAX_TERMS).map { |host_ids|
+                  execute(q1.join(" ") % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.first }.reject { |tag_name|
+                    tag_name == @options[:primary_tag]
+                  }
+                }.reduce(:+)
               else
                 fields = [
                   "host",
-                ] + execute(q1.join(" ") % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.first }
+                ] + host_ids.each_slice(MAX_TERMS).map { |host_ids|
+                  execute(q1.join(" ") % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.first }
+                }.reduce(:+)
               end
-              host_names = Hash[execute("SELECT id, name FROM hosts WHERE id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.to_a }]
+              host_names = Hash[
+                host_ids.each_slice(MAX_TERMS).map { |host_ids|
+                  execute("SELECT id, name FROM hosts WHERE id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.to_a }
+                }.reduce(:+)
+              ]
               q2 = []
               q2 << "SELECT tags.name, GROUP_CONCAT(tags.value, ',') FROM hosts_tags"
               q2 <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
@@ -128,7 +144,11 @@ module Hotdog
               q2 <<       "GROUP BY tags.name;"
               fields_without_host = fields.reject { |tag_name| tag_name == "host" }
               result = host_ids.map { |host_id|
-                tag_values = Hash[execute(q2.join(" ") % fields_without_host.map { "?" }.join(", "), [host_id] + fields_without_host).map { |row| row.to_a }]
+                tag_values = Hash[
+                  fields_without_host.each_slice(MAX_TERMS).map { |fields_without_host|
+                    execute(q2.join(" ") % fields_without_host.map { "?" }.join(", "), [host_id] + fields_without_host).map { |row| row.to_a }
+                  }.reduce(:+)
+                ]
                 fields.map { |tag_name|
                   if tag_name == "host"
                     host_names.fetch(host_id, "")
@@ -146,11 +166,15 @@ module Hotdog
                 q1 <<   "INNER JOIN hosts ON hosts_tags.host_id = hosts.id"
                 q1 <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
                 q1 <<     "WHERE hosts_tags.host_id IN (%s) AND tags.name = ?;"
-                result = execute(q1.join(" ") % host_ids.map { "?" }.join(", "), host_ids + [@options[:primary_tag]]).map { |row| row.to_a }
+                result = host_ids.each_slice(MAX_TERMS).map { |host_ids|
+                  execute(q1.join(" ") % host_ids.map { "?" }.join(", "), host_ids + [@options[:primary_tag]]).map { |row| row.to_a }
+                }.reduce(:+)
                 [result, fields]
               else
                 fields = ["host"]
-                result = execute("SELECT name FROM hosts WHERE id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.to_a }
+                result = host_ids.each_slice(MAX_TERMS).map { |host_ids|
+                  execute("SELECT name FROM hosts WHERE id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.to_a }
+                }.reduce(:+)
                 [result, fields]
               end
             end
