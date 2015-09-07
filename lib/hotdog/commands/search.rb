@@ -242,16 +242,24 @@ module Hotdog
           case @op
           when :AND
             left_values = @left.evaluate(environment)
+            environment.logger.debug("lhs: #{left_values.length} value(s)")
             if left_values.empty?
               []
             else
               right_values = @right.evaluate(environment)
-              (left_values & right_values)
+              environment.logger.debug("rhs: #{right_values.length} value(s)")
+              (left_values & right_values).tap do |values|
+                environment.logger.debug("lhs AND rhs: #{values.length} value(s)")
+              end
             end
           when :OR
             left_values = @left.evaluate(environment)
+            environment.logger.debug("lhs: #{left_values.length} value(s)")
             right_values = @right.evaluate(environment)
-            (left_values | right_values).uniq
+            environment.logger.debug("rhs: #{right_values.length} value(s)")
+            (left_values | right_values).uniq.tap do |values|
+              environment.logger.debug("lhs OR rhs: #{values.length} value(s)")
+            end
           else
             []
           end
@@ -288,19 +296,23 @@ module Hotdog
         def evaluate(environment, options={})
           case @op
           when :NOT
-            values = @expression.evaluate(environment)
+            values = @expression.evaluate(environment).sort
+            environment.logger.debug("expr: #{values.length} value(s)")
             if values.empty?
-              environment.execute("SELECT id FROM hosts").map { |row| row.first }
+              environment.execute("SELECT id FROM hosts").map { |row| row.first }.tap do |values|
+                environment.logger.debug("NOT expr: #{values.length} value(s)")
+              end
             else
               # workaround for "too many terms in compound SELECT"
-              sorted = values.sort
+              min, max = environment.execute("SELECT MIN(id), MAX(id) FROM hosts ORDER BY id LIMIT 1").first.to_a
               slice = 200
-              (sorted.first / slice).upto(sorted.last / slice).map { |i|
-                min = slice*i
-                max = slice*(i+1)
-                selected = sorted.select { |n| min <= n and n < max }
-                environment.execute("SELECT id FROM hosts WHERE ? <= id AND id < ? AND id NOT IN (%s)" % selected.map { "?" }.join(", "), [min, max] + selected).map { |row| row.first }
-              }.reduce(:+)
+              (min / slice).upto(max / slice).map { |i|
+                range = (slice*i)...(slice*(i+1))
+                selected = values.select { |n| range === n }
+                environment.execute("SELECT id FROM hosts WHERE ? <= id AND id < ? AND id NOT IN (%s)" % selected.map { "?" }.join(", "), [range.first, range.last] + selected).map { |row| row.first }
+              }.reduce(:+).tap do |values|
+                environment.logger.debug("NOT expr: #{values.length} value(s)")
+              end
             end
           else
             []
