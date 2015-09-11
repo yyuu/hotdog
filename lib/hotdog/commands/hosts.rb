@@ -8,13 +8,13 @@ module Hotdog
         if args.empty?
           result = execute("SELECT id FROM hosts").to_a.reduce(:+)
         else
-          result = args.map { |host_name|
+          result = args.flat_map { |host_name|
             if glob?(host_name)
               execute("SELECT id FROM hosts WHERE name GLOB ?", [host_name]).to_a.reduce(:+)
             else
               execute("SELECT id FROM hosts WHERE name = ?", [host_name]).to_a.reduce(:+)
             end
-          }.reduce(:+)
+          }
         end
         if result && (0 < result.length)
           result, fields = get_hosts(result)

@@ -85,9 +85,9 @@ module Hotdog
               host_names = {}
             else
               host_names = Hash[
-                host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).map { |host_ids|
+                host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |host_ids|
                   execute("SELECT id, name FROM hosts WHERE id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.to_a }
-                }.reduce(:+)
+                }
               ]
             end
             q1 = []
@@ -98,9 +98,9 @@ module Hotdog
             q1 <<       "GROUP BY tags.name;"
             result = host_ids.map { |host_id|
               tag_values = Hash[
-                fields_without_host.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 1).map { |fields_without_host|
+                fields_without_host.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 1).flat_map { |fields_without_host|
                   execute(q1.join(" ") % fields_without_host.map { "?" }.join(", "), [host_id] + fields_without_host).map { |row| row.to_a }
-                }.reduce(:+)
+                }
               ]
               fields.map { |tag_name|
                 if tag_name == "host"
@@ -121,22 +121,22 @@ module Hotdog
                 fields = [
                   @options[:primary_tag],
                   "host",
-                ] + host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).map { |host_ids|
+                ] + host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |host_ids|
                   execute(q1.join(" ") % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.first }.reject { |tag_name|
                     tag_name == @options[:primary_tag]
                   }
-                }.reduce(:+)
+                }
               else
                 fields = [
                   "host",
-                ] + host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).map { |host_ids|
+                ] + host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |host_ids|
                   execute(q1.join(" ") % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.first }
-                }.reduce(:+)
+                }
               end
               host_names = Hash[
-                host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).map { |host_ids|
+                host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |host_ids|
                   execute("SELECT id, name FROM hosts WHERE id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.to_a }
-                }.reduce(:+)
+                }
               ]
               q2 = []
               q2 << "SELECT tags.name, GROUP_CONCAT(tags.value, ',') FROM hosts_tags"
@@ -146,9 +146,9 @@ module Hotdog
               fields_without_host = fields.reject { |tag_name| tag_name == "host" }
               result = host_ids.map { |host_id|
                 tag_values = Hash[
-                  fields_without_host.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 1).map { |fields_without_host|
+                  fields_without_host.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 1).flat_map { |fields_without_host|
                     execute(q2.join(" ") % fields_without_host.map { "?" }.join(", "), [host_id] + fields_without_host).map { |row| row.to_a }
-                  }.reduce(:+)
+                  }
                 ]
                 fields.map { |tag_name|
                   if tag_name == "host"
@@ -167,15 +167,15 @@ module Hotdog
                 q1 <<   "INNER JOIN hosts ON hosts_tags.host_id = hosts.id"
                 q1 <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
                 q1 <<     "WHERE hosts_tags.host_id IN (%s) AND tags.name = ?;"
-                result = host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 1).map { |host_ids|
+                result = host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 1).flat_map { |host_ids|
                   execute(q1.join(" ") % host_ids.map { "?" }.join(", "), host_ids + [@options[:primary_tag]]).map { |row| row.to_a }
-                }.reduce(:+)
+                }
                 [result, fields]
               else
                 fields = ["host"]
-                result = host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).map { |host_ids|
+                result = host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |host_ids|
                   execute("SELECT name FROM hosts WHERE id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.to_a }
-                }.reduce(:+)
+                }
                 [result, fields]
               end
             end
@@ -270,10 +270,10 @@ module Hotdog
         downtimes = all_downtimes.select { |downtime|
           # active downtimes
           downtime["active"] and ( downtime["start"].nil? or downtime["start"] < now ) and ( downtime["end"].nil? or now <= downtime["end"] )
-        }.map { |downtime|
+        }.flat_map { |downtime|
           # find host scopes
           downtime["scope"].select { |scope| scope.start_with?("host:") }.map { |scope| scope.sub(/\Ahost:/, "") }
-        }.reduce(:+) || []
+        }
         if not downtimes.empty?
           logger.info("ignore host(s) with scheduled downtimes: #{downtimes.inspect}")
         end

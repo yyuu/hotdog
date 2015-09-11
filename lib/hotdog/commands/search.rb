@@ -305,14 +305,14 @@ module Hotdog
             else
               # workaround for "too many terms in compound SELECT"
               min, max = environment.execute("SELECT MIN(id), MAX(id) FROM hosts ORDER BY id LIMIT 1").first.to_a
-              (min / SQLITE_LIMIT_COMPOUND_SELECT).upto(max / SQLITE_LIMIT_COMPOUND_SELECT).map { |i|
+              (min / SQLITE_LIMIT_COMPOUND_SELECT).upto(max / SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |i|
                 range = (SQLITE_LIMIT_COMPOUND_SELECT*i)...(SQLITE_LIMIT_COMPOUND_SELECT*(i+1))
                 selected = values.select { |n| range === n }
                 q = []
                 q << "SELECT id FROM hosts"
                 q <<   "WHERE ? <= id AND id < ? AND id NOT IN (%s)"
                 environment.execute(q.join(" ") % selected.map { "?" }.join(", "), [range.first, range.last] + selected).map { |row| row.first }
-              }.reduce(:+).tap do |values|
+              }.tap do |values|
                 environment.logger.debug("NOT expr: #{values.length} value(s)")
               end
             end

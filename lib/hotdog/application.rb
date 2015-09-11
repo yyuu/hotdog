@@ -155,7 +155,7 @@ module Hotdog
 
     def find_library(dirname, name)
       load_path = $LOAD_PATH.map { |path| File.join(path, dirname) }.select { |path| File.directory?(path) }
-      libraries = load_path.map { |path| Dir.glob(File.join(path, "*.rb")) }.reduce(:+).select { |file| File.file?(file) }
+      libraries = load_path.flat_map { |path| Dir.glob(File.join(path, "*.rb")) }.select { |file| File.file?(file) }
       rbname = "#{name}.rb"
       if library = libraries.find { |file| File.basename(file) == rbname }
         library
