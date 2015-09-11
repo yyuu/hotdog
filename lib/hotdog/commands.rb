@@ -7,11 +7,12 @@ require "sqlite3"
 
 module Hotdog
   module Commands
+    SQLITE_LIMIT_COMPOUND_SELECT = 500 # TODO: get actual value from `sqlite3_limit()`?
+
     class BaseCommand
       PERSISTENT_DB = "persistent.db"
       MASK_DATABASE = 0xffff0000
       MASK_QUERY = 0x0000ffff
-      MAX_TERMS = 200
 
       def initialize(application)
         @application = application
@@ -84,7 +85,7 @@ module Hotdog
               host_names = {}
             else
               host_names = Hash[
-                host_ids.each_slice(MAX_TERMS).map { |host_ids|
+                host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).map { |host_ids|
                   execute("SELECT id, name FROM hosts WHERE id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.to_a }
                 }.reduce(:+)
               ]
@@ -97,7 +98,7 @@ module Hotdog
             q1 <<       "GROUP BY tags.name;"
             result = host_ids.map { |host_id|
               tag_values = Hash[
-                fields_without_host.each_slice(MAX_TERMS).map { |fields_without_host|
+                fields_without_host.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 1).map { |fields_without_host|
                   execute(q1.join(" ") % fields_without_host.map { "?" }.join(", "), [host_id] + fields_without_host).map { |row| row.to_a }
                 }.reduce(:+)
               ]
@@ -120,7 +121,7 @@ module Hotdog
                 fields = [
                   @options[:primary_tag],
                   "host",
-                ] + host_ids.each_slice(MAX_TERMS).map { |host_ids|
+                ] + host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).map { |host_ids|
                   execute(q1.join(" ") % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.first }.reject { |tag_name|
                     tag_name == @options[:primary_tag]
                   }
@@ -128,12 +129,12 @@ module Hotdog
               else
                 fields = [
                   "host",
-                ] + host_ids.each_slice(MAX_TERMS).map { |host_ids|
+                ] + host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).map { |host_ids|
                   execute(q1.join(" ") % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.first }
                 }.reduce(:+)
               end
               host_names = Hash[
-                host_ids.each_slice(MAX_TERMS).map { |host_ids|
+                host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).map { |host_ids|
                   execute("SELECT id, name FROM hosts WHERE id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.to_a }
                 }.reduce(:+)
               ]
@@ -145,7 +146,7 @@ module Hotdog
               fields_without_host = fields.reject { |tag_name| tag_name == "host" }
               result = host_ids.map { |host_id|
                 tag_values = Hash[
-                  fields_without_host.each_slice(MAX_TERMS).map { |fields_without_host|
+                  fields_without_host.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 1).map { |fields_without_host|
                     execute(q2.join(" ") % fields_without_host.map { "?" }.join(", "), [host_id] + fields_without_host).map { |row| row.to_a }
                   }.reduce(:+)
                 ]
@@ -166,13 +167,13 @@ module Hotdog
                 q1 <<   "INNER JOIN hosts ON hosts_tags.host_id = hosts.id"
                 q1 <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
                 q1 <<     "WHERE hosts_tags.host_id IN (%s) AND tags.name = ?;"
-                result = host_ids.each_slice(MAX_TERMS).map { |host_ids|
+                result = host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 1).map { |host_ids|
                   execute(q1.join(" ") % host_ids.map { "?" }.join(", "), host_ids + [@options[:primary_tag]]).map { |row| row.to_a }
                 }.reduce(:+)
                 [result, fields]
               else
                 fields = ["host"]
-                result = host_ids.each_slice(MAX_TERMS).map { |host_ids|
+                result = host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).map { |host_ids|
                   execute("SELECT name FROM hosts WHERE id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.to_a }
                 }.reduce(:+)
                 [result, fields]
@@ -222,12 +223,12 @@ module Hotdog
 
           memory_db.transaction do
             known_tags = all_tags.keys.map { |tag| split_tag(tag) }.uniq
-            known_tags.each_slice(MAX_TERMS) do |known_tags|
+            known_tags.each_slice(SQLITE_LIMIT_COMPOUND_SELECT / 2) do |known_tags|
               prepare(memory_db, "INSERT OR IGNORE INTO tags (name, value) VALUES %s" % known_tags.map { "(?, ?)" }.join(", ")).execute(known_tags)
             end
 
             known_hosts = all_tags.values.reduce(:+).uniq
-            known_hosts.each_slice(MAX_TERMS) do |known_hosts|
+            known_hosts.each_slice(SQLITE_LIMIT_COMPOUND_SELECT) do |known_hosts|
               prepare(memory_db, "INSERT OR IGNORE INTO hosts (name) VALUES %s" % known_hosts.map { "(?)" }.join(", ")).execute(known_hosts)
             end
 
@@ -237,7 +238,7 @@ module Hotdog
               q <<   "SELECT host.id, tag.id FROM"
               q <<     "( SELECT id FROM hosts WHERE name IN (%s) ) AS host,"
               q <<     "( SELECT id FROM tags WHERE name = ? AND value = ? LIMIT 1 ) AS tag;"
-              hosts.each_slice(MAX_TERMS) do |hosts|
+              hosts.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 2) do |hosts|
                 prepare(memory_db, q.join(" ") % hosts.map { "?" }.join(", ")).execute(hosts + split_tag(tag))
               end
             end
@@ -292,17 +293,17 @@ module Hotdog
           create_table_hosts_tags(dst)
 
           hosts = prepare(src, "SELECT id, name FROM hosts").execute().to_a
-          hosts.each_slice(MAX_TERMS) do |hosts|
+          hosts.each_slice(SQLITE_LIMIT_COMPOUND_SELECT / 2) do |hosts|
             prepare(dst, "INSERT INTO hosts (id, name) VALUES %s" % hosts.map { "(?, ?)" }.join(", ")).execute(hosts)
           end
 
           tags = prepare(src, "SELECT id, name, value FROM tags").execute().to_a
-          tags.each_slice(MAX_TERMS) do |tags|
+          tags.each_slice(SQLITE_LIMIT_COMPOUND_SELECT / 3) do |tags|
             prepare(dst, "INSERT INTO tags (id, name, value) VALUES %s" % tags.map { "(?, ?, ?)" }.join(", ")).execute(tags)
           end
 
           hosts_tags = prepare(src, "SELECT host_id, tag_id FROM hosts_tags").to_a
-          hosts_tags.each_slice(MAX_TERMS) do |hosts_tags|
+          hosts_tags.each_slice(SQLITE_LIMIT_COMPOUND_SELECT / 2) do |hosts_tags|
             prepare(dst, "INSERT INTO hosts_tags (host_id, tag_id) VALUES %s" % hosts_tags.map { "(?, ?)" }.join(", ")).execute(hosts_tags)
           end
 
