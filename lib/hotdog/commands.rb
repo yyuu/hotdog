@@ -90,16 +90,15 @@ module Hotdog
                 }
               ]
             end
-            q1 = []
-            q1 << "SELECT tags.name, GROUP_CONCAT(tags.value, ',') FROM hosts_tags"
-            q1 <<   "INNER JOIN hosts ON hosts_tags.host_id = hosts.id"
-            q1 <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
-            q1 <<     "WHERE hosts_tags.host_id = ? AND tags.name IN (%s)"
-            q1 <<       "GROUP BY tags.name;"
+            q1 = "SELECT tags.name, GROUP_CONCAT(tags.value, ',') FROM hosts_tags " \
+                   "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
+                   "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                     "WHERE hosts_tags.host_id = ? AND tags.name IN (%s) " \
+                       "GROUP BY tags.name;"
             result = host_ids.map { |host_id|
               tag_values = Hash[
                 fields_without_host.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 1).flat_map { |fields_without_host|
-                  execute(q1.join(" ") % fields_without_host.map { "?" }.join(", "), [host_id] + fields_without_host).map { |row| row.to_a }
+                  execute(q1 % fields_without_host.map { "?" }.join(", "), [host_id] + fields_without_host).map { |row| row.to_a }
                 }
               ]
               fields.map { |tag_name|
@@ -113,16 +112,15 @@ module Hotdog
             [result, fields]
           else
             if @options[:listing]
-              q1 = []
-              q1 << "SELECT DISTINCT tags.name FROM hosts_tags"
-              q1 <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
-              q1 <<     "WHERE hosts_tags.host_id IN (%s);"
+              q1 = "SELECT DISTINCT tags.name FROM hosts_tags " \
+                     "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                       "WHERE hosts_tags.host_id IN (%s);"
               if @options[:primary_tag]
                 fields = [
                   @options[:primary_tag],
                   "host",
                 ] + host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |host_ids|
-                  execute(q1.join(" ") % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.first }.reject { |tag_name|
+                  execute(q1 % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.first }.reject { |tag_name|
                     tag_name == @options[:primary_tag]
                   }
                 }
@@ -130,7 +128,7 @@ module Hotdog
                 fields = [
                   "host",
                 ] + host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |host_ids|
-                  execute(q1.join(" ") % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.first }
+                  execute(q1 % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.first }
                 }
               end
               host_names = Hash[
@@ -138,16 +136,15 @@ module Hotdog
                   execute("SELECT id, name FROM hosts WHERE id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.to_a }
                 }
               ]
-              q2 = []
-              q2 << "SELECT tags.name, GROUP_CONCAT(tags.value, ',') FROM hosts_tags"
-              q2 <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
-              q2 <<     "WHERE hosts_tags.host_id = ? AND tags.name IN (%s)"
-              q2 <<       "GROUP BY tags.name;"
+              q2 = "SELECT tags.name, GROUP_CONCAT(tags.value, ',') FROM hosts_tags " \
+                     "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                       "WHERE hosts_tags.host_id = ? AND tags.name IN (%s) " \
+                         "GROUP BY tags.name;"
               fields_without_host = fields.reject { |tag_name| tag_name == "host" }
               result = host_ids.map { |host_id|
                 tag_values = Hash[
                   fields_without_host.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 1).flat_map { |fields_without_host|
-                    execute(q2.join(" ") % fields_without_host.map { "?" }.join(", "), [host_id] + fields_without_host).map { |row| row.to_a }
+                    execute(q2 % fields_without_host.map { "?" }.join(", "), [host_id] + fields_without_host).map { |row| row.to_a }
                   }
                 ]
                 fields.map { |tag_name|
@@ -162,13 +159,12 @@ module Hotdog
             else
               if @options[:primary_tag]
                 fields = [@options[:primary_tag]]
-                q1 = []
-                q1 << "SELECT tags.value FROM hosts_tags"
-                q1 <<   "INNER JOIN hosts ON hosts_tags.host_id = hosts.id"
-                q1 <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
-                q1 <<     "WHERE hosts_tags.host_id IN (%s) AND tags.name = ?;"
+                q1 = "SELECT tags.value FROM hosts_tags " \
+                       "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
+                       "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                         "WHERE hosts_tags.host_id IN (%s) AND tags.name = ?;"
                 result = host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 1).flat_map { |host_ids|
-                  execute(q1.join(" ") % host_ids.map { "?" }.join(", "), host_ids + [@options[:primary_tag]]).map { |row| row.to_a }
+                  execute(q1 % host_ids.map { "?" }.join(", "), host_ids + [@options[:primary_tag]]).map { |row| row.to_a }
                 }
                 [result, fields]
               else
@@ -233,13 +229,12 @@ module Hotdog
             end
 
             all_tags.each do |tag, hosts|
-              q = []
-              q << "INSERT OR REPLACE INTO hosts_tags (host_id, tag_id)"
-              q <<   "SELECT host.id, tag.id FROM"
-              q <<     "( SELECT id FROM hosts WHERE name IN (%s) ) AS host,"
-              q <<     "( SELECT id FROM tags WHERE name = ? AND value = ? LIMIT 1 ) AS tag;"
+              q = "INSERT OR REPLACE INTO hosts_tags (host_id, tag_id) " \
+                    "SELECT host.id, tag.id FROM " \
+                      "( SELECT id FROM hosts WHERE name IN (%s) ) AS host, " \
+                      "( SELECT id FROM tags WHERE name = ? AND value = ? LIMIT 1 ) AS tag;"
               hosts.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 2) do |hosts|
-                prepare(memory_db, q.join(" ") % hosts.map { "?" }.join(", ")).execute(hosts + split_tag(tag))
+                prepare(memory_db, q % hosts.map { "?" }.join(", ")).execute(hosts + split_tag(tag))
               end
             end
           end
@@ -314,9 +309,9 @@ module Hotdog
       end
 
       def create_table_hosts(db)
-        q = "CREATE TABLE IF NOT EXISTS hosts (" +
-              "id INTEGER PRIMARY KEY AUTOINCREMENT," +
-              "name VARCHAR(255) NOT NULL COLLATE NOCASE" +
+        q = "CREATE TABLE IF NOT EXISTS hosts ( " \
+              "id INTEGER PRIMARY KEY AUTOINCREMENT, " \
+              "name VARCHAR(255) NOT NULL COLLATE NOCASE " \
             ");"
         logger.debug(q)
         db.execute(q)
@@ -329,10 +324,10 @@ module Hotdog
       end
 
       def create_table_tags(db)
-        q = "CREATE TABLE IF NOT EXISTS tags (" +
-              "id INTEGER PRIMARY KEY AUTOINCREMENT," +
-              "name VARCHAR(200) NOT NULL COLLATE NOCASE," +
-              "value VARCHAR(200) NOT NULL COLLATE NOCASE" +
+        q = "CREATE TABLE IF NOT EXISTS tags ( " \
+              "id INTEGER PRIMARY KEY AUTOINCREMENT, " \
+              "name VARCHAR(200) NOT NULL COLLATE NOCASE, " \
+              "value VARCHAR(200) NOT NULL COLLATE NOCASE " \
             ");"
         logger.debug(q)
         db.execute(q)
@@ -345,9 +340,9 @@ module Hotdog
       end
 
       def create_table_hosts_tags(db)
-        q = "CREATE TABLE IF NOT EXISTS hosts_tags (" +
-              "host_id INTEGER NOT NULL," +
-              "tag_id INTEGER NOT NULL" +
+        q = "CREATE TABLE IF NOT EXISTS hosts_tags ( " \
+              "host_id INTEGER NOT NULL, " \
+              "tag_id INTEGER NOT NULL " \
             ");"
         logger.debug(q)
         db.execute(q)

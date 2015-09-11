@@ -308,10 +308,9 @@ module Hotdog
               (min / SQLITE_LIMIT_COMPOUND_SELECT).upto(max / SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |i|
                 range = (SQLITE_LIMIT_COMPOUND_SELECT*i)...(SQLITE_LIMIT_COMPOUND_SELECT*(i+1))
                 selected = values.select { |n| range === n }
-                q = []
-                q << "SELECT id FROM hosts"
-                q <<   "WHERE ? <= id AND id < ? AND id NOT IN (%s)"
-                environment.execute(q.join(" ") % selected.map { "?" }.join(", "), [range.first, range.last] + selected).map { |row| row.first }
+                q = "SELECT id FROM hosts " \
+                      "WHERE ? <= id AND id < ? AND id NOT IN (%s);"
+                environment.execute(q % selected.map { "?" }.join(", "), [range.first, range.last] + selected).map { |row| row.first }
               }.tap do |values|
                 environment.logger.debug("NOT expr: #{values.length} value(s)")
               end
@@ -356,33 +355,32 @@ module Hotdog
         end
 
         def evaluate(environment, options={})
-          q = []
           if identifier?
             if attribute?
               case identifier
               when /\Ahost\z/i
-                q << "SELECT hosts.id FROM hosts"
-                q <<   "WHERE hosts.name = ?;"
-                values = environment.execute(q.join(" "), [attribute]).map { |row| row.first }
+                q = "SELECT hosts.id FROM hosts " \
+                      "WHERE hosts.name = ?;"
+                values = environment.execute(q, [attribute]).map { |row| row.first }
               else
-                q << "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags"
-                q <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
-                q <<     "WHERE tags.name = ? AND tags.value = ?;"
-                values = environment.execute(q.join(" "), [identifier, attribute]).map { |row| row.first }
+                q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
+                      "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                        "WHERE tags.name = ? AND tags.value = ?;"
+                values = environment.execute(q, [identifier, attribute]).map { |row| row.first }
               end
             else
-              q << "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags"
-              q <<   "INNER JOIN hosts ON hosts_tags.host_id = hosts.id"
-              q <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
-              q <<     "WHERE hosts.name = ? OR tags.name = ? OR tags.value = ?;"
-              values = environment.execute(q.join(" "), [identifier, identifier, identifier]).map { |row| row.first }
+              q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
+                    "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
+                    "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                      "WHERE hosts.name = ? OR tags.name = ? OR tags.value = ?;"
+              values = environment.execute(q, [identifier, identifier, identifier]).map { |row| row.first }
             end
           else
             if attribute?
-               q << "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags"
-               q <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
-               q <<     "WHERE tags.value = ?;"
-              values = environment.execute(q.join(" "), [attribute]).map { |row| row.first }
+               q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
+                     "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                       "WHERE tags.value = ?;"
+              values = environment.execute(q, [attribute]).map { |row| row.first }
             else
               return []
             end
@@ -433,33 +431,32 @@ module Hotdog
 
       class TagGlobExpressionNode < TagExpressionNode
         def evaluate(environment, options={})
-          q = []
           if identifier?
             if attribute?
               case identifier
               when /\Ahost\z/i
-                q << "SELECT hosts.id FROM hosts"
-                q <<   "WHERE hosts.name GLOB ?;"
-                values = environment.execute(q.join(" "), [attribute]).map { |row| row.first }
+                q = "SELECT hosts.id FROM hosts " \
+                      "WHERE hosts.name GLOB ?;"
+                values = environment.execute(q, [attribute]).map { |row| row.first }
               else
-                q << "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags"
-                q <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
-                q <<     "WHERE tags.name GLOB ? AND tags.value GLOB ?;"
-                values = environment.execute(q.join(" "), [identifier, attribute]).map { |row| row.first }
+                q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
+                      "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                        "WHERE tags.name GLOB ? AND tags.value GLOB ?;"
+                values = environment.execute(q, [identifier, attribute]).map { |row| row.first }
               end
             else
-              q << "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags"
-              q <<   "INNER JOIN hosts ON hosts_tags.host_id = hosts.id"
-              q <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
-              q <<     "WHERE hosts.name GLOB ? OR tags.name GLOB ? OR tags.value GLOB ?;"
-              values = environment.execute(q.join(" "), [identifier, identifier, identifier]).map { |row| row.first }
+              q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
+                    "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
+                    "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                      "WHERE hosts.name GLOB ? OR tags.name GLOB ? OR tags.value GLOB ?;"
+              values = environment.execute(q, [identifier, identifier, identifier]).map { |row| row.first }
             end
           else
             if attribute?
-              q << "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags"
-              q <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
-              q <<     "WHERE tags.value GLOB ?;"
-              values = environment.execute(q.join(" "), [attribute]).map { |row| row.first }
+              q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
+                    "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                      "WHERE tags.value GLOB ?;"
+              values = environment.execute(q, [attribute]).map { |row| row.first }
             else
               return []
             end
@@ -480,33 +477,32 @@ module Hotdog
         end
 
         def evaluate(environment, options={})
-          q = []
           if identifier?
             if attribute?
               case identifier
               when /\Ahost\z/i
-                q << "SELECT hosts.id FROM hosts"
-                q <<   "WHERE hosts.name REGEXP ?;"
-                values = environment.execute(q.join(" "), [attribute]).map { |row| row.first }
+                q = "SELECT hosts.id FROM hosts " \
+                      "WHERE hosts.name REGEXP ?;"
+                values = environment.execute(q, [attribute]).map { |row| row.first }
               else
-                q << "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags"
-                q <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
-                q <<     "WHERE tags.name REGEXP ? AND tags.value REGEXP ?;"
-                values = environment.execute(q.join(" "), [identifier, attribute]).map { |row| row.first }
+                q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
+                      "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                        "WHERE tags.name REGEXP ? AND tags.value REGEXP ?;"
+                values = environment.execute(q, [identifier, attribute]).map { |row| row.first }
               end
             else
-              q << "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags"
-              q <<   "INNER JOIN hosts ON hosts_tags.host_id = hosts.id"
-              q <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
-              q <<     "WHERE hosts.name REGEXP ? OR tags.name REGEXP ? OR tags.value REGEXP ?;"
-              values = environment.execute(q.join(" "), [identifier, identifier, identifier]).map { |row| row.first }
+              q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
+                    "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
+                    "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                      "WHERE hosts.name REGEXP ? OR tags.name REGEXP ? OR tags.value REGEXP ?;"
+              values = environment.execute(q, [identifier, identifier, identifier]).map { |row| row.first }
             end
           else
             if attribute?
-              q << "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags"
-              q <<   "INNER JOIN tags ON hosts_tags.tag_id = tags.id"
-              q <<     "WHERE tags.value REGEXP ?;"
-              values = environment.execute(q.join(" "), [attribute]).map { |row| row.first }
+              q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
+                    "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                      "WHERE tags.value REGEXP ?;"
+              values = environment.execute(q, [attribute]).map { |row| row.first }
             else
               return []
             end
