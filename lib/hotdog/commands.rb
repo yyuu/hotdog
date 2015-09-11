@@ -314,49 +314,49 @@ module Hotdog
       end
 
       def create_table_hosts(db)
-        logger.debug("create_table_hosts()")
-        q = []
-        q << "CREATE TABLE IF NOT EXISTS hosts ("
-        q <<   "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-        q <<   "name VARCHAR(255) NOT NULL COLLATE NOCASE"
-        q << ");"
-        db.execute(q.join(" "))
+        q = "CREATE TABLE IF NOT EXISTS hosts (" +
+              "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+              "name VARCHAR(255) NOT NULL COLLATE NOCASE" +
+            ");"
+        logger.debug(q)
+        db.execute(q)
       end
 
       def create_index_hosts(db)
-        logger.debug("create_index_hosts()")
-        db.execute("CREATE UNIQUE INDEX IF NOT EXISTS hosts_name ON hosts ( name )")
+        q = "CREATE UNIQUE INDEX IF NOT EXISTS hosts_name ON hosts ( name );"
+        logger.debug(q)
+        db.execute(q)
       end
 
       def create_table_tags(db)
-        logger.debug("create_table_tags()")
-        q = []
-        q << "CREATE TABLE IF NOT EXISTS tags ("
-        q <<   "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-        q <<   "name VARCHAR(200) NOT NULL COLLATE NOCASE,"
-        q <<   "value VARCHAR(200) NOT NULL COLLATE NOCASE"
-        q << ");"
-        db.execute(q.join(" "))
+        q = "CREATE TABLE IF NOT EXISTS tags (" +
+              "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+              "name VARCHAR(200) NOT NULL COLLATE NOCASE," +
+              "value VARCHAR(200) NOT NULL COLLATE NOCASE" +
+            ");"
+        logger.debug(q)
+        db.execute(q)
       end
 
       def create_index_tags(db)
-        logger.debug("create_index_tags()")
-        db.execute("CREATE UNIQUE INDEX IF NOT EXISTS tags_name_value ON tags ( name, value )")
+        q = "CREATE UNIQUE INDEX IF NOT EXISTS tags_name_value ON tags ( name, value );"
+        logger.debug(q)
+        db.execute(q)
       end
 
       def create_table_hosts_tags(db)
-        logger.debug("create_table_hosts_tags()")
-        q = []
-        q << "CREATE TABLE IF NOT EXISTS hosts_tags ("
-        q <<   "host_id INTEGER NOT NULL,"
-        q <<   "tag_id INTEGER NOT NULL"
-        q << ");"
-        db.execute(q.join(" "))
+        q = "CREATE TABLE IF NOT EXISTS hosts_tags (" +
+              "host_id INTEGER NOT NULL," +
+              "tag_id INTEGER NOT NULL" +
+            ");"
+        logger.debug(q)
+        db.execute(q)
       end
 
       def create_index_hosts_tags(db)
-        logger.debug("create_index_hosts_tags()")
-        db.execute("CREATE UNIQUE INDEX IF NOT EXISTS hosts_tags_host_id_tag_id ON hosts_tags ( host_id, tag_id )")
+        q = "CREATE UNIQUE INDEX IF NOT EXISTS hosts_tags_host_id_tag_id ON hosts_tags ( host_id, tag_id );"
+        logger.debug(q)
+        db.execute(q)
       end
     end
   end
