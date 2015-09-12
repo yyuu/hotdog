@@ -235,7 +235,7 @@ describe "parser" do
   end
 
   it "parses 'not foo and bar'" do
-    expect(cmd.parse("not foo and bar")).to eq({left: {unary_op: "not", expression: {identifier: "foo"}}, binary_op: "and", right: {identifier: "bar"}})
+    expect(cmd.parse("not foo and bar")).to eq({unary_op: "not", expression: {left: {identifier: "foo"}, binary_op: "and", right: {identifier: "bar"}}})
   end
 
   it "parses '! foo and bar'" do
@@ -243,7 +243,7 @@ describe "parser" do
   end
 
   it "parses 'not foo && bar'" do
-    expect(cmd.parse("not foo && bar")).to eq({left: {unary_op: "not", expression: {identifier: "foo"}}, binary_op: "&&", right: {identifier: "bar"}})
+    expect(cmd.parse("not foo && bar")).to eq({unary_op: "not", expression: {left: {identifier: "foo"}, binary_op: "&&", right: {identifier: "bar"}}})
   end
 
   it "parses '! foo && bar'" do

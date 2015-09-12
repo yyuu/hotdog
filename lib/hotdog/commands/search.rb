@@ -79,36 +79,45 @@ module Hotdog
       class ExpressionParser < Parslet::Parser
         root(:expression)
         rule(:expression) {
-          ( binary_expression \
-          | term \
+          ( expression0 \
+          )
+        }
+        rule(:expression0) {
+          ( expression1.as(:left) >> spacing.maybe >> binary_op.as(:binary_op) >> spacing.maybe >> expression.as(:right) \
+          | expression1 \
+          )
+        }
+        rule(:expression1) {
+          ( unary_op.as(:unary_op) >> spacing.maybe >> expression.as(:expression) \
+          | expression2 \
+          )
+        }
+        rule(:expression2) {
+          ( expression3.as(:left) >> spacing.maybe.as(:binary_op) >> expression.as(:right) \
+          | expression3 \
+          )
+        }
+        rule(:expression3) {
+          ( expression4.as(:left) >> spacing.maybe >> (str('&') >> str('&').maybe).as(:binary_op) >> spacing.maybe >> expression.as(:right) \
+          | expression4.as(:left) >> spacing.maybe >> (str('|') >> str('|').maybe).as(:binary_op) >> spacing.maybe >> expression.as(:right) \
+          | expression4 \
+          )
+        }
+        rule(:expression4) {
+          ( str('!').as(:unary_op) >> spacing.maybe >> atom.as(:expression) \
+          | str('~').as(:unary_op) >> spacing.maybe >> atom.as(:expression) \
+          | str('!').as(:unary_op) >> spacing.maybe >> expression.as(:expression) \
+          | str('~').as(:unary_op) >> spacing.maybe >> expression.as(:expression) \
+          | atom \
           )
         }
         rule(:binary_op) {
-          ( str('&') >> str('&').maybe \
-          | str('|') >> str('|').maybe \
-          | match('[Aa]') >> match('[Nn]') >> match('[Dd]') \
+          ( match('[Aa]') >> match('[Nn]') >> match('[Dd]') \
           | match('[Oo]') >> match('[Rr]') \
           )
         }
-        rule(:binary_expression) {
-          ( term.as(:left) >> spacing.maybe >> binary_op.as(:binary_op) >> spacing.maybe >> expression.as(:right) \
-          | term.as(:left) >> spacing.maybe.as(:binary_op) >> expression.as(:right) \
-          )
-        }
         rule(:unary_op) {
-          ( str('!') \
-          | str('~') \
-          | match('[Nn]') >> match('[Oo]') >> match('[Tt]') \
-          )
-        }
-        rule(:unary_expression) {
-          ( spacing.maybe >> unary_op.as(:unary_op) >> term.as(:expression) \
-          | spacing.maybe >> unary_op.as(:unary_op) >> expression.as(:expression) \
-          )
-        }
-        rule(:term) {
-          ( unary_expression \
-          | atom \
+          ( match('[Nn]') >> match('[Oo]') >> match('[Tt]') \
           )
         }
         rule(:atom) {
@@ -137,11 +146,11 @@ module Hotdog
           )
         }
         rule(:identifier_glob) {
-          ( unary_op.absent? >> binary_op.absent? >> identifier.repeat(0) >> (glob >> identifier.maybe).repeat(1) \
+          ( binary_op.absent? >> unary_op.absent? >> identifier.repeat(0) >> (glob >> identifier.maybe).repeat(1) \
           )
         }
         rule(:identifier) {
-          ( unary_op.absent? >> binary_op.absent? >> match('[A-Za-z]') >> match('[-./0-9A-Z_a-z]').repeat(0) \
+          ( binary_op.absent? >> unary_op.absent? >> match('[A-Za-z]') >> match('[-./0-9A-Z_a-z]').repeat(0) \
           )
         }
         rule(:separator) {
@@ -154,11 +163,11 @@ module Hotdog
           )
         }
         rule(:attribute_glob) {
-          ( unary_op.absent? >> binary_op.absent? >> attribute.repeat(0) >> (glob >> attribute.maybe).repeat(1) \
+          ( binary_op.absent? >> unary_op.absent? >> attribute.repeat(0) >> (glob >> attribute.maybe).repeat(1) \
           )
         }
         rule(:attribute) {
-          ( unary_op.absent? >> binary_op.absent? >> match('[-./0-9:A-Z_a-z]').repeat(1) \
+          ( binary_op.absent? >> unary_op.absent? >> match('[-./0-9:A-Z_a-z]').repeat(1) \
           )
         }
         rule(:glob) {

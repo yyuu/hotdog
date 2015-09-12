@@ -100,24 +100,33 @@ $ hotdog ssh availability-zone:us-east-1b and 'name:web-*' -t public_ipv4 -u use
 Acceptable expressions in pseudo BNF.
 
 ```
-expression: binary_expression
-          | term
+expression: expression0
           ;
 
-binary_expression: term "&&" term
-                 | term "||" term
-                 | term "and" term
-                 | term "or" term
-                 ;
+expression0: expression1 "and" expression
+           | expression1 "or" expression
+           | expression1
+           ;
 
-unary_expression: '!' expression
-                | '~' expression
-                | "not" expression
-                ;
+expression1: "not" expression
+           | expression2
+           ;
 
-term: unary_expression
-    | atom
-    ;
+expression2: expression3 expression
+           | expression3
+           ;
+
+expression3: expression4 "&&" expression
+           | expression4 "||" expression
+           | expression4
+           ;
+
+expression4: '!' atom
+           | '~' atom
+           | '!' expression
+           | '~' expression
+           | atom
+           ;
 
 atom: '(' expression ')'
     | IDENTIFIER separator ATTRIBUTE
