@@ -80,36 +80,7 @@ module Hotdog
               tag_name, tag_value = split_tag(tag)
               tag_name
             }
-            fields_without_host = fields.reject { |tag_name| tag_name == "host" }
-            if fields == fields_without_host
-              host_names = {}
-            else
-              host_names = Hash[
-                host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |host_ids|
-                  execute("SELECT id, name FROM hosts WHERE id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.to_a }
-                }
-              ]
-            end
-            q1 = "SELECT tags.name, GROUP_CONCAT(tags.value, ',') FROM hosts_tags " \
-                   "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
-                   "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                     "WHERE hosts_tags.host_id = ? AND tags.name IN (%s) " \
-                       "GROUP BY tags.name;"
-            result = host_ids.map { |host_id|
-              tag_values = Hash[
-                fields_without_host.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 1).flat_map { |fields_without_host|
-                  execute(q1 % fields_without_host.map { "?" }.join(", "), [host_id] + fields_without_host).map { |row| row.to_a }
-                }
-              ]
-              fields.map { |tag_name|
-                if tag_name == "host"
-                  host_names.fetch(host_id, "")
-                else
-                  tag_values.fetch(tag_name, "")
-                end
-              }
-            }
-            [result, fields]
+            get_hosts_fields(host_ids, fields)
           else
             if @options[:listing]
               q1 = "SELECT DISTINCT tags.name FROM hosts_tags " \
@@ -124,58 +95,59 @@ module Hotdog
                     tag_name == @options[:primary_tag]
                   }
                 }
+                get_hosts_fields(host_ids, fields)
               else
                 fields = [
                   "host",
                 ] + host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |host_ids|
                   execute(q1 % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.first }
                 }
+                get_hosts_fields(host_ids, fields)
               end
-              host_names = Hash[
-                host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |host_ids|
-                  execute("SELECT id, name FROM hosts WHERE id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.to_a }
-                }
-              ]
-              q2 = "SELECT tags.name, GROUP_CONCAT(tags.value, ',') FROM hosts_tags " \
-                     "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                       "WHERE hosts_tags.host_id = ? AND tags.name IN (%s) " \
-                         "GROUP BY tags.name;"
-              fields_without_host = fields.reject { |tag_name| tag_name == "host" }
-              result = host_ids.map { |host_id|
-                tag_values = Hash[
-                  fields_without_host.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 1).flat_map { |fields_without_host|
-                    execute(q2 % fields_without_host.map { "?" }.join(", "), [host_id] + fields_without_host).map { |row| row.to_a }
-                  }
-                ]
-                fields.map { |tag_name|
-                  if tag_name == "host"
-                    host_names.fetch(host_id, "")
-                  else
-                    tag_values.fetch(tag_name, "")
-                  end
-                }
-              }
-              [result, fields]
             else
               if @options[:primary_tag]
-                fields = [@options[:primary_tag]]
-                q1 = "SELECT tags.value FROM hosts_tags " \
-                       "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
-                       "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                         "WHERE hosts_tags.host_id IN (%s) AND tags.name = ?;"
-                result = host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 1).flat_map { |host_ids|
-                  execute(q1 % host_ids.map { "?" }.join(", "), host_ids + [@options[:primary_tag]]).map { |row| row.to_a }
-                }
-                [result, fields]
+                get_hosts_fields(host_ids, [@options[:primary_tag]])
               else
-                fields = ["host"]
-                result = host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |host_ids|
-                  execute("SELECT name FROM hosts WHERE id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.to_a }
-                }
-                [result, fields]
+                get_hosts_fields(host_ids, ["host"])
               end
             end
           end
+        end
+      end
+
+      def get_hosts_fields(host_ids, fields)
+        if fields.empty?
+          [[], fields]
+        else
+          fields_without_host = fields.reject { |tag_name| tag_name == "host" }
+          if fields == fields_without_host
+            host_names = {}
+          else
+            host_names = Hash[
+              host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |host_ids|
+                execute("SELECT id, name FROM hosts WHERE id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.to_a }
+              }
+            ]
+          end
+          q1 = "SELECT tags.name, GROUP_CONCAT(tags.value, ',') FROM hosts_tags " \
+                 "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                   "WHERE hosts_tags.host_id = ? AND tags.name IN (%s) " \
+                     "GROUP BY tags.name;"
+          result = host_ids.map { |host_id|
+            tag_values = Hash[
+              fields_without_host.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 1).flat_map { |fields_without_host|
+                execute(q1 % fields_without_host.map { "?" }.join(", "), [host_id] + fields_without_host).map { |row| row.to_a }
+              }
+            ]
+            fields.map { |tag_name|
+              if tag_name == "host"
+                host_names.fetch(host_id, "")
+              else
+                tag_values.fetch(tag_name, "")
+              end
+            }
+          }
+          [result, fields]
         end
       end
 
