@@ -98,8 +98,10 @@ module Hotdog
           )
         }
         rule(:expression3) {
-          ( expression4.as(:left) >> spacing.maybe >> (str('&') >> str('&').maybe).as(:binary_op) >> spacing.maybe >> expression.as(:right) \
-          | expression4.as(:left) >> spacing.maybe >> (str('|') >> str('|').maybe).as(:binary_op) >> spacing.maybe >> expression.as(:right) \
+          ( expression4.as(:left) >> spacing.maybe >> str('&&').as(:binary_op) >> spacing.maybe >> expression.as(:right) \
+          | expression4.as(:left) >> spacing.maybe >> str('||').as(:binary_op) >> spacing.maybe >> expression.as(:right) \
+          | expression4.as(:left) >> spacing.maybe >> str('&').as(:binary_op) >> spacing.maybe >> expression.as(:right) \
+          | expression4.as(:left) >> spacing.maybe >> str('|').as(:binary_op) >> spacing.maybe >> expression.as(:right) \
           | expression4 \
           )
         }
@@ -112,12 +114,12 @@ module Hotdog
           )
         }
         rule(:binary_op) {
-          ( match('[Aa]') >> match('[Nn]') >> match('[Dd]') \
-          | match('[Oo]') >> match('[Rr]') \
+          ( str('and') \
+          | str('or') \
           )
         }
         rule(:unary_op) {
-          ( match('[Nn]') >> match('[Oo]') >> match('[Tt]') \
+          ( str('not') \
           )
         }
         rule(:atom) {
