@@ -252,6 +252,14 @@ module Hotdog
         [tag_name, tag_value || ""]
       end
 
+      def join_tag(tag_name, tag_value)
+        if tag_value.to_s.empty?
+          tag_name
+        else
+          "#{tag_name}:#{tag_value}"
+        end
+      end
+
       def copy_db(src, dst)
         # create index later for better insert performance
         dst.transaction do

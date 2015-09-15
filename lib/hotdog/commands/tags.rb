@@ -5,46 +5,40 @@ module Hotdog
     class Tags < BaseCommand
       def run(args=[])
         args = optparse.parse(args)
-        if 0 < args.length
-          fields = args.map { |tag|
-            tag_name, tag_value = split_tag(tag)
-            tag_name
-          }
-          result1 = args.map { |tag|
-            tag_name, tag_value = split_tag(tag)
-            if glob?(tag_name)
-              if tag_value.empty?
-                execute("SELECT DISTINCT value FROM tags WHERE name GLOB ?", [tag_name]).map { |row| row.join(",") }
-              else
-                if glob?(tag_value)
-                  execute("SELECT DISTINCT value FROM tags WHERE name GLOB ? AND value GLOB ?", [tag_name, tag_value]).map { |row| row.join(",") }
-                else
-                  execute("SELECT DISTINCT value FROM tags WHERE name GLOB ? AND value = ?", [tag_name, tag_value]).map { |row| row.join(",") }
-                end
-              end
-            else
-              if tag_value.empty?
-                execute("SELECT DISTINCT value FROM tags WHERE name = ?", [tag_name]).map { |row| row.join(",") }
-              else
-                if glob?(tag_value)
-                  execute("SELECT DISTINCT value FROM tags WHERE name = ? AND value GLOB ?", [tag_name, tag_value]).map { |row| row.join(",") }
-                else
-                  execute("SELECT DISTINCT value FROM tags WHERE name = ? AND value = ?", [tag_name, tag_value]).map { |row| row.join(",") }
-                end
-              end
-            end
-          }
-          result = (0...result1.reduce(0) { |max, values| [max, values.length].max }).map { |field_index|
-            result1.map { |values| values[field_index] }
-          }
+        if args.empty?
+          result = execute("SELECT name, value FROM tags").map { |name, value| [join_tag(name, value)] }
+          show_tags(result)
         else
-          fields = ["tag"]
-          result = execute("SELECT DISTINCT name, value FROM tags").map { |name, value| [0 < value.length ? "#{name}:#{value}" : name] }
+          tags = args.map { |tag| split_tag(tag) }
+          if tags.all? { |tag_name, tag_value| tag_value.empty? }
+            result = tags.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |tags|
+              q = "SELECT value FROM tags " \
+                    "WHERE %s;" % tags.map { |tag_name, tag_value| glob?(tag_name) ? "name GLOB ?" : "name = ?" }.join(" OR ")
+              execute(q, tags.map { |tag_name, tag_value| tag_name }).map { |value| [value] }
+            }
+          else
+            result = tags.each_slice(SQLITE_LIMIT_COMPOUND_SELECT / 2).flat_map { |tags|
+              q = "SELECT value FROM tags " \
+                    "WHERE %s;" % tags.map { |tag_name, tag_value| (glob?(tag_name) or glob?(tag_value)) ?  "( name GLOB ? AND value GLOB ? )" : "( name = ? AND value = ? )" }.join(" OR ")
+              execute(q, tags).map { |value| [value] }
+            }
+          end
+          if result.empty?
+            STDERR.puts("no match found: #{args.join(" ")}")
+            exit(1)
+          else
+            show_tags(result)
+            logger.info("found %d tag(s)." % result.length)
+            if result.length < args.length
+              STDERR.puts("insufficient result: #{args.join(" ")}")
+              exit(1)
+            end
+          end
         end
-        if 0 < result.length
-          STDOUT.print(format(result, fields: fields))
-          logger.info("found %d tag(s)." % result.length)
-        end
+      end
+
+      def show_tags(tags)
+        STDOUT.print(format(tags, fields: ["tag"]))
       end
     end
   end
