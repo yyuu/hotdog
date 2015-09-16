@@ -114,12 +114,15 @@ module Hotdog
           )
         }
         rule(:binary_op) {
-          ( str('and') \
+          ( str('AND') \
+          | str('OR') \
+          | str('and') \
           | str('or') \
           )
         }
         rule(:unary_op) {
-          ( str('not') \
+          ( str('NOT') \
+          | str('not') \
           )
         }
         rule(:atom) {
