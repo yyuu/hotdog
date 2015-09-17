@@ -324,29 +324,44 @@ module Hotdog
         def optimize(options={})
           @left = @left.optimize(options)
           @right = @right.optimize(options)
-          optimized = @left == @right ? @left : self
-          if TagExpressionNode === @left and TagExpressionNode === @right
-            lhs = @left.plan(options)
-            rhs = @right.plan(options)
-            case op
-            when :AND
-              q = "SELECT host_id FROM ( #{lhs[0].sub(/\s*;\s*\z/, "")} ) " \
-                    "INTERSECT #{rhs[0].sub(/\s*;\s*\z/, "")};"
-              QueryExpressionNode.new(q, lhs[1] + rhs[1], fallback: self)
-            when :OR
-              q = "SELECT host_id FROM ( #{lhs[0].sub(/\s*;\s*\z/, "")} ) " \
-                    "UNION #{rhs[0].sub(/\s*;\s*\z/, "")};"
-              QueryExpressionNode.new(q, lhs[1] + rhs[1], fallback: self)
-            else
-              optimized
-            end
+          case op
+          when :AND
+            optimize1(options)
+          when :OR
+            optimize1(options)
           else
-            optimized
+            self
           end
         end
 
         def ==(other)
           self.class === other and @op == other.op and @left == other.left and @right == other.right
+        end
+
+        private
+        def optimize1(options)
+          if left == right
+            left
+          else
+            if TagExpressionNode === left and TagExpressionNode === right
+              lhs = left.plan(options)
+              rhs = right.plan(options)
+              case op
+              when :AND
+                q = "SELECT host_id FROM ( #{lhs[0].sub(/\s*;\s*\z/, "")} ) " \
+                      "INTERSECT #{rhs[0].sub(/\s*;\s*\z/, "")};"
+                QueryExpressionNode.new(q, lhs[1] + rhs[1], fallback: self)
+              when :OR
+                q = "SELECT host_id FROM ( #{lhs[0].sub(/\s*;\s*\z/, "")} ) " \
+                      "UNION #{rhs[0].sub(/\s*;\s*\z/, "")};"
+                QueryExpressionNode.new(q, lhs[1] + rhs[1], fallback: self)
+              else
+                self
+              end
+            else
+              self
+            end
+          end
         end
       end
 
@@ -392,28 +407,37 @@ module Hotdog
 
         def optimize(options={})
           @expression = @expression.optimize(options)
-          if UnaryExpressionNode === @expression and @op == :NOT and @expression.op == :NOT
-            optimized = @expression.expression
+          case op
+          when :NOT
+            optimize1(options)
           else
-            optimized = self
-          end
-          if TagExpressionNode === @expression
-            expr = @expression.plan(options)
-            case op
-            when :NOT
-              q = "SELECT id AS host_id FROM hosts " \
-                    "EXCEPT #{expr[0].sub(/\s*;\s*\z/, "")};"
-              QueryExpressionNode.new(q, expr[1])
-            else
-              optimized
-            end
-          else
-            optimized
+            self
           end
         end
 
         def ==(other)
           self.class === other and @op == other.op and @expression == other.expression
+        end
+
+        private
+        def optimize1(options={})
+          case op
+          when :NOT
+            if UnaryExpressionNode === expression and expression.op == :NOT
+              expression.expression
+            else
+              if TagExpressionNode === expression
+                expr = expression.plan(options)
+                q = "SELECT id AS host_id FROM hosts " \
+                      "EXCEPT #{expr[0].sub(/\s*;\s*\z/, "")};"
+                QueryExpressionNode.new(q, expr[1])
+              else
+                self
+              end
+            end
+          else
+            self
+          end
         end
       end
 
