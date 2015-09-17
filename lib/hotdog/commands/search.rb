@@ -303,14 +303,12 @@ module Hotdog
             left_values = @left.evaluate(environment, options).tap do |values|
               environment.logger.debug("lhs: #{values.length} value(s)")
             end
+            right_values = @right.evaluate(environment, options).tap do |values|
+              environment.logger.debug("rhs: #{values.length} value(s)")
+            end
             if left_values.empty?
-              right_values = @right.evaluate(environment, options).tap do |values|
-                environment.logger.debug("rhs: #{values.length} value(s)")
-              end
+              right_values
             else
-              right_values = @right.evaluate(environment, options).tap do |values|
-                environment.logger.debug("rhs: #{values.length} value(s)")
-              end
               if right_values.empty?
                 []
               else
