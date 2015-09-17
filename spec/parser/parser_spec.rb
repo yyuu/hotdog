@@ -15,15 +15,15 @@ describe "parser" do
   end
 
   it "parses ':foo'" do
-    expect(cmd.parse(":foo")).to eq({attribute: "foo"})
+    expect(cmd.parse(":foo")).to eq({separator: ":", attribute: "foo"})
   end
 
   it "parses ':foo*'" do
-    expect(cmd.parse(":foo*")).to eq({attribute_glob: "foo*"})
+    expect(cmd.parse(":foo*")).to eq({separator: ":", attribute_glob: "foo*"})
   end
 
   it "parses ':/foo/'" do
-    expect(cmd.parse(":/foo/")).to eq({attribute_regexp: "/foo/"})
+    expect(cmd.parse(":/foo/")).to eq({separator: ":", attribute_regexp: "/foo/"})
   end
 
   it "parses 'foo'" do
@@ -31,23 +31,23 @@ describe "parser" do
   end
 
   it "parses 'foo:bar'" do
-    expect(cmd.parse("foo:bar")).to eq({identifier: "foo", attribute: "bar"})
+    expect(cmd.parse("foo:bar")).to eq({identifier: "foo", separator: ":", attribute: "bar"})
   end
 
   it "parses 'foo: bar'" do
-    expect(cmd.parse("foo:bar")).to eq({identifier: "foo", attribute: "bar"})
+    expect(cmd.parse("foo:bar")).to eq({identifier: "foo", separator: ":", attribute: "bar"})
   end
 
   it "parses 'foo :bar'" do
-    expect(cmd.parse("foo:bar")).to eq({identifier: "foo", attribute: "bar"})
+    expect(cmd.parse("foo:bar")).to eq({identifier: "foo", separator: ":", attribute: "bar"})
   end
 
   it "parses 'foo : bar'" do
-    expect(cmd.parse("foo:bar")).to eq({identifier: "foo", attribute: "bar"})
+    expect(cmd.parse("foo:bar")).to eq({identifier: "foo", separator: ":", attribute: "bar"})
   end
 
   it "parses 'foo:bar*'" do
-    expect(cmd.parse("foo:bar*")).to eq({identifier: "foo", attribute_glob: "bar*"})
+    expect(cmd.parse("foo:bar*")).to eq({identifier: "foo", separator: ":", attribute_glob: "bar*"})
   end
 
   it "parses 'foo*'" do
@@ -55,11 +55,11 @@ describe "parser" do
   end
 
   it "parses 'foo*:bar'" do
-    expect(cmd.parse("foo*:bar")).to eq({identifier_glob: "foo*", attribute: "bar"})
+    expect(cmd.parse("foo*:bar")).to eq({identifier_glob: "foo*", separator: ":", attribute: "bar"})
   end
 
   it "parses 'foo*:bar*'" do
-    expect(cmd.parse("foo*:bar*")).to eq({identifier_glob: "foo*", attribute_glob: "bar*"})
+    expect(cmd.parse("foo*:bar*")).to eq({identifier_glob: "foo*", separator: ":", attribute_glob: "bar*"})
   end
 
   it "parses '/foo/'" do
@@ -67,7 +67,7 @@ describe "parser" do
   end
 
   it "parses '/foo/:/bar/'" do
-    expect(cmd.parse("/foo/:/bar/")).to eq({identifier_regexp: "/foo/", attribute_regexp: "/bar/"})
+    expect(cmd.parse("/foo/:/bar/")).to eq({identifier_regexp: "/foo/", separator: ":", attribute_regexp: "/bar/"})
   end
 
   it "parses '(foo)'" do

@@ -127,20 +127,20 @@ module Hotdog
         }
         rule(:atom) {
           ( spacing.maybe >> str('(') >> expression >> str(')') >> spacing.maybe \
-          | spacing.maybe >> identifier_regexp.as(:identifier_regexp) >> separator >> attribute_regexp.as(:attribute_regexp) >> spacing.maybe \
-          | spacing.maybe >> identifier_regexp.as(:identifier_regexp) >> separator >> spacing.maybe \
+          | spacing.maybe >> identifier_regexp.as(:identifier_regexp) >> separator.as(:separator) >> attribute_regexp.as(:attribute_regexp) >> spacing.maybe \
+          | spacing.maybe >> identifier_regexp.as(:identifier_regexp) >> separator.as(:separator) >> spacing.maybe \
           | spacing.maybe >> identifier_regexp.as(:identifier_regexp) >> spacing.maybe \
-          | spacing.maybe >> identifier_glob.as(:identifier_glob) >> separator >> attribute_glob.as(:attribute_glob) >> spacing.maybe \
-          | spacing.maybe >> identifier_glob.as(:identifier_glob) >> separator >> attribute.as(:attribute) >> spacing.maybe \
-          | spacing.maybe >> identifier_glob.as(:identifier_glob) >> separator >> spacing.maybe \
+          | spacing.maybe >> identifier_glob.as(:identifier_glob) >> separator.as(:separator) >> attribute_glob.as(:attribute_glob) >> spacing.maybe \
+          | spacing.maybe >> identifier_glob.as(:identifier_glob) >> separator.as(:separator) >> attribute.as(:attribute) >> spacing.maybe \
+          | spacing.maybe >> identifier_glob.as(:identifier_glob) >> separator.as(:separator) >> spacing.maybe \
           | spacing.maybe >> identifier_glob.as(:identifier_glob) >> spacing.maybe \
-          | spacing.maybe >> identifier.as(:identifier) >> separator >> attribute_glob.as(:attribute_glob) >> spacing.maybe \
-          | spacing.maybe >> identifier.as(:identifier) >> separator >> attribute.as(:attribute) >> spacing.maybe \
-          | spacing.maybe >> identifier.as(:identifier) >> separator >> spacing.maybe \
+          | spacing.maybe >> identifier.as(:identifier) >> separator.as(:separator) >> attribute_glob.as(:attribute_glob) >> spacing.maybe \
+          | spacing.maybe >> identifier.as(:identifier) >> separator.as(:separator) >> attribute.as(:attribute) >> spacing.maybe \
+          | spacing.maybe >> identifier.as(:identifier) >> separator.as(:separator) >> spacing.maybe \
           | spacing.maybe >> identifier.as(:identifier) >> spacing.maybe \
-          | spacing.maybe >> separator >> attribute_regexp.as(:attribute_regexp) >> spacing.maybe \
-          | spacing.maybe >> separator >> attribute_glob.as(:attribute_glob) >> spacing.maybe \
-          | spacing.maybe >> separator >> attribute.as(:attribute) >> spacing.maybe \
+          | spacing.maybe >> separator.as(:separator) >> attribute_regexp.as(:attribute_regexp) >> spacing.maybe \
+          | spacing.maybe >> separator.as(:separator) >> attribute_glob.as(:attribute_glob) >> spacing.maybe \
+          | spacing.maybe >> separator.as(:separator) >> attribute.as(:attribute) >> spacing.maybe \
           | spacing.maybe >> attribute_regexp.as(:attribute_regexp) >> spacing.maybe \
           | spacing.maybe >> attribute_glob.as(:attribute_glob) >> spacing.maybe \
           | spacing.maybe >> attribute.as(:attribute) >> spacing.maybe \
@@ -185,44 +185,62 @@ module Hotdog
       end
 
       class ExpressionTransformer < Parslet::Transform
-        rule(:binary_op => simple(:binary_op), :left => simple(:left), :right => simple(:right)) {
+        rule(binary_op: simple(:binary_op), left: simple(:left), right: simple(:right)) {
           BinaryExpressionNode.new(binary_op, left, right)
         }
-        rule(:unary_op => simple(:unary_op), :expression => simple(:expression)) {
+        rule(unary_op: simple(:unary_op), expression: simple(:expression)) {
           UnaryExpressionNode.new(unary_op, expression)
         }
-        rule(:identifier_regexp => simple(:identifier_regexp), :attribute_regexp => simple(:attribute_regexp)) {
-          TagRegexpExpressionNode.new(identifier_regexp.to_s, attribute_regexp.to_s)
+        rule(identifier_regexp: simple(:identifier_regexp), separator: simple(:separator), attribute_regexp: simple(:attribute_regexp)) {
+          TagRegexpExpressionNode.new(identifier_regexp.to_s, attribute_regexp.to_s, separator)
         }
-        rule(:identifier_regexp => simple(:identifier_regexp)) {
-          TagRegexpExpressionNode.new(identifier_regexp.to_s, nil)
+        rule(identifier_regexp: simple(:identifier_regexp), separator: simple(:separator)) {
+          TagRegexpExpressionNode.new(identifier_regexp.to_s, nil, nil)
         }
-        rule(:identifier_glob => simple(:identifier_glob), :attribute_glob => simple(:attribute_glob)) {
-          TagGlobExpressionNode.new(identifier_glob.to_s, attribute_glob.to_s)
+        rule(identifier_regexp: simple(:identifier_regexp)) {
+          TagRegexpExpressionNode.new(identifier_regexp.to_s, nil, nil)
         }
-        rule(:identifier_glob => simple(:identifier_glob), :attribute => simple(:attribute)) {
-          TagGlobExpressionNode.new(identifier_glob.to_s, attribute.to_s)
+        rule(identifier_glob: simple(:identifier_glob), separator: simple(:separator), attribute_glob: simple(:attribute_glob)) {
+          TagGlobExpressionNode.new(identifier_glob.to_s, attribute_glob.to_s, separator)
         }
-        rule(:identifier_glob => simple(:identifier_glob)) {
-          TagGlobExpressionNode.new(identifier_glob.to_s, nil)
+        rule(identifier_glob: simple(:identifier_glob), separator: simple(:separator), attribute: simple(:attribute)) {
+          TagGlobExpressionNode.new(identifier_glob.to_s, attribute.to_s, separator)
         }
-        rule(:identifier => simple(:identifier), :attribute_glob => simple(:attribute_glob)) {
-          TagGlobExpressionNode.new(identifier.to_s, attribute_glob.to_s)
+        rule(identifier_glob: simple(:identifier_glob), separator: simple(:separator)) {
+          TagGlobExpressionNode.new(identifier_glob.to_s, nil, separator)
         }
-        rule(:identifier => simple(:identifier), :attribute => simple(:attribute)) {
-          TagExpressionNode.new(identifier.to_s, attribute.to_s)
+        rule(identifier_glob: simple(:identifier_glob)) {
+          TagGlobExpressionNode.new(identifier_glob.to_s, nil, nil)
         }
-        rule(:identifier => simple(:identifier)) {
-          TagExpressionNode.new(identifier.to_s, nil)
+        rule(identifier: simple(:identifier), separator: simple(:separator), attribute_glob: simple(:attribute_glob)) {
+          TagGlobExpressionNode.new(identifier.to_s, attribute_glob.to_s, separator)
         }
-        rule(:attribute_regexp => simple(:attribute_regexp)) {
-          TagRegexpExpressionNode.new(nil, attribute_regexp.to_s)
+        rule(identifier: simple(:identifier), separator: simple(:separator), attribute: simple(:attribute)) {
+          TagExpressionNode.new(identifier.to_s, attribute.to_s, separator)
         }
-        rule(:attribute_glob => simple(:attribute_glob)) {
-          TagGlobExpressionNode.new(nil, attribute_glob.to_s)
+        rule(identifier: simple(:identifier), separator: simple(:separator)) {
+          TagExpressionNode.new(identifier.to_s, nil, separator)
         }
-        rule(:attribute => simple(:attribute)) {
-          TagExpressionNode.new(nil, attribute.to_s)
+        rule(identifier: simple(:identifier)) {
+          TagExpressionNode.new(identifier.to_s, nil, nil)
+        }
+        rule(separator: simple(:separator), attribute_regexp: simple(:attribute_regexp)) {
+          TagRegexpExpressionNode.new(nil, attribute_regexp.to_s, separator)
+        }
+        rule(attribute_regexp: simple(:attribute_regexp)) {
+          TagRegexpExpressionNode.new(nil, attribute_regexp.to_s, nil)
+        }
+        rule(separator: simple(:separator), attribute_glob: simple(:attribute_glob)) {
+          TagGlobExpressionNode.new(nil, attribute_glob.to_s, separator)
+        }
+        rule(attribute_glob: simple(:attribute_glob)) {
+          TagGlobExpressionNode.new(nil, attribute_glob.to_s, nil)
+        }
+        rule(separator: simple(:separator), attribute: simple(:attribute)) {
+          TagExpressionNode.new(nil, attribute.to_s, separator)
+        }
+        rule(attribute: simple(:attribute)) {
+          TagExpressionNode.new(nil, attribute.to_s, nil)
         }
       end
 
@@ -353,12 +371,14 @@ module Hotdog
       end
 
       class TagExpressionNode < ExpressionNode
-        def initialize(identifier, attribute)
+        def initialize(identifier, attribute, separator=nil)
           @identifier = identifier
           @attribute = attribute
+          @separator = separator
         end
         attr_reader :identifier
         attr_reader :attribute
+        attr_reader :separator
 
         def identifier?
           !(identifier.nil? or identifier.to_s.empty?)
@@ -366,6 +386,10 @@ module Hotdog
 
         def attribute?
           !(attribute.nil? or attribute.to_s.empty?)
+        end
+
+        def separator?
+          !(separator.nil? or separator.to_s.empty?)
         end
 
         def evaluate(environment, options={})
@@ -419,7 +443,7 @@ module Hotdog
             attribute_glob = attribute.gsub(/[-.\/_]/, "?") if attribute?
             if (identifier? and identifier != identifier_glob) or (attribute? and attribute != attribute_glob)
               environment.logger.info("fallback to glob expression: %s:%s" % [identifier_glob, attribute_glob])
-              values = TagGlobExpressionNode.new(identifier_glob, attribute_glob).evaluate(environment, options)
+              values = TagGlobExpressionNode.new(identifier_glob, attribute_glob, separator).evaluate(environment, options)
               if values.empty?
                 reload(environment, options)
               else
@@ -436,7 +460,7 @@ module Hotdog
           if 0 < ttl
             environment.logger.info("force reloading all hosts and tags.")
             environment.reload(force: true)
-            self.class.new(identifier, attribute).evaluate(environment, options.merge(ttl: ttl-1))
+            self.class.new(identifier, attribute, separator).evaluate(environment, options.merge(ttl: ttl-1))
           else
             []
           end
@@ -484,10 +508,10 @@ module Hotdog
       end
 
       class TagRegexpExpressionNode < TagExpressionNode
-        def initialize(identifier, attribute)
+        def initialize(identifier, attribute, separator=nil)
           identifier = identifier.sub(%r{\A/(.*)/\z}) { $1 } if identifier
           attribute = attribute.sub(%r{\A/(.*)/\z}) { $1 } if attribute
-          super(identifier, attribute)
+          super(identifier, attribute, separator)
         end
 
         def evaluate(environment, options={})
