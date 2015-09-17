@@ -273,47 +273,59 @@ module Hotdog
         def evaluate(environment, options={})
           case @op
           when :AND
-            left_values = @left.evaluate(environment, options)
-            environment.logger.debug("lhs: #{left_values.length} value(s)")
+            left_values = @left.evaluate(environment, options).tap do |values|
+              environment.logger.debug("lhs: #{values.length} value(s)")
+            end
             if left_values.empty?
               []
             else
-              right_values = @right.evaluate(environment, options)
-              environment.logger.debug("rhs: #{right_values.length} value(s)")
-              # workaround for "too many terms in compound SELECT"
-              min, max = environment.execute("SELECT MIN(id), MAX(id) FROM hosts ORDER BY id LIMIT 1").first.to_a
-              (min / (SQLITE_LIMIT_COMPOUND_SELECT / 2)).upto(max / (SQLITE_LIMIT_COMPOUND_SELECT / 2)).flat_map { |i|
-                range = ((SQLITE_LIMIT_COMPOUND_SELECT / 2) * i)...((SQLITE_LIMIT_COMPOUND_SELECT / 2) * (i + 1))
-                left_selected = left_values.select { |n| range === n }
-                right_selected = right_values.select { |n| range === n }
-                q = "SELECT id FROM hosts " \
-                      "WHERE ? <= id AND id < ? AND ( id IN (%s) AND id IN (%s) );"
-                environment.execute(q % [left_selected.map { "?" }.join(", "), right_selected.map { "?" }.join(", ")], [range.first, range.last] + left_selected + right_selected).map { |row| row.first }
-              }.tap do |values|
-                environment.logger.debug("lhs AND rhs: #{values.length} value(s)")
+              right_values = @right.evaluate(environment, options).tap do |values|
+                environment.logger.debug("rhs: #{values.length} value(s)")
+              end
+              if right_values.empty?
+                []
+              else
+                # workaround for "too many terms in compound SELECT"
+                min, max = environment.execute("SELECT MIN(id), MAX(id) FROM hosts ORDER BY id LIMIT 1").first.to_a
+                (min / (SQLITE_LIMIT_COMPOUND_SELECT / 2)).upto(max / (SQLITE_LIMIT_COMPOUND_SELECT / 2)).flat_map { |i|
+                  range = ((SQLITE_LIMIT_COMPOUND_SELECT / 2) * i)...((SQLITE_LIMIT_COMPOUND_SELECT / 2) * (i + 1))
+                  left_selected = left_values.select { |n| range === n }
+                  right_selected = right_values.select { |n| range === n }
+                  q = "SELECT id FROM hosts " \
+                        "WHERE ? <= id AND id < ? AND ( id IN (%s) AND id IN (%s) );"
+                  environment.execute(q % [left_selected.map { "?" }.join(", "), right_selected.map { "?" }.join(", ")], [range.first, range.last] + left_selected + right_selected).map { |row| row.first }
+                }.tap do |values|
+                  environment.logger.debug("lhs AND rhs: #{values.length} value(s)")
+                end
               end
             end
           when :OR
-            left_values = @left.evaluate(environment, options)
-            environment.logger.debug("lhs: #{left_values.length} value(s)")
+            left_values = @left.evaluate(environment, options).tap do |values|
+              environment.logger.debug("lhs: #{values.length} value(s)")
+            end
             if left_values.empty?
-              right_values = @right.evaluate(environment, options)
-              environment.logger.debug("rhs: #{right_values.length} value(s)")
-              environment.logger.debug("lhs OR rhs: #{values.length} value(s)")
+              right_values = @right.evaluate(environment, options).tap do |values|
+                environment.logger.debug("rhs: #{values.length} value(s)")
+              end
             else
-              right_values = @right.evaluate(environment, options)
-              environment.logger.debug("rhs: #{right_values.length} value(s)")
-              # workaround for "too many terms in compound SELECT"
-              min, max = environment.execute("SELECT MIN(id), MAX(id) FROM hosts ORDER BY id LIMIT 1").first.to_a
-              (min / (SQLITE_LIMIT_COMPOUND_SELECT / 2)).upto(max / (SQLITE_LIMIT_COMPOUND_SELECT / 2)).flat_map { |i|
-                range = ((SQLITE_LIMIT_COMPOUND_SELECT / 2) * i)...((SQLITE_LIMIT_COMPOUND_SELECT / 2) * (i + 1))
-                left_selected = left_values.select { |n| range === n }
-                right_selected = right_values.select { |n| range === n }
-                q = "SELECT id FROM hosts " \
-                      "WHERE ? <= id AND id < ? AND ( id IN (%s) OR id IN (%s) );"
-                environment.execute(q % [left_selected.map { "?" }.join(", "), right_selected.map { "?" }.join(", ")], [range.first, range.last] + left_selected + right_selected).map { |row| row.first }
-              }.tap do |values|
-                environment.logger.debug("lhs OR rhs: #{values.length} value(s)")
+              right_values = @right.evaluate(environment, options).tap do |values|
+                environment.logger.debug("rhs: #{values.length} value(s)")
+              end
+              if right_values.empty?
+                []
+              else
+                # workaround for "too many terms in compound SELECT"
+                min, max = environment.execute("SELECT MIN(id), MAX(id) FROM hosts ORDER BY id LIMIT 1").first.to_a
+                (min / (SQLITE_LIMIT_COMPOUND_SELECT / 2)).upto(max / (SQLITE_LIMIT_COMPOUND_SELECT / 2)).flat_map { |i|
+                  range = ((SQLITE_LIMIT_COMPOUND_SELECT / 2) * i)...((SQLITE_LIMIT_COMPOUND_SELECT / 2) * (i + 1))
+                  left_selected = left_values.select { |n| range === n }
+                  right_selected = right_values.select { |n| range === n }
+                  q = "SELECT id FROM hosts " \
+                        "WHERE ? <= id AND id < ? AND ( id IN (%s) OR id IN (%s) );"
+                  environment.execute(q % [left_selected.map { "?" }.join(", "), right_selected.map { "?" }.join(", ")], [range.first, range.last] + left_selected + right_selected).map { |row| row.first }
+                }.tap do |values|
+                  environment.logger.debug("lhs OR rhs: #{values.length} value(s)")
+                end
               end
             end
           else
@@ -381,8 +393,9 @@ module Hotdog
         def evaluate(environment, options={})
           case @op
           when :NOT
-            values = @expression.evaluate(environment, options).sort
-            environment.logger.debug("expr: #{values.length} value(s)")
+            values = @expression.evaluate(environment, options).sort.tap do |values|
+              environment.logger.debug("expr: #{values.length} value(s)")
+            end
             if values.empty?
               environment.execute("SELECT id FROM hosts").map { |row| row.first }.tap do |values|
                 environment.logger.debug("NOT expr: #{values.length} value(s)")
