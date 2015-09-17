@@ -51,7 +51,7 @@ module Hotdog
           exit(1)
         end
 
-        result = evaluate(node, self).sort
+        result = evaluate(node, self)
 
         if result.length == 1
           host = result[0]

@@ -26,7 +26,7 @@ module Hotdog
           exit(1)
         end
 
-        result = evaluate(node, self).sort
+        result = evaluate(node, self)
         if 0 < result.length
           _result, fields = get_hosts_with_search_tags(result, node)
           result = _result.take(search_options.fetch(:limit, _result.size))
@@ -393,7 +393,7 @@ module Hotdog
         def evaluate(environment, options={})
           case @op
           when :NOT
-            values = @expression.evaluate(environment, options).sort.tap do |values|
+            values = @expression.evaluate(environment, options).tap do |values|
               environment.logger.debug("expr: #{values.length} value(s)")
             end
             if values.empty?

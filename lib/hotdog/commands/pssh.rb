@@ -50,7 +50,7 @@ module Hotdog
           exit(1)
         end
 
-        result = evaluate(node, self).sort
+        result = evaluate(node, self)
         result, fields = get_hosts(result)
 
         if result.empty?
