@@ -12,7 +12,7 @@ describe "tag regexp expression" do
   it "interprets tag regexp with host" do
     expr = Hotdog::Commands::Search::TagRegexpExpressionNode.new("host", "/foo/")
     q = [
-      "SELECT hosts.id FROM hosts",
+      "SELECT hosts.id AS host_id FROM hosts",
         "WHERE hosts.name REGEXP ?;",
     ]
     allow(cmd).to receive(:execute).with(q.join(" "), ["foo"]) {

@@ -273,21 +273,21 @@ module Hotdog
         def evaluate(environment, options={})
           case @op
           when :AND
-            left_values = @left.evaluate(environment)
+            left_values = @left.evaluate(environment, options)
             environment.logger.debug("lhs: #{left_values.length} value(s)")
             if left_values.empty?
               []
             else
-              right_values = @right.evaluate(environment)
+              right_values = @right.evaluate(environment, options)
               environment.logger.debug("rhs: #{right_values.length} value(s)")
               (left_values & right_values).tap do |values|
                 environment.logger.debug("lhs AND rhs: #{values.length} value(s)")
               end
             end
           when :OR
-            left_values = @left.evaluate(environment)
+            left_values = @left.evaluate(environment, options)
             environment.logger.debug("lhs: #{left_values.length} value(s)")
-            right_values = @right.evaluate(environment)
+            right_values = @right.evaluate(environment, options)
             environment.logger.debug("rhs: #{right_values.length} value(s)")
             (left_values | right_values).uniq.tap do |values|
               environment.logger.debug("lhs OR rhs: #{values.length} value(s)")
@@ -300,10 +300,24 @@ module Hotdog
         def optimize(options={})
           @left = @left.optimize(options)
           @right = @right.optimize(options)
-          if @left == @right
-            @left
+          optimized = @left == @right ? @left : self
+          if TagExpressionNode === @left and TagExpressionNode === @right
+            lhs = @left.plan(options)
+            rhs = @right.plan(options)
+            case op
+            when :AND
+              q = "SELECT host_id FROM ( #{lhs[0].sub(/\s*;\s*\z/, "")} ) " \
+                    "INTERSECT #{rhs[0].sub(/\s*;\s*\z/, "")};"
+              QueryExpressionNode.new(q, lhs[1] + rhs[1], fallback: self)
+            when :OR
+              q = "SELECT host_id FROM ( #{lhs[0].sub(/\s*;\s*\z/, "")} ) " \
+                    "UNION #{rhs[0].sub(/\s*;\s*\z/, "")};"
+              QueryExpressionNode.new(q, lhs[1] + rhs[1], fallback: self)
+            else
+              optimized
+            end
           else
-            self
+            optimized
           end
         end
 
@@ -328,7 +342,7 @@ module Hotdog
         def evaluate(environment, options={})
           case @op
           when :NOT
-            values = @expression.evaluate(environment).sort
+            values = @expression.evaluate(environment, options).sort
             environment.logger.debug("expr: #{values.length} value(s)")
             if values.empty?
               environment.execute("SELECT id FROM hosts").map { |row| row.first }.tap do |values|
@@ -354,19 +368,45 @@ module Hotdog
 
         def optimize(options={})
           @expression = @expression.optimize(options)
-          if UnaryExpressionNode === @expression
-            if @op == :NOT and @expression.op == :NOT
-              @expression.expression
+          if UnaryExpressionNode === @expression and @op == :NOT and @expression.op == :NOT
+            optimized = @expression.expression
+          else
+            optimized = self
+          end
+          if TagExpressionNode === @expression
+            expr = @expression.plan(options)
+            case op
+            when :NOT
+              q = "SELECT id AS host_id FROM hosts " \
+                    "EXCEPT #{expr[0].sub(/\s*;\s*\z/, "")};"
+              QueryExpressionNode.new(q, expr[1])
             else
-              self
+              optimized
             end
           else
-            self
+            optimized
           end
         end
 
         def ==(other)
           self.class === other and @op == other.op and @expression == other.expression
+        end
+      end
+
+      class QueryExpressionNode < ExpressionNode
+        def initialize(query, args=[], options={})
+          @query = query
+          @args = args
+          @fallback = options[:fallback]
+        end
+
+        def evaluate(environment, options={})
+          values = environment.execute(@query, @args).map { |row| row.first }
+          if values.empty? and @fallback
+            @fallback.evaluate(environment, options)
+          else
+            values
+          end
         end
       end
 
@@ -392,41 +432,49 @@ module Hotdog
           !(separator.nil? or separator.to_s.empty?)
         end
 
-        def evaluate(environment, options={})
+        def plan(options={})
           if identifier?
             if attribute?
               case identifier
               when /\Ahost\z/i
-                q = "SELECT hosts.id FROM hosts " \
+                q = "SELECT hosts.id AS host_id FROM hosts " \
                       "WHERE hosts.name = ?;"
-                values = environment.execute(q, [attribute]).map { |row| row.first }
+                [q, [attribute]]
               else
                 q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
                       "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
                         "WHERE tags.name = ? AND tags.value = ?;"
-                values = environment.execute(q, [identifier, attribute]).map { |row| row.first }
+                [q, [identifier, attribute]]
               end
             else
               q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
                     "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
                     "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
                       "WHERE hosts.name = ? OR tags.name = ? OR tags.value = ?;"
-              values = environment.execute(q, [identifier, identifier, identifier]).map { |row| row.first }
+              [q, [identifier, identifier, identifier]]
             end
           else
             if attribute?
                q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
                      "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
                        "WHERE tags.value = ?;"
-              values = environment.execute(q, [attribute]).map { |row| row.first }
+              [q, [attribute]]
             else
-              return []
+              nil
             end
           end
-          if values.empty?
-            fallback(environment, options)
+        end
+
+        def evaluate(environment, options={})
+          if q = plan(options)
+            values = environment.execute(*q).map { |row| row.first }
+            if values.empty?
+              fallback(environment, options)
+            else
+              values
+            end
           else
-            values
+            return []
           end
         end
 
@@ -468,41 +516,36 @@ module Hotdog
       end
 
       class TagGlobExpressionNode < TagExpressionNode
-        def evaluate(environment, options={})
+        def plan(options={})
           if identifier?
             if attribute?
               case identifier
               when /\Ahost\z/i
-                q = "SELECT hosts.id FROM hosts " \
+                q = "SELECT hosts.id AS host_id FROM hosts " \
                       "WHERE hosts.name GLOB ?;"
-                values = environment.execute(q, [attribute]).map { |row| row.first }
+                [q, [attribute]]
               else
                 q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
                       "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
                         "WHERE tags.name GLOB ? AND tags.value GLOB ?;"
-                values = environment.execute(q, [identifier, attribute]).map { |row| row.first }
+                [q, [identifier, attribute]]
               end
             else
               q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
                     "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
                     "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
                       "WHERE hosts.name GLOB ? OR tags.name GLOB ? OR tags.value GLOB ?;"
-              values = environment.execute(q, [identifier, identifier, identifier]).map { |row| row.first }
+              [q, [identifier, identifier, identifier]]
             end
           else
             if attribute?
               q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
                     "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
                       "WHERE tags.value GLOB ?;"
-              values = environment.execute(q, [attribute]).map { |row| row.first }
+              [q, [attribute]]
             else
-              return []
+              nil
             end
-          end
-          if values.empty?
-            fallback(environment, options)
-          else
-            values
           end
         end
       end
@@ -514,41 +557,49 @@ module Hotdog
           super(identifier, attribute, separator)
         end
 
-        def evaluate(environment, options={})
+        def plan(options={})
           if identifier?
             if attribute?
               case identifier
               when /\Ahost\z/i
-                q = "SELECT hosts.id FROM hosts " \
+                q = "SELECT hosts.id AS host_id FROM hosts " \
                       "WHERE hosts.name REGEXP ?;"
-                values = environment.execute(q, [attribute]).map { |row| row.first }
+                [q, [attribute]]
               else
                 q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
                       "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
                         "WHERE tags.name REGEXP ? AND tags.value REGEXP ?;"
-                values = environment.execute(q, [identifier, attribute]).map { |row| row.first }
+                [q, [identifier, attribute]]
               end
             else
               q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
                     "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
                     "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
                       "WHERE hosts.name REGEXP ? OR tags.name REGEXP ? OR tags.value REGEXP ?;"
-              values = environment.execute(q, [identifier, identifier, identifier]).map { |row| row.first }
+              [q, [identifier, identifier, identifier]]
             end
           else
             if attribute?
               q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
                     "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
                       "WHERE tags.value REGEXP ?;"
-              values = environment.execute(q, [attribute]).map { |row| row.first }
+              [q, [attribute]]
             else
-              return []
+              nil
             end
           end
-          if values.empty?
-            reload(environment)
+        end
+
+        def evaluate(environment, options={})
+          if q = plan(options)
+            values = environment.execute(*q).map { |row| row.first }
+            if values.empty?
+              reload(environment)
+            else
+              values
+            end
           else
-            values
+            return []
           end
         end
       end

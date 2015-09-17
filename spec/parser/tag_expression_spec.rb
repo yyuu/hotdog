@@ -12,7 +12,7 @@ describe "tag expression" do
   it "interprets tag with host" do
     expr = Hotdog::Commands::Search::TagExpressionNode.new("host", "foo")
     q = [
-      "SELECT hosts.id FROM hosts",
+      "SELECT hosts.id AS host_id FROM hosts",
         "WHERE hosts.name = ?;",
     ]
     allow(cmd).to receive(:execute).with(q.join(" "), ["foo"]) {

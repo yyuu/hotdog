@@ -12,7 +12,7 @@ describe "tag glob expression" do
   it "interprets tag glob with host" do
     expr = Hotdog::Commands::Search::TagGlobExpressionNode.new("host", "foo*")
     q = [
-      "SELECT hosts.id FROM hosts",
+      "SELECT hosts.id AS host_id FROM hosts",
         "WHERE hosts.name GLOB ?;",
     ]
     allow(cmd).to receive(:execute).with(q.join(" "), ["foo*"]) {
