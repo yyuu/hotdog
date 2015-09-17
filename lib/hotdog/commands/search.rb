@@ -471,11 +471,18 @@ module Hotdog
                 [q, [identifier, attribute]]
               end
             else
-              q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
-                    "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
-                    "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                      "WHERE hosts.name = ? OR tags.name = ? OR tags.value = ?;"
-              [q, [identifier, identifier, identifier]]
+              if separator?
+                q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
+                      "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                        "WHERE tags.name = ?;"
+                [q, [identifier]]
+              else
+                q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
+                      "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
+                      "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                        "WHERE hosts.name = ? OR tags.name = ? OR tags.value = ?;"
+                [q, [identifier, identifier, identifier]]
+              end
             end
           else
             if attribute?
@@ -555,11 +562,18 @@ module Hotdog
                 [q, [identifier, attribute]]
               end
             else
-              q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
-                    "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
-                    "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                      "WHERE hosts.name GLOB ? OR tags.name GLOB ? OR tags.value GLOB ?;"
-              [q, [identifier, identifier, identifier]]
+              if separator?
+                q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
+                      "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                        "WHERE tags.name GLOB ?;"
+                [q, [identifier]]
+              else
+                q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
+                      "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
+                      "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                        "WHERE hosts.name GLOB ? OR tags.name GLOB ? OR tags.value GLOB ?;"
+                [q, [identifier, identifier, identifier]]
+              end
             end
           else
             if attribute?
@@ -596,11 +610,18 @@ module Hotdog
                 [q, [identifier, attribute]]
               end
             else
-              q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
-                    "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
-                    "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                      "WHERE hosts.name REGEXP ? OR tags.name REGEXP ? OR tags.value REGEXP ?;"
-              [q, [identifier, identifier, identifier]]
+              if separator?
+                q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
+                      "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                        "WHERE tags.name REGEXP ?;"
+                [q, [identifier]]
+              else
+                q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
+                      "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
+                      "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                        "WHERE hosts.name REGEXP ? OR tags.name REGEXP ? OR tags.value REGEXP ?;"
+                [q, [identifier, identifier, identifier]]
+              end
             end
           else
             if attribute?
