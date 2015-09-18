@@ -627,19 +627,23 @@ module Hotdog
           if environment.fixed_string?
             []
           else
-            # fallback to glob expression
-            identifier_glob = "*#{identifier.gsub(/[-.\/_]/, "?")}*" if identifier?
-            attribute_glob = "*#{attribute.gsub(/[-.\/_]/, "?")}*" if attribute?
-            if (identifier? and identifier != identifier_glob) or (attribute? and attribute != attribute_glob)
-              environment.logger.info("fallback to glob expression: %s:%s" % [identifier_glob, attribute_glob])
-              values = TagGlobExpressionNode.new(identifier_glob, attribute_glob, separator).evaluate(environment, options)
+            if options[:did_fallback]
+              []
+            else
+              # fallback to glob expression
+              identifier_glob = "*#{identifier.gsub(/[-.\/_]/, "?")}*" if identifier?
+              attribute_glob = "*#{attribute.gsub(/[-.\/_]/, "?")}*" if attribute?
+              if (identifier? and identifier != identifier_glob) or (attribute? and attribute != attribute_glob)
+                environment.logger.info("fallback to glob expression: %s:%s" % [identifier_glob, attribute_glob])
+                values = TagGlobExpressionNode.new(identifier_glob, attribute_glob, separator).evaluate(environment, options.merge(did_fallback: true))
+              else
+                values = []
+              end
               if values.empty?
                 reload(environment, options)
               else
-                values
+                []
               end
-            else
-              []
             end
           end
         end
