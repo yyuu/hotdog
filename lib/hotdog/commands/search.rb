@@ -549,6 +549,7 @@ module Hotdog
           @identifier = identifier
           @attribute = attribute
           @separator = separator
+          @fallback = nil
         end
         attr_reader :identifier
         attr_reader :attribute
@@ -610,7 +611,25 @@ module Hotdog
           if q = plan(options)
             values = environment.execute(*q).map { |row| row.first }
             if values.empty?
-              fallback(environment, options)
+              if options[:did_fallback]
+                []
+              else
+                if environment.fixed_string?
+                  reload(environment, options)
+                else
+                  if @fallback
+                    # avoid optimizing @fallback to prevent infinite recursion
+                    values = @fallback.evaluate(environment, options.merge(did_fallback: true))
+                    if values.empty?
+                      reload(environment, options)
+                    else
+                      []
+                    end
+                  else
+                    reload(environment, options)
+                  end
+                end
+              end
             else
               values
             end
@@ -623,29 +642,26 @@ module Hotdog
           self.class == other.class and @identifier == other.identifier and @attribute == other.attribute
         end
 
-        def fallback(environment, options={})
-          if environment.fixed_string?
-            []
+        def optimize(options={})
+          # fallback to glob expression
+          if identifier?
+            prefix = (identifier.start_with?("*")) ? "" : "*"
+            suffix = (identifier.end_with?("*")) ? "" : "*"
+            identifier_glob = prefix + identifier.gsub(/[-.\/_]/, "?") + suffix
           else
-            if options[:did_fallback]
-              []
-            else
-              # fallback to glob expression
-              identifier_glob = "*#{identifier.gsub(/[-.\/_]/, "?")}*" if identifier?
-              attribute_glob = "*#{attribute.gsub(/[-.\/_]/, "?")}*" if attribute?
-              if (identifier? and identifier != identifier_glob) or (attribute? and attribute != attribute_glob)
-                environment.logger.info("fallback to glob expression: %s:%s" % [identifier_glob, attribute_glob])
-                values = TagGlobExpressionNode.new(identifier_glob, attribute_glob, separator).evaluate(environment, options.merge(did_fallback: true))
-              else
-                values = []
-              end
-              if values.empty?
-                reload(environment, options)
-              else
-                []
-              end
-            end
+            identifier_glob = nil
           end
+          if attribute?
+            prefix = (attribute.start_with?("*")) ? "" : "*"
+            suffix = (attribute.end_with?("*")) ? "" : "*"
+            attribute_glob = prefix + attribute.gsub(/[-.\/_]/, "?") + suffix
+          else
+            attribute_glob = nil
+          end
+          if (identifier? and identifier != identifier_glob) or (attribute? and attribute != attribute_glob)
+            @fallback = TagGlobExpressionNode.new(identifier_glob, attribute_glob, separator)
+          end
+          self
         end
 
         def reload(environment, options={})
@@ -661,9 +677,10 @@ module Hotdog
 
         def dump(options={})
           data = {}
-          data[:identifier] = @identifier if @identifier
-          data[:separator] = @separator if @separator
-          data[:attribute] = @attribute if @attribute
+          data[:identifier] = @identifier.to_s if @identifier
+          data[:separator] = @separator.to_s if @separator
+          data[:attribute] = @attribute.to_s if @attribute
+          data[:fallback ] = @fallback.dump(options) if @fallback
           data
         end
       end
@@ -711,9 +728,10 @@ module Hotdog
 
         def dump(options={})
           data = {}
-          data[:identifier_glob] = @identifier if @identifier
-          data[:separator] = @separator if @separator
-          data[:attribute_glob] = @attribute if @attribute
+          data[:identifier_glob] = @identifier.to_s if @identifier
+          data[:separator] = @separator.to_s if @separator
+          data[:attribute_glob] = @attribute.to_s if @attribute
+          data[:fallback] = @fallback.dump(options) if @fallback
           data
         end
       end
@@ -765,24 +783,16 @@ module Hotdog
           end
         end
 
-        def evaluate(environment, options={})
-          if q = plan(options)
-            values = environment.execute(*q).map { |row| row.first }
-            if values.empty?
-              reload(environment)
-            else
-              values
-            end
-          else
-            return []
-          end
+        def optimize(options={})
+          self # disable fallback
         end
 
         def dump(options={})
           data = {}
-          data[:identifier_regexp] = @identifier if @identifier
-          data[:separator] = @separator if @separator
-          data[:attribute_regexp] = @attribute if @attribute
+          data[:identifier_regexp] = @identifier.to_s if @identifier
+          data[:separator] = @separator.to_s if @separator
+          data[:attribute_regexp] = @attribute.to_s if @attribute
+          data[:fallback] = @fallback.dump(options) if @fallback
           data
         end
       end
