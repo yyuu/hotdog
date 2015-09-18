@@ -104,6 +104,7 @@ module Hotdog
           ( expression4.as(:left) >> spacing.maybe >> str('&&').as(:binary_op) >> spacing.maybe >> expression.as(:right) \
           | expression4.as(:left) >> spacing.maybe >> str('||').as(:binary_op) >> spacing.maybe >> expression.as(:right) \
           | expression4.as(:left) >> spacing.maybe >> str('&').as(:binary_op) >> spacing.maybe >> expression.as(:right) \
+          | expression4.as(:left) >> spacing.maybe >> str('^').as(:binary_op) >> spacing.maybe >> expression.as(:right) \
           | expression4.as(:left) >> spacing.maybe >> str('|').as(:binary_op) >> spacing.maybe >> expression.as(:right) \
           | expression4 \
           )
@@ -119,8 +120,10 @@ module Hotdog
         rule(:binary_op) {
           ( str('AND') \
           | str('OR') \
+          | str('XOR') \
           | str('and') \
           | str('or') \
+          | str('xor') \
           )
         }
         rule(:unary_op) {
@@ -270,6 +273,8 @@ module Hotdog
             @op = :AND
           when "||", "|", /\Aor\z/i
             @op = :OR
+          when "^", /\Axor\z/i
+            @op = :XOR
           else
             raise(SyntaxError.new("unknown binary operator: #{op.inspect}"))
           end
@@ -294,8 +299,8 @@ module Hotdog
               else
                 # workaround for "too many terms in compound SELECT"
                 min, max = environment.execute("SELECT MIN(id), MAX(id) FROM hosts ORDER BY id LIMIT 1").first.to_a
-                (min / (SQLITE_LIMIT_COMPOUND_SELECT / 2)).upto(max / (SQLITE_LIMIT_COMPOUND_SELECT / 2)).flat_map { |i|
-                  range = ((SQLITE_LIMIT_COMPOUND_SELECT / 2) * i)...((SQLITE_LIMIT_COMPOUND_SELECT / 2) * (i + 1))
+                (min / ((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 2)).upto(max / ((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 2)).flat_map { |i|
+                  range = (((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 2) * i)...(((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 2) * (i + 1))
                   left_selected = left_values.select { |n| range === n }
                   right_selected = right_values.select { |n| range === n }
                   q = "SELECT id FROM hosts " \
@@ -321,8 +326,8 @@ module Hotdog
               else
                 # workaround for "too many terms in compound SELECT"
                 min, max = environment.execute("SELECT MIN(id), MAX(id) FROM hosts ORDER BY id LIMIT 1").first.to_a
-                (min / (SQLITE_LIMIT_COMPOUND_SELECT / 2)).upto(max / (SQLITE_LIMIT_COMPOUND_SELECT / 2)).flat_map { |i|
-                  range = ((SQLITE_LIMIT_COMPOUND_SELECT / 2) * i)...((SQLITE_LIMIT_COMPOUND_SELECT / 2) * (i + 1))
+                (min / ((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 2)).upto(max / ((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 2)).flat_map { |i|
+                  range = (((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 2) * i)...(((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 2) * (i + 1))
                   left_selected = left_values.select { |n| range === n }
                   right_selected = right_values.select { |n| range === n }
                   q = "SELECT id FROM hosts " \
@@ -330,6 +335,35 @@ module Hotdog
                   environment.execute(q % [left_selected.map { "?" }.join(", "), right_selected.map { "?" }.join(", ")], [range.first, range.last] + left_selected + right_selected).map { |row| row.first }
                 }.tap do |values|
                   environment.logger.debug("lhs OR rhs: #{values.length} value(s)")
+                end
+              end
+            end
+          when :XOR
+            left_values = @left.evaluate(environment, options).tap do |values|
+              environment.logger.debug("lhs: #{values.length} value(s)")
+            end
+            right_values = @right.evaluate(environment, options).tap do |values|
+              environment.logger.debug("rhs: #{values.length} value(s)")
+            end
+            if left_values.empty?
+              right_values
+            else
+              if right_values.empty?
+                []
+              else
+                # workaround for "too many terms in compound SELECT"
+                min, max = environment.execute("SELECT MIN(id), MAX(id) FROM hosts ORDER BY id LIMIT 1").first.to_a
+                (min / ((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 4)).upto(max / ((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 4)).flat_map { |i|
+                  range = (((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 4) * i)...(((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 4) * (i + 1))
+                  left_selected = left_values.select { |n| range === n }
+                  right_selected = right_values.select { |n| range === n }
+                  q = "SELECT id FROM hosts " \
+                        "WHERE ? <= id AND id < ? AND NOT (id IN (%s) AND id IN (%s)) AND ( id IN (%s) OR id IN (%s) );"
+                  lq = left_selected.map { "?" }.join(", ")
+                  rq = right_selected.map { "?" }.join(", ")
+                  environment.execute(q % [lq, rq, lq, rq], [range.first, range.last] + left_selected + right_selected + left_selected + right_selected).map { |row| row.first }
+                }.tap do |values|
+                  environment.logger.debug("lhs XOR rhs: #{values.length} value(s)")
                 end
               end
             end
@@ -343,8 +377,18 @@ module Hotdog
           @right = @right.optimize(options)
           case op
           when :AND
-            optimize1(options)
+            if left == right
+              left
+            else
+              optimize1(options)
+            end
           when :OR
+            if left == right
+              left
+            else
+              optimize1(options)
+            end
+          when :XOR
             optimize1(options)
           else
             self
@@ -361,31 +405,33 @@ module Hotdog
 
         private
         def optimize1(options)
-          if left == right
-            left
-          else
-            if TagExpressionNode === left and TagExpressionNode === right
-              lhs = left.plan(options)
-              rhs = right.plan(options)
-              if lhs and rhs
-                case op
-                when :AND
-                  q = "SELECT host_id FROM ( #{lhs[0].sub(/\s*;\s*\z/, "")} ) " \
+          if TagExpressionNode === left and TagExpressionNode === right
+            lhs = left.plan(options)
+            rhs = right.plan(options)
+            if lhs and rhs
+              case op
+              when :AND
+                q = "SELECT host_id FROM ( #{lhs[0].sub(/\s*;\s*\z/, "")} ) " \
+                      "INTERSECT #{rhs[0].sub(/\s*;\s*\z/, "")};"
+                QueryExpressionNode.new(q, lhs[1] + rhs[1], fallback: self)
+              when :OR
+                q = "SELECT host_id FROM ( #{lhs[0].sub(/\s*;\s*\z/, "")} ) " \
+                      "UNION #{rhs[0].sub(/\s*;\s*\z/, "")};"
+                QueryExpressionNode.new(q, lhs[1] + rhs[1], fallback: self)
+              when :XOR
+                q = "SELECT host_id FROM ( #{lhs[0].sub(/\s*;\s*\z/, "")} ) " \
+                      "UNION #{rhs[0].sub(/\s*;\s*\z/, "")} " \
+                      "EXCEPT SELECT host_id FROM ( #{lhs[0].sub(/\s*;\s*\z/, "")} ) " \
                         "INTERSECT #{rhs[0].sub(/\s*;\s*\z/, "")};"
-                  QueryExpressionNode.new(q, lhs[1] + rhs[1], fallback: self)
-                when :OR
-                  q = "SELECT host_id FROM ( #{lhs[0].sub(/\s*;\s*\z/, "")} ) " \
-                        "UNION #{rhs[0].sub(/\s*;\s*\z/, "")};"
-                  QueryExpressionNode.new(q, lhs[1] + rhs[1], fallback: self)
-                else
-                  self
-                end
+                QueryExpressionNode.new(q, lhs[1] + rhs[1], fallback: self)
               else
                 self
               end
             else
               self
             end
+          else
+            self
           end
         end
       end
@@ -416,8 +462,8 @@ module Hotdog
             else
               # workaround for "too many terms in compound SELECT"
               min, max = environment.execute("SELECT MIN(id), MAX(id) FROM hosts ORDER BY id LIMIT 1").first.to_a
-              (min / SQLITE_LIMIT_COMPOUND_SELECT).upto(max / SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |i|
-                range = (SQLITE_LIMIT_COMPOUND_SELECT * i)...(SQLITE_LIMIT_COMPOUND_SELECT * (i + 1))
+              (min / (SQLITE_LIMIT_COMPOUND_SELECT - 2)).upto(max / (SQLITE_LIMIT_COMPOUND_SELECT - 2)).flat_map { |i|
+                range = ((SQLITE_LIMIT_COMPOUND_SELECT - 2) * i)...((SQLITE_LIMIT_COMPOUND_SELECT - 2) * (i + 1))
                 selected = values.select { |n| range === n }
                 q = "SELECT id FROM hosts " \
                       "WHERE ? <= id AND id < ? AND id NOT IN (%s);"
