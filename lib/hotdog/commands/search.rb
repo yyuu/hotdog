@@ -408,7 +408,7 @@ module Hotdog
           if TagExpressionNode === left and TagExpressionNode === right
             lhs = left.plan(options)
             rhs = right.plan(options)
-            if lhs and rhs
+            if lhs and rhs and lhs[1].length + rhs[1].length <= SQLITE_LIMIT_COMPOUND_SELECT
               case op
               when :AND
                 q = "SELECT host_id FROM ( #{lhs[0].sub(/\s*;\s*\z/, "")} ) " \
@@ -504,7 +504,7 @@ module Hotdog
             else
               if TagExpressionNode === expression
                 expr = expression.plan(options)
-                if expr
+                if expr and expr[1].length <= SQLITE_LIMIT_COMPOUND_SELECT
                   q = "SELECT id AS host_id FROM hosts " \
                         "EXCEPT #{expr[0].sub(/\s*;\s*\z/, "")};"
                   QueryExpressionNode.new(q, expr[1])
