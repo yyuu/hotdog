@@ -614,27 +614,23 @@ module Hotdog
               if options[:did_fallback]
                 []
               else
-                if environment.fixed_string?
-                  reload(environment, options)
-                else
-                  if @fallback
-                    # avoid optimizing @fallback to prevent infinite recursion
-                    values = @fallback.evaluate(environment, options.merge(did_fallback: true))
-                    if values.empty?
-                      reload(environment, options)
-                    else
-                      []
-                    end
-                  else
+                if not environment.fixed_string? and @fallback
+                  # avoid optimizing @fallback to prevent infinite recursion
+                  values = @fallback.evaluate(environment, options.merge(did_fallback: true))
+                  if values.empty?
                     reload(environment, options)
+                  else
+                    values
                   end
+                else
+                  reload(environment, options)
                 end
               end
             else
               values
             end
           else
-            return []
+            []
           end
         end
 
@@ -669,7 +665,7 @@ module Hotdog
           if 0 < ttl
             environment.logger.info("force reloading all hosts and tags.")
             environment.reload(force: true)
-            self.class.new(identifier, attribute, separator).evaluate(environment, options.merge(ttl: ttl-1))
+            self.class.new(identifier, attribute, separator).optimize(options).evaluate(environment, options.merge(ttl: ttl-1))
           else
             []
           end
