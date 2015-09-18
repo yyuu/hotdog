@@ -19,6 +19,7 @@ describe "tag regexp expression" do
       [[1], [2], [3]]
     }
     expect(expr.evaluate(cmd)).to eq([1, 2, 3])
+    expect(expr.dump).to eq({identifier_regexp: "host", separator: ":", attribute_regexp: "foo"})
   end
 
   it "interprets tag regexp with identifier and attribute" do
@@ -32,6 +33,7 @@ describe "tag regexp expression" do
       [[1], [2], [3]]
     }
     expect(expr.evaluate(cmd)).to eq([1, 2, 3])
+    expect(expr.dump).to eq({identifier_regexp: "foo", separator: ":", attribute_regexp: "bar"})
   end
 
   it "interprets tag regexp with identifier with separator" do
@@ -45,6 +47,7 @@ describe "tag regexp expression" do
       [[1], [2], [3]]
     }
     expect(expr.evaluate(cmd)).to eq([1, 2, 3])
+    expect(expr.dump).to eq({identifier_regexp: "foo", separator: ":"})
   end
 
   it "interprets tag regexp with identifier without separator" do
@@ -59,6 +62,7 @@ describe "tag regexp expression" do
       [[1], [2], [3]]
     }
     expect(expr.evaluate(cmd)).to eq([1, 2, 3])
+    expect(expr.dump).to eq({identifier_regexp: "foo"})
   end
 
   it "interprets tag regexp with attribute with separator" do
@@ -72,6 +76,7 @@ describe "tag regexp expression" do
       [[1], [2], [3]]
     }
     expect(expr.evaluate(cmd)).to eq([1, 2, 3])
+    expect(expr.dump).to eq({separator: ":", attribute_regexp: "foo"})
   end
 
   it "interprets tag regexp with attribute without separator" do
@@ -85,5 +90,12 @@ describe "tag regexp expression" do
       [[1], [2], [3]]
     }
     expect(expr.evaluate(cmd)).to eq([1, 2, 3])
+    expect(expr.dump).to eq({attribute_regexp: "foo"})
+  end
+
+  it "empty tag regexp" do
+    expr = Hotdog::Commands::Search::TagRegexpExpressionNode.new(nil, nil, nil)
+    expect(expr.evaluate(cmd)).to eq([])
+    expect(expr.dump).to eq({})
   end
 end

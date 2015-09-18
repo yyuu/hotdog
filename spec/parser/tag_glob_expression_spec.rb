@@ -19,6 +19,7 @@ describe "tag glob expression" do
       [[1], [2], [3]]
     }
     expect(expr.evaluate(cmd)).to eq([1, 2, 3])
+    expect(expr.dump).to eq({identifier_glob: "host", separator: ":", attribute_glob: "foo*"})
   end
 
   it "interprets tag glob with identifier and attribute" do
@@ -32,6 +33,7 @@ describe "tag glob expression" do
       [[1], [2], [3]]
     }
     expect(expr.evaluate(cmd)).to eq([1, 2, 3])
+    expect(expr.dump).to eq({identifier_glob: "foo*", separator: ":", attribute_glob: "bar*"})
   end
 
   it "interprets tag glob with identifier with separator" do
@@ -45,6 +47,7 @@ describe "tag glob expression" do
       [[1], [2], [3]]
     }
     expect(expr.evaluate(cmd)).to eq([1, 2, 3])
+    expect(expr.dump).to eq({identifier_glob: "foo*", separator: ":"})
   end
 
   it "interprets tag glob with identifier without separator" do
@@ -59,6 +62,7 @@ describe "tag glob expression" do
       [[1], [2], [3]]
     }
     expect(expr.evaluate(cmd)).to eq([1, 2, 3])
+    expect(expr.dump).to eq({identifier_glob: "foo*"})
   end
 
   it "interprets tag glob with attribute with separator" do
@@ -72,6 +76,7 @@ describe "tag glob expression" do
       [[1], [2], [3]]
     }
     expect(expr.evaluate(cmd)).to eq([1, 2, 3])
+    expect(expr.dump).to eq({separator: ":", attribute_glob: "foo*"})
   end
 
   it "interprets tag glob with attribute without separator" do
@@ -85,5 +90,12 @@ describe "tag glob expression" do
       [[1], [2], [3]]
     }
     expect(expr.evaluate(cmd)).to eq([1, 2, 3])
+    expect(expr.dump).to eq({attribute_glob: "foo*"})
+  end
+
+  it "empty tag glob" do
+    expr = Hotdog::Commands::Search::TagGlobExpressionNode.new(nil, nil, nil)
+    expect(expr.evaluate(cmd)).to eq([])
+    expect(expr.dump).to eq({})
   end
 end

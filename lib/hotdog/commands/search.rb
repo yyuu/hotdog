@@ -73,7 +73,10 @@ module Hotdog
 
       def evaluate(data, environment)
         node = ExpressionTransformer.new.apply(data)
-        node.optimize.evaluate(environment)
+        optimized = node.optimize.tap do |optimized|
+          logger.debug(JSON.pretty_generate(optimized.dump))
+        end
+        optimized.evaluate(environment)
       end
 
       class ExpressionParser < Parslet::Parser
@@ -252,6 +255,10 @@ module Hotdog
         def optimize(options={})
           self
         end
+
+        def dump(options={})
+          {}
+        end
       end
 
       class BinaryExpressionNode < ExpressionNode
@@ -348,6 +355,10 @@ module Hotdog
           self.class === other and @op == other.op and @left == other.left and @right == other.right
         end
 
+        def dump(options={})
+          {left: @left.dump(options), op: @op.to_s, right: @right.dump(options)}
+        end
+
         private
         def optimize1(options)
           if left == right
@@ -434,6 +445,10 @@ module Hotdog
           self.class === other and @op == other.op and @expression == other.expression
         end
 
+        def dump(options={})
+          {op: @op.to_s, expression: @expression.dump(options)}
+        end
+
         private
         def optimize1(options={})
           case op
@@ -474,6 +489,12 @@ module Hotdog
           else
             values
           end
+        end
+
+        def dump(options={})
+          data = {query: @query, arguments: @args}
+          data[:fallback] = @fallback.dump(options) if @fallback
+          data
         end
       end
 
@@ -587,6 +608,14 @@ module Hotdog
             []
           end
         end
+
+        def dump(options={})
+          data = {}
+          data[:identifier] = @identifier if @identifier
+          data[:separator] = @separator if @separator
+          data[:attribute] = @attribute if @attribute
+          data
+        end
       end
 
       class TagGlobExpressionNode < TagExpressionNode
@@ -628,6 +657,14 @@ module Hotdog
               nil
             end
           end
+        end
+
+        def dump(options={})
+          data = {}
+          data[:identifier_glob] = @identifier if @identifier
+          data[:separator] = @separator if @separator
+          data[:attribute_glob] = @attribute if @attribute
+          data
         end
       end
 
@@ -689,6 +726,14 @@ module Hotdog
           else
             return []
           end
+        end
+
+        def dump(options={})
+          data = {}
+          data[:identifier_regexp] = @identifier if @identifier
+          data[:separator] = @separator if @separator
+          data[:attribute_regexp] = @attribute if @attribute
+          data
         end
       end
     end
