@@ -356,15 +356,19 @@ module Hotdog
             if TagExpressionNode === left and TagExpressionNode === right
               lhs = left.plan(options)
               rhs = right.plan(options)
-              case op
-              when :AND
-                q = "SELECT host_id FROM ( #{lhs[0].sub(/\s*;\s*\z/, "")} ) " \
-                      "INTERSECT #{rhs[0].sub(/\s*;\s*\z/, "")};"
-                QueryExpressionNode.new(q, lhs[1] + rhs[1], fallback: self)
-              when :OR
-                q = "SELECT host_id FROM ( #{lhs[0].sub(/\s*;\s*\z/, "")} ) " \
-                      "UNION #{rhs[0].sub(/\s*;\s*\z/, "")};"
-                QueryExpressionNode.new(q, lhs[1] + rhs[1], fallback: self)
+              if lhs and rhs
+                case op
+                when :AND
+                  q = "SELECT host_id FROM ( #{lhs[0].sub(/\s*;\s*\z/, "")} ) " \
+                        "INTERSECT #{rhs[0].sub(/\s*;\s*\z/, "")};"
+                  QueryExpressionNode.new(q, lhs[1] + rhs[1], fallback: self)
+                when :OR
+                  q = "SELECT host_id FROM ( #{lhs[0].sub(/\s*;\s*\z/, "")} ) " \
+                        "UNION #{rhs[0].sub(/\s*;\s*\z/, "")};"
+                  QueryExpressionNode.new(q, lhs[1] + rhs[1], fallback: self)
+                else
+                  self
+                end
               else
                 self
               end
@@ -439,9 +443,13 @@ module Hotdog
             else
               if TagExpressionNode === expression
                 expr = expression.plan(options)
-                q = "SELECT id AS host_id FROM hosts " \
-                      "EXCEPT #{expr[0].sub(/\s*;\s*\z/, "")};"
-                QueryExpressionNode.new(q, expr[1])
+                if expr
+                  q = "SELECT id AS host_id FROM hosts " \
+                        "EXCEPT #{expr[0].sub(/\s*;\s*\z/, "")};"
+                  QueryExpressionNode.new(q, expr[1])
+                else
+                  self
+                end
               else
                 self
               end
