@@ -11,7 +11,7 @@ module Hotdog
         else
           if args.any? { |host_name| glob?(host_name) }
             result = args.flat_map { |host_name|
-              execute("SELECT id FROM hosts WHERE name GLOB ?;", [host_name]).to_a.reduce(:+) || []
+              execute("SELECT id FROM hosts WHERE LOWER(name) GLOB LOWER(?);", [host_name]).to_a.reduce(:+) || []
             }
           else
             result = args.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |args|

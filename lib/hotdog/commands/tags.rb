@@ -13,13 +13,13 @@ module Hotdog
           if tags.all? { |tag_name, tag_value| tag_value.empty? }
             result = tags.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |tags|
               q = "SELECT value FROM tags " \
-                    "WHERE %s;" % tags.map { |tag_name, tag_value| glob?(tag_name) ? "name GLOB ?" : "name = ?" }.join(" OR ")
+                    "WHERE %s;" % tags.map { |tag_name, tag_value| glob?(tag_name) ? "LOWER(name) GLOB LOWER(?)" : "name = ?" }.join(" OR ")
               execute(q, tags.map { |tag_name, tag_value| tag_name }).map { |value| [value] }
             }
           else
             result = tags.each_slice(SQLITE_LIMIT_COMPOUND_SELECT / 2).flat_map { |tags|
               q = "SELECT value FROM tags " \
-                    "WHERE %s;" % tags.map { |tag_name, tag_value| (glob?(tag_name) or glob?(tag_value)) ?  "( name GLOB ? AND value GLOB ? )" : "( name = ? AND value = ? )" }.join(" OR ")
+                    "WHERE %s;" % tags.map { |tag_name, tag_value| (glob?(tag_name) or glob?(tag_value)) ?  "( LOWER(name) GLOB LOWER(?) AND LOWER(value) GLOB LOWER(?) )" : "( name = ? AND value = ? )" }.join(" OR ")
               execute(q, tags).map { |value| [value] }
             }
           end

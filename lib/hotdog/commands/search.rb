@@ -688,25 +688,25 @@ module Hotdog
               case identifier
               when /\Ahost\z/i
                 q = "SELECT hosts.id AS host_id FROM hosts " \
-                      "WHERE hosts.name GLOB ?;"
+                      "WHERE LOWER(hosts.name) GLOB LOWER(?);"
                 [q, [attribute]]
               else
                 q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
                       "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                        "WHERE tags.name GLOB ? AND tags.value GLOB ?;"
+                        "WHERE LOWER(tags.name) GLOB LOWER(?) AND LOWER(tags.value) GLOB LOWER(?);"
                 [q, [identifier, attribute]]
               end
             else
               if separator?
                 q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
                       "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                        "WHERE tags.name GLOB ?;"
+                        "WHERE LOWER(tags.name) GLOB LOWER(?);"
                 [q, [identifier]]
               else
                 q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
                       "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
                       "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                        "WHERE hosts.name GLOB ? OR tags.name GLOB ? OR tags.value GLOB ?;"
+                        "WHERE LOWER(hosts.name) GLOB LOWER(?) OR LOWER(tags.name) GLOB LOWER(?) OR LOWER(tags.value) GLOB LOWER(?);"
                 [q, [identifier, identifier, identifier]]
               end
             end
@@ -714,7 +714,7 @@ module Hotdog
             if attribute?
               q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
                     "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                      "WHERE tags.value GLOB ?;"
+                      "WHERE LOWER(tags.value) GLOB LOWER(?);"
               [q, [attribute]]
             else
               nil
