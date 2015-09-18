@@ -628,8 +628,8 @@ module Hotdog
             []
           else
             # fallback to glob expression
-            identifier_glob = identifier.gsub(/[-.\/_]/, "?") if identifier?
-            attribute_glob = attribute.gsub(/[-.\/_]/, "?") if attribute?
+            identifier_glob = "*#{identifier.gsub(/[-.\/_]/, "?")}*" if identifier?
+            attribute_glob = "*#{attribute.gsub(/[-.\/_]/, "?")}*" if attribute?
             if (identifier? and identifier != identifier_glob) or (attribute? and attribute != attribute_glob)
               environment.logger.info("fallback to glob expression: %s:%s" % [identifier_glob, attribute_glob])
               values = TagGlobExpressionNode.new(identifier_glob, attribute_glob, separator).evaluate(environment, options)
