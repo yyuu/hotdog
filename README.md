@@ -105,6 +105,7 @@ expression: expression0
 
 expression0: expression1 "and" expression
            | expression1 "or" expression
+           | expression1 "xor" expression
            | expression1
            ;
 
@@ -118,6 +119,9 @@ expression2: expression3 expression
 
 expression3: expression4 "&&" expression
            | expression4 "||" expression
+           | expression4 '&' expression
+           | expression4 '^' expression
+           | expression4 '|' expression
            | expression4
            ;
 
