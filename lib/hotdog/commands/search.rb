@@ -622,19 +622,27 @@ module Hotdog
                   # avoid optimizing @fallback to prevent infinite recursion
                   values = @fallback.evaluate(environment, options.merge(did_fallback: true))
                   if values.empty?
-                    reload(environment, options).tap do |values|
-                      if values.empty?
-                        environment.logger.info("no result: #{self.dump.inspect}")
+                    if reload(environment, options)
+                      evaluate(environment, options).tap do |values|
+                        if values.empty?
+                          environment.logger.info("no result: #{self.dump.inspect}")
+                        end
                       end
+                    else
+                      []
                     end
                   else
                     values
                   end
                 else
-                  reload(environment, options).tap do |values|
-                    if values.empty?
-                      environment.logger.info("no result: #{self.dump.inspect}")
+                  if reload(environment, options)
+                    evaluate(environment, options).tap do |values|
+                      if values.empty?
+                        environment.logger.info("no result: #{self.dump.inspect}")
+                      end
                     end
+                  else
+                    []
                   end
                 end
               end
@@ -675,13 +683,12 @@ module Hotdog
         def reload(environment, options={})
           $did_reload ||= false
           if $did_reload
-            []
+            false
           else
             $did_reload = true
             environment.logger.info("force reloading all hosts and tags.")
             environment.reload(force: true)
-            @did_fallback = false
-            evaluate(environment, options)
+            true
           end
         end
 
