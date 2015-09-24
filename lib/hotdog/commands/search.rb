@@ -531,8 +531,11 @@ module Hotdog
         def evaluate(environment, options={})
           values = environment.execute(@query, @args).map { |row| row.first }
           if values.empty? and @fallback
-            environment.logger.debug("no result: #{self.dump.inspect}")
-            @fallback.evaluate(environment, options)
+            @fallback.evaluate(environment, options).tap do |values|
+              if values.empty?
+                environment.logger.info("no result: #{self.dump.inspect}")
+              end
+            end
           else
             values
           end
@@ -612,7 +615,6 @@ module Hotdog
           if q = plan(options)
             values = environment.execute(*q).map { |row| row.first }
             if values.empty?
-              environment.logger.debug("no result: #{self.dump.inspect}")
               if options[:did_fallback]
                 []
               else
@@ -620,12 +622,20 @@ module Hotdog
                   # avoid optimizing @fallback to prevent infinite recursion
                   values = @fallback.evaluate(environment, options.merge(did_fallback: true))
                   if values.empty?
-                    reload(environment, options)
+                    reload(environment, options).tap do |values|
+                      if values.empty?
+                        environment.logger.info("no result: #{self.dump.inspect}")
+                      end
+                    end
                   else
                     values
                   end
                 else
-                  reload(environment, options)
+                  reload(environment, options).tap do |values|
+                    if values.empty?
+                      environment.logger.info("no result: #{self.dump.inspect}")
+                    end
+                  end
                 end
               end
             else
