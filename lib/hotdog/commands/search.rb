@@ -531,6 +531,7 @@ module Hotdog
         def evaluate(environment, options={})
           values = environment.execute(@query, @args).map { |row| row.first }
           if values.empty? and @fallback
+            environment.logger.debug("no result: #{self.dump.inspect}")
             @fallback.evaluate(environment, options)
           else
             values
@@ -611,6 +612,7 @@ module Hotdog
           if q = plan(options)
             values = environment.execute(*q).map { |row| row.first }
             if values.empty?
+              environment.logger.debug("no result: #{self.dump.inspect}")
               if options[:did_fallback]
                 []
               else
@@ -661,13 +663,15 @@ module Hotdog
         end
 
         def reload(environment, options={})
-          ttl = options.fetch(:ttl, 1)
-          if 0 < ttl
+          $did_reload ||= false
+          if $did_reload
+            []
+          else
+            $did_reload = true
             environment.logger.info("force reloading all hosts and tags.")
             environment.reload(force: true)
-            self.class.new(identifier, attribute, separator).optimize(options).evaluate(environment, options.merge(ttl: ttl-1))
-          else
-            []
+            @did_fallback = false
+            evaluate(environment, options)
           end
         end
 
