@@ -668,40 +668,16 @@ module Hotdog
 
         def optimize(options={})
           # fallback to glob expression
-          if identifier?
-            identifier_glob = to_glob(identifier)
-          else
-            identifier_glob = nil
-          end
-          if attribute?
-            attribute_glob = to_glob(attribute)
-          else
-            attribute_glob = nil
-          end
-          if (identifier? and identifier != identifier_glob) or (attribute? and attribute != attribute_glob)
-            fallback = case self
-            when StringHostNode, GlobHostNode
-              GlobHostNode.new(attribute_glob, separator).plan
-            when StringTagNode, GlobTagNode
-              GlobTagNode.new(identifier_glob, attribute_glob, separator).plan
-            when StringTagNameNode, GlobTagNameNode
-              GlobTagNameNode.new(identifier_glob, separator).plan
-            when StringTagValueNode, GlobTagValueNode
-              GlobTagValueNode.new(attribute_glob, separator).plan
-            when StringExpressionNode, GlobExpressionNode
-              GlobExpressionNode.new(identifier_glob, attribute_glob, separator).plan
-            else
-              nil
-            end
-            if fallback
-              @fallback = QueryExpressionNode.new(fallback[0], fallback[1])
-            end
-          end
+          @fallback = maybe_fallback(options)
           self
         end
 
         def to_glob(s)
           (s.start_with?("*") ? "" : "*") + s.gsub(/[-.\/_]/, "?") + (s.end_with?("*") ? "" : "*")
+        end
+
+        def maybe_glob(s)
+          s ? to_glob(s.to_s) : nil
         end
 
         def reload(environment, options={})
@@ -724,6 +700,10 @@ module Hotdog
           data[:fallback ] = @fallback.dump(options) if @fallback
           data
         end
+
+        def maybe_fallback(options={})
+          nil
+        end
       end
 
       class StringExpressionNode < TagExpressionNode
@@ -742,6 +722,10 @@ module Hotdog
             nil
           end
         end
+
+        def maybe_fallback(options={})
+          GlobExpressionNode.new(maybe_glob(identifier), maybe_glob(attribute), separator)
+        end
       end
 
       class StringHostNode < StringExpressionNode
@@ -753,6 +737,10 @@ module Hotdog
           q = "SELECT hosts.id AS host_id FROM hosts " \
                 "WHERE hosts.name = ?;"
           [q, [attribute]]
+        end
+
+        def maybe_fallback(options={})
+          GlobHostNode.new(maybe_glob(attribute), separator)
         end
       end
 
@@ -767,6 +755,10 @@ module Hotdog
                   "WHERE tags.name = ? AND tags.value = ?;"
           [q, [identifier, attribute]]
         end
+
+        def maybe_fallback(options={})
+          GlobTagNode.new(maybe_glob(identifier), maybe_glob(attribute), separator)
+        end
       end
 
       class StringTagNameNode < StringExpressionNode
@@ -780,6 +772,10 @@ module Hotdog
                   "WHERE tags.name = ?;"
           [q, [identifier]]
         end
+
+        def maybe_fallback(options={})
+          GlobTagNameNode.new(maybe_glob(identifier), separator)
+        end
       end
 
       class StringTagValueNode < StringExpressionNode
@@ -792,6 +788,10 @@ module Hotdog
                  "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
                    "WHERE tags.value = ?;"
           [q, [attribute]]
+        end
+
+        def maybe_fallback(options={})
+          GlobTagValueNode.new(maybe_glob(attribute), separator)
         end
       end
 
@@ -832,6 +832,10 @@ module Hotdog
                 "WHERE LOWER(hosts.name) GLOB LOWER(?);"
           [q, [attribute]]
         end
+
+        def maybe_fallback(options={})
+          GlobHostNode.new(maybe_glob(attribute), separator)
+        end
       end
 
       class GlobTagNode < GlobExpressionNode
@@ -844,6 +848,10 @@ module Hotdog
                 "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
                   "WHERE LOWER(tags.name) GLOB LOWER(?) AND LOWER(tags.value) GLOB LOWER(?);"
           [q, [identifier, attribute]]
+        end
+
+        def maybe_fallback(options={})
+          GlobTagNode.new(maybe_glob(identifier), maybe_glob(attribute), separator)
         end
       end
 
@@ -858,6 +866,10 @@ module Hotdog
                   "WHERE LOWER(tags.name) GLOB LOWER(?);"
           [q, [identifier]]
         end
+
+        def maybe_fallback(options={})
+          GlobTagNameNode.new(maybe_glob(identifier), separator)
+        end
       end
 
       class GlobTagValueNode < GlobExpressionNode
@@ -870,6 +882,10 @@ module Hotdog
                 "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
                   "WHERE LOWER(tags.value) GLOB LOWER(?);"
           [q, [attribute]]
+        end
+
+        def maybe_fallback(options={})
+          GlobTagValueNode.new(maybe_glob(attribute), separator)
         end
       end
 
@@ -890,10 +906,6 @@ module Hotdog
           else
             nil
           end
-        end
-
-        def optimize(options={})
-          self # disable fallback
         end
 
         def dump(options={})
