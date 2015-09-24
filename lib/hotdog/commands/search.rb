@@ -198,55 +198,75 @@ module Hotdog
           UnaryExpressionNode.new(unary_op, expression)
         }
         rule(identifier_regexp: simple(:identifier_regexp), separator: simple(:separator), attribute_regexp: simple(:attribute_regexp)) {
-          TagRegexpExpressionNode.new(identifier_regexp.to_s, attribute_regexp.to_s, separator)
+          if "/host/" == identifier_regexp
+            RegexpHostNode.new(attribute_regexp.to_s, separator)
+          else
+            RegexpTagNode.new(identifier_regexp.to_s, attribute_regexp.to_s, separator)
+          end
         }
         rule(identifier_regexp: simple(:identifier_regexp), separator: simple(:separator)) {
-          TagRegexpExpressionNode.new(identifier_regexp.to_s, nil, nil)
+          RegexpTagNameNode.new(identifier_regexp.to_s, separator)
         }
         rule(identifier_regexp: simple(:identifier_regexp)) {
-          TagRegexpExpressionNode.new(identifier_regexp.to_s, nil, nil)
+          RegexpExpressionNode.new(identifier_regexp.to_s)
         }
         rule(identifier_glob: simple(:identifier_glob), separator: simple(:separator), attribute_glob: simple(:attribute_glob)) {
-          TagGlobExpressionNode.new(identifier_glob.to_s, attribute_glob.to_s, separator)
+          if "host" == identifier_glob
+            GlobHostNode.new(attribute_glob.to_s, separator)
+          else
+            GlobTagNode.new(identifier_glob.to_s, attribute_glob.to_s, separator)
+          end
         }
         rule(identifier_glob: simple(:identifier_glob), separator: simple(:separator), attribute: simple(:attribute)) {
-          TagGlobExpressionNode.new(identifier_glob.to_s, attribute.to_s, separator)
+          if "host" == identifier_glob
+            GlobHostNode.new(attribute.to_s, separator)
+          else
+            GlobTagNode.new(identifier.to_s, attribute.to_s, separator)
+          end
         }
         rule(identifier_glob: simple(:identifier_glob), separator: simple(:separator)) {
-          TagGlobExpressionNode.new(identifier_glob.to_s, nil, separator)
+          GlobTagNameNode.new(identifier_glob.to_s, separator)
         }
         rule(identifier_glob: simple(:identifier_glob)) {
-          TagGlobExpressionNode.new(identifier_glob.to_s, nil, nil)
+          GlobExpressionNode.new(identifier_glob.to_s)
         }
         rule(identifier: simple(:identifier), separator: simple(:separator), attribute_glob: simple(:attribute_glob)) {
-          TagGlobExpressionNode.new(identifier.to_s, attribute_glob.to_s, separator)
+          if "host" == identifier
+            GlobHostNode.new(attribute_glob.to_s, separator)
+          else
+            GlobTagNode.new(identifier.to_s, attribute_glob.to_s, separator)
+          end
         }
         rule(identifier: simple(:identifier), separator: simple(:separator), attribute: simple(:attribute)) {
-          TagExpressionNode.new(identifier.to_s, attribute.to_s, separator)
+          if "host" == identifier
+            StringHostNode.new(attribute.to_s, separator)
+          else
+            StringTagNode.new(identifier.to_s, attribute.to_s, separator)
+          end
         }
         rule(identifier: simple(:identifier), separator: simple(:separator)) {
-          TagExpressionNode.new(identifier.to_s, nil, separator)
+          StringTagNameNode.new(identifier.to_s, separator)
         }
         rule(identifier: simple(:identifier)) {
-          TagExpressionNode.new(identifier.to_s, nil, nil)
+          StringExpressionNode.new(identifier.to_s)
         }
         rule(separator: simple(:separator), attribute_regexp: simple(:attribute_regexp)) {
-          TagRegexpExpressionNode.new(nil, attribute_regexp.to_s, separator)
+          RegexpTagValueNode.new(attribute_regexp.to_s, separator)
         }
         rule(attribute_regexp: simple(:attribute_regexp)) {
-          TagRegexpExpressionNode.new(nil, attribute_regexp.to_s, nil)
+          RegexpTagValueNode.new(attribute_regexp.to_s)
         }
         rule(separator: simple(:separator), attribute_glob: simple(:attribute_glob)) {
-          TagGlobExpressionNode.new(nil, attribute_glob.to_s, separator)
+          GlobTagValueNode.new(attribute_glob.to_s, separator)
         }
         rule(attribute_glob: simple(:attribute_glob)) {
-          TagGlobExpressionNode.new(nil, attribute_glob.to_s, nil)
+          GlobTagValueNode.new(attribute_glob.to_s)
         }
         rule(separator: simple(:separator), attribute: simple(:attribute)) {
-          TagExpressionNode.new(nil, attribute.to_s, separator)
+          StringTagValueNode.new(attribute.to_s, separator)
         }
         rule(attribute: simple(:attribute)) {
-          TagExpressionNode.new(nil, attribute.to_s, nil)
+          StringTagValueNode.new(attribute.to_s)
         }
       end
 
@@ -596,43 +616,7 @@ module Hotdog
         end
 
         def plan(options={})
-          if identifier?
-            if attribute?
-              case identifier
-              when /\Ahost\z/i
-                q = "SELECT hosts.id AS host_id FROM hosts " \
-                      "WHERE hosts.name = ?;"
-                [q, [attribute]]
-              else
-                q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
-                      "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                        "WHERE tags.name = ? AND tags.value = ?;"
-                [q, [identifier, attribute]]
-              end
-            else
-              if separator?
-                q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
-                      "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                        "WHERE tags.name = ?;"
-                [q, [identifier]]
-              else
-                q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
-                      "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
-                      "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                        "WHERE hosts.name = ? OR tags.name = ? OR tags.value = ?;"
-                [q, [identifier, identifier, identifier]]
-              end
-            end
-          else
-            if attribute?
-               q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
-                     "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                       "WHERE tags.value = ?;"
-              [q, [attribute]]
-            else
-              nil
-            end
-          end
+          raise NotImplementedError
         end
 
         def evaluate(environment, options={})
@@ -685,25 +669,39 @@ module Hotdog
         def optimize(options={})
           # fallback to glob expression
           if identifier?
-            prefix = (identifier.start_with?("*")) ? "" : "*"
-            suffix = (identifier.end_with?("*")) ? "" : "*"
-            identifier_glob = prefix + identifier.gsub(/[-.\/_]/, "?") + suffix
+            identifier_glob = to_glob(identifier)
           else
             identifier_glob = nil
           end
           if attribute?
-            prefix = (attribute.start_with?("*")) ? "" : "*"
-            suffix = (attribute.end_with?("*")) ? "" : "*"
-            attribute_glob = prefix + attribute.gsub(/[-.\/_]/, "?") + suffix
+            attribute_glob = to_glob(attribute)
           else
             attribute_glob = nil
           end
           if (identifier? and identifier != identifier_glob) or (attribute? and attribute != attribute_glob)
-            if fallback = TagGlobExpressionNode.new(identifier_glob, attribute_glob, separator).plan
+            fallback = case self
+            when StringHostNode, GlobHostNode
+              GlobHostNode.new(attribute_glob, separator).plan
+            when StringTagNode, GlobTagNode
+              GlobTagNode.new(identifier_glob, attribute_glob, separator).plan
+            when StringTagNameNode, GlobTagNameNode
+              GlobTagNameNode.new(identifier_glob, separator).plan
+            when StringTagValueNode, GlobTagValueNode
+              GlobTagValueNode.new(attribute_glob, separator).plan
+            when StringExpressionNode, GlobExpressionNode
+              GlobExpressionNode.new(identifier_glob, attribute_glob, separator).plan
+            else
+              nil
+            end
+            if fallback
               @fallback = QueryExpressionNode.new(fallback[0], fallback[1])
             end
           end
           self
+        end
+
+        def to_glob(s)
+          (s.start_with?("*") ? "" : "*") + s.gsub(/[-.\/_]/, "?") + (s.end_with?("*") ? "" : "*")
         end
 
         def reload(environment, options={})
@@ -720,110 +718,166 @@ module Hotdog
 
         def dump(options={})
           data = {}
-          data[:identifier] = @identifier.to_s if @identifier
-          data[:separator] = @separator.to_s if @separator
-          data[:attribute] = @attribute.to_s if @attribute
+          data[:identifier] = identifier.to_s if identifier
+          data[:separator] = separator.to_s if separator
+          data[:attribute] = attribute.to_s if attribute
           data[:fallback ] = @fallback.dump(options) if @fallback
           data
         end
       end
 
-      class TagGlobExpressionNode < TagExpressionNode
+      class StringExpressionNode < TagExpressionNode
+        def initialize(identifier, attribute=nil, separator=nil)
+          super(identifier, attribute, separator)
+        end
+
         def plan(options={})
-          if identifier?
-            if attribute?
-              case identifier
-              when /\Ahost\z/i
-                q = "SELECT hosts.id AS host_id FROM hosts " \
-                      "WHERE LOWER(hosts.name) GLOB LOWER(?);"
-                [q, [attribute]]
-              else
-                q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
-                      "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                        "WHERE LOWER(tags.name) GLOB LOWER(?) AND LOWER(tags.value) GLOB LOWER(?);"
-                [q, [identifier, attribute]]
-              end
-            else
-              if separator?
-                q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
-                      "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                        "WHERE LOWER(tags.name) GLOB LOWER(?);"
-                [q, [identifier]]
-              else
-                q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
-                      "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
-                      "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                        "WHERE LOWER(hosts.name) GLOB LOWER(?) OR LOWER(tags.name) GLOB LOWER(?) OR LOWER(tags.value) GLOB LOWER(?);"
-                [q, [identifier, identifier, identifier]]
-              end
-            end
-          else
-            if attribute?
-              q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
-                    "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                      "WHERE LOWER(tags.value) GLOB LOWER(?);"
-              [q, [attribute]]
-            else
-              nil
-            end
-          end
+          q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
+                "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
+                "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                  "WHERE hosts.name = ? OR tags.name = ? OR tags.value = ?;"
+          [q, [identifier, identifier, identifier]]
+        end
+      end
+
+      class StringHostNode < StringExpressionNode
+        def initialize(attribute, separator=nil)
+          super(nil, attribute, separator)
+        end
+
+        def plan(options={})
+          q = "SELECT hosts.id AS host_id FROM hosts " \
+                "WHERE hosts.name = ?;"
+          [q, [attribute]]
+        end
+      end
+
+      class StringTagNode < StringExpressionNode
+        def initialize(identifier, attribute, separator=nil)
+          super(identifier, attribute, separator)
+        end
+
+        def plan(options={})
+          q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
+                "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                  "WHERE tags.name = ? AND tags.value = ?;"
+          [q, [identifier, attribute]]
+        end
+      end
+
+      class StringTagNameNode < StringExpressionNode
+        def initialize(identifier, separator=nil)
+          super(identifier, nil, separator)
+        end
+
+        def plan(options={})
+          q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
+                "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                  "WHERE tags.name = ?;"
+          [q, [identifier]]
+        end
+      end
+
+      class StringTagValueNode < StringExpressionNode
+        def initialize(attribute, separator=nil)
+          super(nil, attribute, separator)
+        end
+
+        def plan(options={})
+           q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
+                 "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                   "WHERE tags.value = ?;"
+          [q, [attribute]]
+        end
+      end
+
+      class GlobExpressionNode < TagExpressionNode
+        def initialize(identifier, attribute=nil, separator=nil)
+          super(identifier, attribute, separator)
+        end
+
+        def plan(options={})
+          q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
+                "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
+                "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                  "WHERE LOWER(hosts.name) GLOB LOWER(?) OR LOWER(tags.name) GLOB LOWER(?) OR LOWER(tags.value) GLOB LOWER(?);"
+          [q, [identifier, identifier, identifier]]
         end
 
         def dump(options={})
           data = {}
-          data[:identifier_glob] = @identifier.to_s if @identifier
-          data[:separator] = @separator.to_s if @separator
-          data[:attribute_glob] = @attribute.to_s if @attribute
+          data[:identifier_glob] = identifier.to_s if identifier
+          data[:separator] = separator.to_s if separator
+          data[:attribute_glob] = attribute.to_s if attribute
           data[:fallback] = @fallback.dump(options) if @fallback
           data
         end
       end
 
-      class TagRegexpExpressionNode < TagExpressionNode
+      class GlobHostNode < GlobExpressionNode
+        def initialize(attribute, separator=nil)
+          super(nil, attribute, separator)
+        end
+
+        def plan(options={})
+          q = "SELECT hosts.id AS host_id FROM hosts " \
+                "WHERE LOWER(hosts.name) GLOB LOWER(?);"
+          [q, [attribute]]
+        end
+      end
+
+      class GlobTagNode < GlobExpressionNode
         def initialize(identifier, attribute, separator=nil)
+          super(identifier, attribute, separator)
+        end
+
+        def plan(options={})
+          q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
+                "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                  "WHERE LOWER(tags.name) GLOB LOWER(?) AND LOWER(tags.value) GLOB LOWER(?);"
+          [q, [identifier, attribute]]
+        end
+      end
+
+      class GlobTagNameNode < GlobExpressionNode
+        def initialize(identifier, separator=nil)
+          super(identifier, nil, separator)
+        end
+
+        def plan(options={})
+          q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
+                "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                  "WHERE LOWER(tags.name) GLOB LOWER(?);"
+          [q, [identifier]]
+        end
+      end
+
+      class GlobTagValueNode < GlobExpressionNode
+        def initialize(attribute, separator=nil)
+          super(nil, attribute, separator)
+        end
+
+        def plan(options={})
+          q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
+                "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                  "WHERE LOWER(tags.value) GLOB LOWER(?);"
+          [q, [attribute]]
+        end
+      end
+
+      class RegexpExpressionNode < TagExpressionNode
+        def initialize(identifier, attribute=nil, separator=nil)
           identifier = identifier.sub(%r{\A/(.*)/\z}) { $1 } if identifier
           attribute = attribute.sub(%r{\A/(.*)/\z}) { $1 } if attribute
           super(identifier, attribute, separator)
         end
 
         def plan(options={})
-          if identifier?
-            if attribute?
-              case identifier
-              when /\Ahost\z/i
-                q = "SELECT hosts.id AS host_id FROM hosts " \
-                      "WHERE hosts.name REGEXP ?;"
-                [q, [attribute]]
-              else
-                q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
-                      "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                        "WHERE tags.name REGEXP ? AND tags.value REGEXP ?;"
-                [q, [identifier, attribute]]
-              end
-            else
-              if separator?
-                q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
-                      "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                        "WHERE tags.name REGEXP ?;"
-                [q, [identifier]]
-              else
-                q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
-                      "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
-                      "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                        "WHERE hosts.name REGEXP ? OR tags.name REGEXP ? OR tags.value REGEXP ?;"
-                [q, [identifier, identifier, identifier]]
-              end
-            end
-          else
-            if attribute?
-              q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
-                    "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                      "WHERE tags.value REGEXP ?;"
-              [q, [attribute]]
-            else
-              nil
-            end
-          end
+          q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
+                "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
+                "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                  "WHERE hosts.name REGEXP ? OR tags.name REGEXP ? OR tags.value REGEXP ?;"
+          [q, [identifier, identifier, identifier]]
         end
 
         def optimize(options={})
@@ -832,11 +886,62 @@ module Hotdog
 
         def dump(options={})
           data = {}
-          data[:identifier_regexp] = @identifier.to_s if @identifier
-          data[:separator] = @separator.to_s if @separator
-          data[:attribute_regexp] = @attribute.to_s if @attribute
+          data[:identifier_regexp] = identifier.to_s if identifier
+          data[:separator] = separator.to_s if separator
+          data[:attribute_regexp] = attribute.to_s if attribute
           data[:fallback] = @fallback.dump(options) if @fallback
           data
+        end
+      end
+
+      class RegexpHostNode < RegexpExpressionNode
+        def initialize(attribute, separator=nil)
+          super(nil, attribute, separator)
+        end
+
+        def plan(options={})
+          q = "SELECT hosts.id AS host_id FROM hosts " \
+                "WHERE hosts.name REGEXP ?;"
+          [q, [attribute]]
+        end
+      end
+
+      class RegexpTagNode < RegexpExpressionNode
+        def initialize(identifier, attribute, separator=nil)
+          super(identifier, attribute, separator)
+        end
+
+        def plan(options={})
+           q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
+                "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                  "WHERE tags.name REGEXP ? AND tags.value REGEXP ?;"
+          [q, [identifier, attribute]]
+       end
+      end
+
+      class RegexpTagNameNode < RegexpExpressionNode
+        def initialize(identifier, separator=nil)
+          super(identifier, nil, separator)
+        end
+
+        def plan(options={})
+          q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
+                "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                  "WHERE tags.name REGEXP ?;"
+          [q, [identifier]]
+        end
+      end
+
+      class RegexpTagValueNode < RegexpExpressionNode
+        def initialize(attribute, separator=nil)
+          super(nil, attribute, separator)
+        end
+
+        def plan(options={})
+          q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
+                "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                  "WHERE tags.value REGEXP ?;"
+          [q, [attribute]]
         end
       end
     end
