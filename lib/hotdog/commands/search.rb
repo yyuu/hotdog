@@ -133,9 +133,9 @@ module Hotdog
         }
         rule(:atom) {
           ( spacing.maybe >> str('(') >> expression >> str(')') >> spacing.maybe \
-          | spacing.maybe >> identifier_regexp.as(:identifier_regexp) >> separator.as(:separator) >> attribute_regexp.as(:attribute_regexp) >> spacing.maybe \
-          | spacing.maybe >> identifier_regexp.as(:identifier_regexp) >> separator.as(:separator) >> spacing.maybe \
-          | spacing.maybe >> identifier_regexp.as(:identifier_regexp) >> spacing.maybe \
+          | spacing.maybe >> str('/') >> identifier_regexp.as(:identifier_regexp) >> str('/') >> separator.as(:separator) >> str('/') >> attribute_regexp.as(:attribute_regexp) >> str('/') >> spacing.maybe \
+          | spacing.maybe >> str('/') >> identifier_regexp.as(:identifier_regexp) >> str('/') >> separator.as(:separator) >> spacing.maybe \
+          | spacing.maybe >> str('/') >> identifier_regexp.as(:identifier_regexp) >> str('/') >> spacing.maybe \
           | spacing.maybe >> identifier_glob.as(:identifier_glob) >> separator.as(:separator) >> attribute_glob.as(:attribute_glob) >> spacing.maybe \
           | spacing.maybe >> identifier_glob.as(:identifier_glob) >> separator.as(:separator) >> attribute.as(:attribute) >> spacing.maybe \
           | spacing.maybe >> identifier_glob.as(:identifier_glob) >> separator.as(:separator) >> spacing.maybe \
@@ -144,16 +144,16 @@ module Hotdog
           | spacing.maybe >> identifier.as(:identifier) >> separator.as(:separator) >> attribute.as(:attribute) >> spacing.maybe \
           | spacing.maybe >> identifier.as(:identifier) >> separator.as(:separator) >> spacing.maybe \
           | spacing.maybe >> identifier.as(:identifier) >> spacing.maybe \
-          | spacing.maybe >> separator.as(:separator) >> attribute_regexp.as(:attribute_regexp) >> spacing.maybe \
+          | spacing.maybe >> separator.as(:separator) >> str('/') >> attribute_regexp.as(:attribute_regexp) >> str('/') >> spacing.maybe \
           | spacing.maybe >> separator.as(:separator) >> attribute_glob.as(:attribute_glob) >> spacing.maybe \
           | spacing.maybe >> separator.as(:separator) >> attribute.as(:attribute) >> spacing.maybe \
-          | spacing.maybe >> attribute_regexp.as(:attribute_regexp) >> spacing.maybe \
+          | spacing.maybe >> str('/') >> attribute_regexp.as(:attribute_regexp) >> str('/') >> spacing.maybe \
           | spacing.maybe >> attribute_glob.as(:attribute_glob) >> spacing.maybe \
           | spacing.maybe >> attribute.as(:attribute) >> spacing.maybe \
           )
         }
         rule(:identifier_regexp) {
-          ( str('/') >> (str('/').absent? >> any).repeat(0) >> str('/') \
+          ( (str('/').absent? >> any).repeat(0) \
           )
         }
         rule(:identifier_glob) {
@@ -170,7 +170,7 @@ module Hotdog
           )
         }
         rule(:attribute_regexp) {
-          ( str('/') >> (str('/').absent? >> any).repeat(0) >> str('/') \
+          ( (str('/').absent? >> any).repeat(0) \
           )
         }
         rule(:attribute_glob) {
@@ -198,7 +198,7 @@ module Hotdog
           UnaryExpressionNode.new(unary_op, expression)
         }
         rule(identifier_regexp: simple(:identifier_regexp), separator: simple(:separator), attribute_regexp: simple(:attribute_regexp)) {
-          if "/host/" == identifier_regexp
+          if "host" == identifier_regexp
             RegexpHostNode.new(attribute_regexp.to_s, separator)
           else
             RegexpTagNode.new(identifier_regexp.to_s, attribute_regexp.to_s, separator)
@@ -891,8 +891,6 @@ module Hotdog
 
       class RegexpExpressionNode < TagExpressionNode
         def initialize(identifier, attribute=nil, separator=nil)
-          identifier = identifier.sub(%r{\A/(.*)/\z}) { $1 } if identifier
-          attribute = attribute.sub(%r{\A/(.*)/\z}) { $1 } if attribute
           super(identifier, attribute, separator)
         end
 
