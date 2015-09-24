@@ -262,6 +262,14 @@ module Hotdog
         def dump(options={})
           {}
         end
+
+        def intermediates()
+          []
+        end
+
+        def leafs()
+          [self]
+        end
       end
 
       class BinaryExpressionNode < ExpressionNode
@@ -403,6 +411,14 @@ module Hotdog
           {left: @left.dump(options), op: @op.to_s, right: @right.dump(options)}
         end
 
+        def intermediates()
+          [self] + @left.intermediates + @right.intermediates
+        end
+
+        def leafs()
+          @left.leafs + @right.leafs
+        end
+
         private
         def optimize1(options)
           if TagExpressionNode === left and TagExpressionNode === right
@@ -493,6 +509,14 @@ module Hotdog
 
         def dump(options={})
           {op: @op.to_s, expression: @expression.dump(options)}
+        end
+
+        def intermediates()
+          [self] + @expression.intermediates
+        end
+
+        def leafs()
+          @expression.leafs
         end
 
         private
@@ -675,7 +699,9 @@ module Hotdog
             attribute_glob = nil
           end
           if (identifier? and identifier != identifier_glob) or (attribute? and attribute != attribute_glob)
-            @fallback = TagGlobExpressionNode.new(identifier_glob, attribute_glob, separator)
+            if fallback = TagGlobExpressionNode.new(identifier_glob, attribute_glob, separator).plan
+              @fallback = QueryExpressionNode.new(fallback[0], fallback[1])
+            end
           end
           self
         end
