@@ -732,17 +732,21 @@ module Hotdog
         end
 
         def plan(options={})
-          q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
-                "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
-                "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                  "WHERE hosts.name = ? OR tags.name = ? OR tags.value = ?;"
-          [q, [identifier, identifier, identifier]]
+          if identifier?
+            q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
+                  "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
+                  "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                    "WHERE hosts.name = ? OR tags.name = ? OR tags.value = ?;"
+            [q, [identifier, identifier, identifier]]
+          else
+            nil
+          end
         end
       end
 
       class StringHostNode < StringExpressionNode
         def initialize(attribute, separator=nil)
-          super(nil, attribute, separator)
+          super("host", attribute, separator)
         end
 
         def plan(options={})
@@ -797,11 +801,15 @@ module Hotdog
         end
 
         def plan(options={})
-          q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
-                "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
-                "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                  "WHERE LOWER(hosts.name) GLOB LOWER(?) OR LOWER(tags.name) GLOB LOWER(?) OR LOWER(tags.value) GLOB LOWER(?);"
-          [q, [identifier, identifier, identifier]]
+          if identifier?
+            q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
+                  "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
+                  "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                    "WHERE LOWER(hosts.name) GLOB LOWER(?) OR LOWER(tags.name) GLOB LOWER(?) OR LOWER(tags.value) GLOB LOWER(?);"
+            [q, [identifier, identifier, identifier]]
+          else
+            nil
+          end
         end
 
         def dump(options={})
@@ -816,7 +824,7 @@ module Hotdog
 
       class GlobHostNode < GlobExpressionNode
         def initialize(attribute, separator=nil)
-          super(nil, attribute, separator)
+          super("host", attribute, separator)
         end
 
         def plan(options={})
@@ -873,11 +881,15 @@ module Hotdog
         end
 
         def plan(options={})
-          q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
-                "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
-                "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                  "WHERE hosts.name REGEXP ? OR tags.name REGEXP ? OR tags.value REGEXP ?;"
-          [q, [identifier, identifier, identifier]]
+          if identifier?
+            q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
+                  "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
+                  "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                    "WHERE hosts.name REGEXP ? OR tags.name REGEXP ? OR tags.value REGEXP ?;"
+            [q, [identifier, identifier, identifier]]
+          else
+            nil
+          end
         end
 
         def optimize(options={})
@@ -896,7 +908,7 @@ module Hotdog
 
       class RegexpHostNode < RegexpExpressionNode
         def initialize(attribute, separator=nil)
-          super(nil, attribute, separator)
+          super("host", attribute, separator)
         end
 
         def plan(options={})
