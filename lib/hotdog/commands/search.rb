@@ -419,7 +419,11 @@ module Hotdog
               optimize1(options)
             end
           when :XOR
-            optimize1(options)
+            if left == right
+              []
+            else
+              optimize1(options)
+            end
           else
             self
           end
