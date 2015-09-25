@@ -29,14 +29,15 @@ module Hotdog
         raise(NotImplementedError)
       end
 
-      def execute(query, args=[])
+      def execute(q, args=[])
         update_db
-        q = query.strip
-        if 0 < args.length
-          q += " -- VALUES (#{args.map { |arg| Array === arg ? "(#{arg.join(", ")})" : arg.inspect }.join(", ")})"
+        begin
+          logger.debug("execute: #{q} -- #{args.inspect}")
+          prepare(@db, q).execute(args)
+        rescue
+          logger.error("failed: #{q} -- #{args.inspect}")
+          raise
         end
-        logger.debug(q)
-        prepare(@db, query).execute(args)
       end
 
       def fixed_string?()
@@ -192,21 +193,38 @@ module Hotdog
           memory_db.transaction do
             known_tags = all_tags.keys.map { |tag| split_tag(tag) }.uniq
             known_tags.each_slice(SQLITE_LIMIT_COMPOUND_SELECT / 2) do |known_tags|
-              prepare(memory_db, "INSERT OR IGNORE INTO tags (name, value) VALUES %s" % known_tags.map { "(?, ?)" }.join(", ")).execute(known_tags)
+              q = "INSERT OR IGNORE INTO tags (name, value) VALUES %s" % known_tags.map { "(?, ?)" }.join(", ")
+              begin
+                prepare(memory_db, q).execute(known_tags)
+              rescue
+                logger.error("failed: #{q} -- #{known_tags.inspect}")
+                raise
+              end
             end
 
             known_hosts = all_tags.values.reduce(:+).uniq
             known_hosts.each_slice(SQLITE_LIMIT_COMPOUND_SELECT) do |known_hosts|
-              prepare(memory_db, "INSERT OR IGNORE INTO hosts (name) VALUES %s" % known_hosts.map { "(?)" }.join(", ")).execute(known_hosts)
+              q = "INSERT OR IGNORE INTO hosts (name) VALUES %s" % known_hosts.map { "(?)" }.join(", ")
+              begin
+                prepare(memory_db, q).execute(known_hosts)
+              rescue
+                logger.error("failed: #{q} -- #{known_hosts.inspect}")
+                raise
+              end
             end
 
             all_tags.each do |tag, hosts|
-              q = "INSERT OR REPLACE INTO hosts_tags (host_id, tag_id) " \
-                    "SELECT host.id, tag.id FROM " \
-                      "( SELECT id FROM hosts WHERE name IN (%s) ) AS host, " \
-                      "( SELECT id FROM tags WHERE name = ? AND value = ? LIMIT 1 ) AS tag;"
               hosts.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 2) do |hosts|
-                prepare(memory_db, q % hosts.map { "?" }.join(", ")).execute(hosts + split_tag(tag))
+                q = "INSERT OR REPLACE INTO hosts_tags (host_id, tag_id) " \
+                      "SELECT host.id, tag.id FROM " \
+                        "( SELECT id FROM hosts WHERE name IN (%s) ) AS host, " \
+                        "( SELECT id FROM tags WHERE name = ? AND value = ? LIMIT 1 ) AS tag;" % hosts.map { "?" }.join(", ")
+                begin
+                  prepare(memory_db, q).execute(hosts + split_tag(tag))
+                rescue
+                  logger.error("failed: #{q} -- #{(hosts + split_tag(tag)).inspect}")
+                  raise
+                end
               end
             end
           end
@@ -269,17 +287,35 @@ module Hotdog
 
           hosts = prepare(src, "SELECT id, name FROM hosts").execute().to_a
           hosts.each_slice(SQLITE_LIMIT_COMPOUND_SELECT / 2) do |hosts|
-            prepare(dst, "INSERT INTO hosts (id, name) VALUES %s" % hosts.map { "(?, ?)" }.join(", ")).execute(hosts)
+            q = "INSERT INTO hosts (id, name) VALUES %s" % hosts.map { "(?, ?)" }.join(", ")
+            begin
+              prepare(dst, q).execute(hosts)
+            rescue
+              logger.error("failed: #{q} -- #{hosts.inspect}")
+              raise
+            end
           end
 
           tags = prepare(src, "SELECT id, name, value FROM tags").execute().to_a
           tags.each_slice(SQLITE_LIMIT_COMPOUND_SELECT / 3) do |tags|
-            prepare(dst, "INSERT INTO tags (id, name, value) VALUES %s" % tags.map { "(?, ?, ?)" }.join(", ")).execute(tags)
+            q = "INSERT INTO tags (id, name, value) VALUES %s" % tags.map { "(?, ?, ?)" }.join(", ")
+            begin
+              prepare(dst, q).execute(tags)
+            rescue
+              logger.error("failed: #{q} -- #{tags.inspect}")
+              raise
+            end
           end
 
           hosts_tags = prepare(src, "SELECT host_id, tag_id FROM hosts_tags").to_a
           hosts_tags.each_slice(SQLITE_LIMIT_COMPOUND_SELECT / 2) do |hosts_tags|
-            prepare(dst, "INSERT INTO hosts_tags (host_id, tag_id) VALUES %s" % hosts_tags.map { "(?, ?)" }.join(", ")).execute(hosts_tags)
+            q = "INSERT INTO hosts_tags (host_id, tag_id) VALUES %s" % hosts_tags.map { "(?, ?)" }.join(", ")
+            begin
+              prepare(dst, q).execute(hosts_tags)
+            rescue
+              logger.error("failed: #{q} -- #{hosts_tags.inspect}")
+              raise
+            end
           end
 
           create_index_hosts(dst)
