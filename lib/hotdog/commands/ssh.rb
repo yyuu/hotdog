@@ -8,8 +8,8 @@ require "shellwords"
 module Hotdog
   module Commands
     class Ssh < Search
-      def run(args=[])
-        ssh_option = options.merge({
+      def define_options(optparse)
+        @ssh_options = @options.merge({
           index: nil,
           options: [],
           user: nil,
@@ -20,30 +20,33 @@ module Hotdog
         })
 
         optparse.on("-n", "--index INDEX", "Use this index of host if multiple servers are found", Integer) do |index|
-          ssh_option[:index] = index
+          @ssh_options[:index] = index
         end
         optparse.on("-o SSH_OPTION", "Passes this string to ssh command through shell. This option may be given multiple times") do |option|
-          ssh_option[:options] += [option]
+          @ssh_options[:options] += [option]
         end
         optparse.on("-i SSH_IDENTITY_FILE", "SSH identity file path") do |path|
-          ssh_option[:identity_file] = path
+          @ssh_options[:identity_file] = path
         end
         optparse.on("-A", "Enable agent forwarding", TrueClass) do |b|
-          ssh_option[:forward_agent] = b
+          @ssh_options[:forward_agent] = b
         end
         optparse.on("-p PORT", "Port of the remote host", Integer) do |port|
-          ssh_option[:port] = port
+          @ssh_options[:port] = port
         end
         optparse.on("-u SSH_USER", "SSH login user name") do |user|
-          ssh_option[:user] = user
+          @ssh_options[:user] = user
         end
         optparse.on("-v", "--verbose", "Enable verbose ode") do |v|
-          ssh_option[:verbose] = v
+          @ssh_options[:verbose] = v
         end
+      end
 
-        search_args = []
-        optparse.order!(args) {|search_arg| search_args.push(search_arg) }
-        expression = search_args.join(" ").strip
+      def parse_options(optparse, args=[])
+      end
+
+      def run(args=[])
+        expression = args.join(" ").strip
         if expression.empty?
           exit(1)
         end
@@ -63,8 +66,8 @@ module Hotdog
           STDERR.puts("no match found: #{search_args.join(" ")}")
           exit(1)
         else
-          if ssh_option[:index] && result.length > ssh_option[:index]
-            host = result[ssh_option[:index]]
+          if @ssh_options[:index] && result.length > @ssh_options[:index]
+            host = result[@ssh_options[:index]]
           else
             result, fields = get_hosts_with_search_tags(result, node)
 
@@ -83,29 +86,29 @@ module Hotdog
 
         # build ssh command
         cmdline = ["ssh"]
-        ssh_option[:options].each do |option|
+        @ssh_options[:options].each do |option|
           cmdline << "-o" << option
         end
-        if path = ssh_option[:identity_file]
+        if path = @ssh_options[:identity_file]
           cmdline << "-i" << Shellwords.escape(path)
         end
-        if port = ssh_option[:port]
+        if port = @ssh_options[:port]
           cmdline << "-p" << port.to_s
         end
-        if ssh_option[:forward_agent]
+        if @ssh_options[:forward_agent]
           cmdline << "-A"
         end
-        if ssh_option[:verbose]
+        if @ssh_options[:verbose]
           cmdline << "-v"
         end
-        if user = ssh_option[:user]
+        if user = @ssh_options[:user]
           cmdline << (user + "@" + address)
         else
           cmdline << address
         end
         cmdline.concat(args)
 
-        exec *cmdline
+        exec(*cmdline)
         exit(127)
       end
     end

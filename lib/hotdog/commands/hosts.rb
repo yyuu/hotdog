@@ -4,7 +4,6 @@ module Hotdog
   module Commands
     class Hosts < BaseCommand
       def run(args=[])
-        args = optparse.parse(args)
         if args.empty?
           result = execute("SELECT id FROM hosts").to_a.reduce(:+)
           show_hosts(result)

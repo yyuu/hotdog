@@ -6,7 +6,6 @@ module Hotdog
   module Commands
     class Up < BaseCommand
       def run(args=[])
-        args = optparse.parse(args)
         scopes = args.map { |arg|
           if arg.index(":").nil?
             "host:#{arg}"

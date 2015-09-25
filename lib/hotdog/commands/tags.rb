@@ -4,7 +4,6 @@ module Hotdog
   module Commands
     class Tags < BaseCommand
       def run(args=[])
-        args = optparse.parse(args)
         if args.empty?
           result = execute("SELECT name, value FROM tags").map { |name, value| [join_tag(name, value)] }
           show_tags(result)

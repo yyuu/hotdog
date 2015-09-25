@@ -6,13 +6,15 @@ require "parslet"
 module Hotdog
   module Commands
     class Search < BaseCommand
-      def run(args=[])
-        search_options = options.merge({
+      def define_options(optparse)
+        @search_options = @options.merge({
         })
         optparse.on("-n", "--limit LIMIT", "Limit result set to specified size at most", Integer) do |limit|
-          search_options[:limit] = limit
+          @search_options[:limit] = limit
         end
-        args = optparse.parse(args)
+      end
+
+      def run(args=[])
         expression = args.join(" ").strip
         if expression.empty?
           # return everything if given expression is empty
@@ -29,7 +31,7 @@ module Hotdog
         result = evaluate(node, self)
         if 0 < result.length
           _result, fields = get_hosts_with_search_tags(result, node)
-          result = _result.take(search_options.fetch(:limit, _result.size))
+          result = _result.take(@search_options.fetch(:limit, _result.size))
           STDOUT.print(format(result, fields: fields))
           if _result.length == result.length
             logger.info("found %d host(s)." % result.length)

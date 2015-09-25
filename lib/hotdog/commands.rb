@@ -52,6 +52,14 @@ module Hotdog
         update_db(options)
       end
 
+      def define_options(optparse)
+        # nop
+      end
+
+      def parse_options(optparse, args=[])
+        optparse.parse(args)
+      end
+
       private
       def prepare(db, query)
         k = (db.hash & MASK_DATABASE) | (query.hash & MASK_QUERY)
@@ -60,10 +68,6 @@ module Hotdog
 
       def format(result, options={})
         @options[:formatter].format(result, @options.merge(options))
-      end
-
-      def optparse()
-        @application.optparse
       end
 
       def glob?(s)

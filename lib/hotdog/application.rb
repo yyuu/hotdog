@@ -50,25 +50,27 @@ module Hotdog
       end
       args = @optparse.order(argv)
 
-      unless options[:api_key]
-        raise("DATADOG_API_KEY is not set")
-      end
-
-      unless options[:application_key]
-        raise("DATADOG_APPLICATION_KEY is not set")
-      end
-
-      options[:formatter] = get_formatter(options[:format]).new
-
-      if options[:debug] or options[:verbose]
-        options[:logger].level = Logger::DEBUG
-      else
-        options[:logger].level = Logger::INFO
-      end
-
       begin
         command = ( args.shift || "help" )
         get_command(command).new(self).tap do |cmd|
+          cmd.define_options(@optparse)
+          args = cmd.parse_options(@optparse, args)
+          unless options[:api_key]
+            raise("DATADOG_API_KEY is not set")
+          end
+
+          unless options[:application_key]
+            raise("DATADOG_APPLICATION_KEY is not set")
+          end
+
+          options[:formatter] = get_formatter(options[:format]).new
+
+          if options[:debug] or options[:verbose]
+            options[:logger].level = Logger::DEBUG
+          else
+            options[:logger].level = Logger::INFO
+          end
+
           cmd.run(args)
         end
       rescue Errno::EPIPE
