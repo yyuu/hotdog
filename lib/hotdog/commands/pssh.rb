@@ -10,13 +10,13 @@ module Hotdog
   module Commands
     class Pssh < Search
       def run(args=[])
-        ssh_option = {
+        ssh_option = options.merge({
           options: [],
           user: nil,
           port: nil,
           identity_file: nil,
           max_parallelism: nil,
-        }
+        })
 
         optparse.on("-o SSH_OPTION", "Passes this string to ssh command through shell. This option may be given multiple times") do |option|
           ssh_option[:options] += [option]

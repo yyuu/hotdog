@@ -9,14 +9,15 @@ module Hotdog
   module Commands
     class Ssh < Search
       def run(args=[])
-        ssh_option = {
+        ssh_option = options.merge({
           index: nil,
           options: [],
           user: nil,
           port: nil,
           identity_file: nil,
           forward_agent: false,
-        }
+          verbose: false,
+        })
 
         optparse.on("-n", "--index INDEX", "Use this index of host if multiple servers are found", Integer) do |index|
           ssh_option[:index] = index
@@ -35,6 +36,9 @@ module Hotdog
         end
         optparse.on("-u SSH_USER", "SSH login user name") do |user|
           ssh_option[:user] = user
+        end
+        optparse.on("-v", "--verbose", "Enable verbose ode") do |v|
+          ssh_option[:verbose] = v
         end
 
         search_args = []
@@ -90,6 +94,9 @@ module Hotdog
         end
         if ssh_option[:forward_agent]
           cmdline << "-A"
+        end
+        if ssh_option[:verbose]
+          cmdline << "-v"
         end
         if user = ssh_option[:user]
           cmdline << (user + "@" + address)

@@ -7,8 +7,8 @@ module Hotdog
   module Commands
     class Search < BaseCommand
       def run(args=[])
-        search_options = {
-        }
+        search_options = options.merge({
+        })
         optparse.on("-n", "--limit LIMIT", "Limit result set to specified size at most", Integer) do |limit|
           search_options[:limit] = limit
         end
