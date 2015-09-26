@@ -462,7 +462,7 @@ module Hotdog
         end
 
         def dump(options={})
-          {left: @left.dump(options), op: @op.to_s, right: @right.dump(options)}
+          {left: @left.dump(options), binary_op: @op.to_s, right: @right.dump(options)}
         end
 
         def intermediates()
@@ -562,7 +562,7 @@ module Hotdog
         end
 
         def dump(options={})
-          {op: @op.to_s, expression: @expression.dump(options)}
+          {unary_op: @op.to_s, expression: @expression.dump(options)}
         end
 
         def intermediates()
@@ -701,7 +701,7 @@ module Hotdog
         end
 
         def dump(optinos={})
-          {op: @op.to_s, expressions: expressions.map { |expression| expression.dump }}
+          {multinary_op: @op.to_s, expressions: expressions.map { |expression| expression.dump }}
         end
 
         def intermediates()
