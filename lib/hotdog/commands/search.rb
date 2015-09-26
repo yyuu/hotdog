@@ -377,11 +377,10 @@ module Hotdog
               expression.expression
             else
               if TagExpressionNode === expression
-                expr = expression.plan(options)
-                if expr and expr[1].length <= SQLITE_LIMIT_COMPOUND_SELECT
-                  q = "SELECT id AS host_id FROM hosts " \
-                        "EXCEPT #{expr[0].sub(/\s*;\s*\z/, "")};"
-                  QueryExpressionNode.new(q, expr[1])
+                q = expression.maybe_query(options)
+                v = expression.condition_values(options)
+                if q and v.length <= SQLITE_LIMIT_COMPOUND_SELECT
+                  QueryExpressionNode.new("SELECT id AS host_id FROM hosts EXCEPT #{q.sub(/\s*;\s*\z/, "")};", v)
                 else
                   self
                 end
@@ -565,24 +564,26 @@ module Hotdog
         private
         def optimize1(options)
           if TagExpressionNode === left and TagExpressionNode === right
-            lhs = left.plan(options)
-            rhs = right.plan(options)
-            if lhs and rhs and lhs[1].length + rhs[1].length <= SQLITE_LIMIT_COMPOUND_SELECT
+            lq = left.maybe_query(options)
+            lv = left.condition_values(options)
+            rq = right.maybe_query(options)
+            rv = right.condition_values(options)
+            if lq and rq and lv.length + rv.length <= SQLITE_LIMIT_COMPOUND_SELECT
               case op
               when :AND
-                q = "SELECT host_id FROM ( #{lhs[0].sub(/\s*;\s*\z/, "")} ) " \
-                      "INTERSECT #{rhs[0].sub(/\s*;\s*\z/, "")};"
-                QueryExpressionNode.new(q, lhs[1] + rhs[1], fallback: self)
+                q = "SELECT host_id FROM ( #{lq.sub(/\s*;\s*\z/, "")} ) " \
+                      "INTERSECT #{rq.sub(/\s*;\s*\z/, "")};"
+                QueryExpressionNode.new(q, lv + rv, fallback: self)
               when :OR
-                q = "SELECT host_id FROM ( #{lhs[0].sub(/\s*;\s*\z/, "")} ) " \
-                      "UNION #{rhs[0].sub(/\s*;\s*\z/, "")};"
-                QueryExpressionNode.new(q, lhs[1] + rhs[1], fallback: self)
+                q = "SELECT host_id FROM ( #{lq.sub(/\s*;\s*\z/, "")} ) " \
+                      "UNION #{rq.sub(/\s*;\s*\z/, "")};"
+                QueryExpressionNode.new(q, lv + rv, fallback: self)
               when :XOR
-                q = "SELECT host_id FROM ( #{lhs[0].sub(/\s*;\s*\z/, "")} ) " \
-                      "UNION #{rhs[0].sub(/\s*;\s*\z/, "")} " \
-                      "EXCEPT SELECT host_id FROM ( #{lhs[0].sub(/\s*;\s*\z/, "")} ) " \
-                        "INTERSECT #{rhs[0].sub(/\s*;\s*\z/, "")};"
-                QueryExpressionNode.new(q, lhs[1] + rhs[1], fallback: self)
+                q = "SELECT host_id FROM ( #{lq.sub(/\s*;\s*\z/, "")} ) " \
+                      "UNION #{rq.sub(/\s*;\s*\z/, "")} " \
+                      "EXCEPT SELECT host_id FROM ( #{lq.sub(/\s*;\s*\z/, "")} ) " \
+                        "INTERSECT #{rq.sub(/\s*;\s*\z/, "")};"
+                QueryExpressionNode.new(q, lv + rv, fallback: self)
               else
                 self
               end
@@ -600,14 +601,10 @@ module Hotdog
 
         def initialize(op, expressions, options={})
           case op
-          when :AND
-            @op = :AND
           when :OR
             @op = :OR
-          when :XOR
-            @op = :XOR
           else
-            raise(SyntaxError.new("unknown binary operator: #{op.inspect}"))
+            raise(SyntaxError.new("unknown multinary operator: #{op.inspect}"))
           end
           if SQLITE_LIMIT_COMPOUND_SELECT < expressions.length
             raise(ArgumentError.new("expressions limit exceeded: #{expressions.length} for #{SQLITE_LIMIT_COMPOUND_SELECT}"))
@@ -717,14 +714,6 @@ module Hotdog
           !(separator.nil? or separator.to_s.empty?)
         end
 
-        def plan(options={})
-          if query = maybe_query(options)
-            [query, condition_values(options)]
-          else
-            nil
-          end
-        end
-
         def maybe_query(options={})
           if query_without_condition = maybe_query_without_condition(options)
             query_without_condition.sub(/\s*;\s*\z/, "") + " WHERE " + condition(options) + ";"
@@ -764,8 +753,8 @@ module Hotdog
         end
 
         def evaluate(environment, options={})
-          if q = plan(options)
-            values = environment.execute(*q).map { |row| row.first }
+          if q = maybe_query(options)
+            values = environment.execute(q, condition_values(options)).map { |row| row.first }
             if values.empty?
               if options[:did_fallback]
                 []
