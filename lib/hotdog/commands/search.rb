@@ -416,7 +416,35 @@ module Hotdog
             if left == right
               left
             else
-              optimize1(options)
+              if MultinaryExpressionNode === left and left.op == op
+                if MultinaryExpressionNode === right and right.op == op
+                  begin
+                    MultinaryExpressionNode.new(op, left.expressions + right.expressions, fallback: self)
+                  rescue ArgumentError
+                    optimize1(options)
+                  end
+                else
+                  begin
+                    MultinaryExpressionNode.new(op, left.expressions + [right], fallback: self)
+                  rescue ArgumentError
+                    optimize1(options)
+                  end
+                end
+              else
+                if MultinaryExpressionNode === right and right.op == op
+                  begin
+                    MultinaryExpressionNode.new(op, [left] + right.expressions, fallback: self)
+                  rescue ArgumentError
+                    optimize1(options)
+                  end
+                else
+                  begin
+                    MultinaryExpressionNode.new(op, [left, right], fallback: self)
+                  rescue ArgumentError
+                    optimize1(options)
+                  end
+                end
+              end
             end
           when :XOR
             if left == right
@@ -568,6 +596,120 @@ module Hotdog
           else
             self
           end
+        end
+      end
+
+      class MultinaryExpressionNode < ExpressionNode
+        attr_reader :op, :expressions
+
+        def initialize(op, expressions, options={})
+          case op
+          when :AND
+            @op = :AND
+          when :OR
+            @op = :OR
+          when :XOR
+            @op = :XOR
+          else
+            raise(SyntaxError.new("unknown binary operator: #{op.inspect}"))
+          end
+          if SQLITE_LIMIT_COMPOUND_SELECT < expressions.length
+            raise(ArgumentError.new("expressions limit exceeded: #{expressions.length} for #{SQLITE_LIMIT_COMPOUND_SELECT}"))
+          end
+          @expressions = expressions
+          @fallback = options[:fallback]
+        end
+
+        def evaluate(environment, options={})
+          case @op
+          when :OR
+            if expressions.empty?
+              []
+            else
+              if expressions.group_by { |expression| expression.class }.length == 1
+                case expressions.first
+                when StringTagNameNode
+                  q = "SELECT DISTINCCT hosts_tags.host_id FROM hosts_tags " \
+                        "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                          "WHERE tags.name IN (%s);" % expressions.map { "?" }.join(", ")
+                  values = environment.execute(q, expressions.map { |expression| expression.identifier }).map { |row| row.first }
+                when StringTagValueNode
+                  q = "SELECT DISTINCCT hosts_tags.host_id FROM hosts_tags " \
+                        "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                          "WHERE tags.value IN (%s);" % expressions.map { "?" }.join(", ")
+                  values = environment.execute(q, expressions.map { |expression| expression.identifier }).map { |row| row.first }
+                when StringHostNode
+                  q = "SELECT hosts.id AS host_id FROM hosts " \
+                        "WHERE hosts.name IN (%s);" % expressions.map { "?" }.join(", ")
+                  values = environment.execute(q, expressions.map { |expression| expression.attribute }).map { |row| row.first }
+                when StringTagNode
+                  q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
+                        "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                          "WHERE tags.name || ':' || tags.value IN (%s);" % expressions.map { "?" }.join(", ")
+                  values = environment.execute(q, expressions.map { |expression| "#{expression.identifier}:#{expression.attribute}" }).map { |row| row.first }
+                when StringExpressionNode
+                  q1 = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
+                         "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
+                         "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                           "WHERE hosts.name IN (%s);" % expressions.map { "?" }.join(", ")
+                  values = environment.execute(q1, expressions.map { |expression| expression.identifier }).map { |row| row.first }
+                  if values.empty?
+                    q2 = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
+                           "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
+                           "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                             "WHERE tags.name IN (%s);" % expressions.map { "?" }.join(", ")
+                    values = environment.execute(q2, expressions.map { |expression| expression.identifier }).map { |row| row.first }
+                    if values.empty?
+                      q3 = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
+                             "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
+                             "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                               "WHERE tags.value IN (%s);" % expressions.map { "?" }.join(", ")
+                      values = environment.execute(q3, expressions.map { |expression| expression.identifier }).map { |row| row.first }
+                    end
+                  end
+                else
+                  values = []
+                end
+                if values.empty?
+                  if @fallback
+                    @fallback.evaluate(environment, options={})
+                  else
+                    []
+                  end
+                else
+                  values
+                end
+              else
+                if @fallback
+                  @fallback.evaluate(environment, options={})
+                else
+                  []
+                end
+              end
+            end
+          else
+            if expressions.empty?
+              []
+            else
+              if @fallback
+                @fallback.evaluate(environment, options={})
+              else
+                []
+              end
+            end
+          end
+        end
+
+        def dump(optinos={})
+          {op: @op.to_s, expressions: expressions.map { |expression| expression.dump }}
+        end
+
+        def intermediates()
+          [self] + @expression.flat_map { |expression| expression.intermediates }
+        end
+
+        def leafs()
+          @expressions.flat_map { |expression| expression.leafs }
         end
       end
 
