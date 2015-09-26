@@ -171,7 +171,7 @@ module Hotdog
           FileUtils.mkdir_p(options[:confdir])
           persistent = File.join(options[:confdir], PERSISTENT_DB)
 
-          if not options[:force] and File.exist?(persistent) and Time.new < File.mtime(persistent) + options[:expiry]
+          if (not options[:force] and File.exist?(persistent) and Time.new < File.mtime(persistent) + options[:expiry]) or options[:offline]
             begin
               persistent_db = SQLite3::Database.new(persistent)
               persistent_db.execute("SELECT id, name FROM hosts LIMIT 1")
@@ -180,7 +180,11 @@ module Hotdog
               @db = persistent_db
               return
             rescue SQLite3::SQLException
-              persistent_db.close()
+              if options[:offline]
+                raise(RuntimeError.new("no database available on offline mode"))
+              else
+                persistent_db.close()
+              end
             end
           end
 

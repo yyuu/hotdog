@@ -28,6 +28,7 @@ module Hotdog
           logger.level = Logger::INFO
         },
         max_time: 5,
+        offline: false,
         print0: false,
         print1: true,
         primary_tag: nil,
@@ -121,6 +122,9 @@ module Hotdog
       end
       @optparse.on("-V", "--[no-]verbose", "Enable verbose mode") do |v|
         options[:verbose] = v
+      end
+      @optparse.on("--[no-]offline", "Enable offline mode") do |v|
+        options[:offline] = v
       end
     end
 
