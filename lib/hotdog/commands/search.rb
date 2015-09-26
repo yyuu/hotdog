@@ -772,19 +772,35 @@ module Hotdog
         end
 
         def plan(options={})
+          if query = maybe_query(options)
+            [query, condition_values(options)]
+          else
+            nil
+          end
+        end
+
+        def maybe_query(options={})
+          if query_without_condition = maybe_query_without_condition(options)
+            query_without_condition.sub(/\s*;\s*\z/, "") + " WHERE " + condition(options) + ";"
+          else
+            nil
+          end
+        end
+
+        def maybe_query_without_condition(options={})
           tables = condition_tables(options)
           if tables.empty?
             nil
           else
             case tables.sort
             when [:hosts]
-              ["SELECT hosts.id AS host_id FROM hosts WHERE %s;" % condition(options), condition_values(options)]
+              "SELECT hosts.id AS host_id FROM hosts;"
             when [:hosts, :tags]
-              ["SELECT DISTINCT hosts_tags.host_id FROM hosts_tags INNER JOIN hosts ON hosts_tags.host_id = hosts.id INNER JOIN tags ON hosts_tags.tag_id = tags.id WHERE %s;" % condition(options), condition_values(options)]
+              "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags INNER JOIN hosts ON hosts_tags.host_id = hosts.id INNER JOIN tags ON hosts_tags.tag_id = tags.id;"
             when [:tags]
-              ["SELECT DISTINCT hosts_tags.host_id FROM hosts_tags INNER JOIN tags ON hosts_tags.tag_id = tags.id WHERE %s;" % condition(options), condition_values(options)]
+              "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags INNER JOIN tags ON hosts_tags.tag_id = tags.id;"
             else
-              raise NotImplementedError
+              raise(NotImplementedError.new("unknown tables: #{tables.join(", ")}"))
             end
           end
         end
