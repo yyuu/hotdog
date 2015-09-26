@@ -571,17 +571,14 @@ module Hotdog
             if lq and rq and lv.length + rv.length <= SQLITE_LIMIT_COMPOUND_SELECT
               case op
               when :AND
-                q = "SELECT host_id FROM ( #{lq.sub(/\s*;\s*\z/, "")} ) " \
-                      "INTERSECT #{rq.sub(/\s*;\s*\z/, "")};"
+                q = "#{lq.sub(/\s*;\s*\z/, "")} INTERSECT #{rq.sub(/\s*;\s*\z/, "")};"
                 QueryExpressionNode.new(q, lv + rv, fallback: self)
               when :OR
-                q = "SELECT host_id FROM ( #{lq.sub(/\s*;\s*\z/, "")} ) " \
-                      "UNION #{rq.sub(/\s*;\s*\z/, "")};"
+                q = "#{lq.sub(/\s*;\s*\z/, "")} UNION #{rq.sub(/\s*;\s*\z/, "")};"
                 QueryExpressionNode.new(q, lv + rv, fallback: self)
               when :XOR
-                q = "SELECT host_id FROM ( #{lq.sub(/\s*;\s*\z/, "")} ) " \
-                      "UNION #{rq.sub(/\s*;\s*\z/, "")} " \
-                      "EXCEPT SELECT host_id FROM ( #{lq.sub(/\s*;\s*\z/, "")} ) " \
+                q = "#{lq.sub(/\s*;\s*\z/, "")} UNION #{rq.sub(/\s*;\s*\z/, "")} " \
+                      "EXCEPT #{lq.sub(/\s*;\s*\z/, "")} " \
                         "INTERSECT #{rq.sub(/\s*;\s*\z/, "")};"
                 QueryExpressionNode.new(q, lv + rv, fallback: self)
               else
