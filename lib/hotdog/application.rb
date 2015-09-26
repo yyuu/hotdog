@@ -64,6 +64,10 @@ module Hotdog
             raise("DATADOG_APPLICATION_KEY is not set")
           end
 
+          if options[:format] == "ltsv"
+            options[:headers] = true
+          end
+
           options[:formatter] = get_formatter(options[:format]).new
 
           if options[:debug] or options[:verbose]
