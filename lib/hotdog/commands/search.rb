@@ -302,6 +302,99 @@ module Hotdog
         end
       end
 
+      class UnaryExpressionNode < ExpressionNode
+        attr_reader :op, :expression
+
+        def initialize(op, expression)
+          case op
+          when "!", "~", /\Anot\z/i
+            @op = :NOT
+          else
+            raise(SyntaxError.new("unknown unary operator: #{@op.inspect}"))
+          end
+          @expression = expression
+        end
+
+        def evaluate(environment, options={})
+          case @op
+          when :NOT
+            values = @expression.evaluate(environment, options).tap do |values|
+              environment.logger.debug("expr: #{values.length} value(s)")
+            end
+            if values.empty?
+              environment.execute("SELECT id FROM hosts").map { |row| row.first }.tap do |values|
+                environment.logger.debug("NOT expr: #{values.length} value(s)")
+              end
+            else
+              # workaround for "too many terms in compound SELECT"
+              min, max = environment.execute("SELECT MIN(id), MAX(id) FROM hosts ORDER BY id LIMIT 1").first.to_a
+              (min / (SQLITE_LIMIT_COMPOUND_SELECT - 2)).upto(max / (SQLITE_LIMIT_COMPOUND_SELECT - 2)).flat_map { |i|
+                range = ((SQLITE_LIMIT_COMPOUND_SELECT - 2) * i)...((SQLITE_LIMIT_COMPOUND_SELECT - 2) * (i + 1))
+                selected = values.select { |n| range === n }
+                q = "SELECT id FROM hosts " \
+                      "WHERE ? <= id AND id < ? AND id NOT IN (%s);"
+                environment.execute(q % selected.map { "?" }.join(", "), [range.first, range.last] + selected).map { |row| row.first }
+              }.tap do |values|
+                environment.logger.debug("NOT expr: #{values.length} value(s)")
+              end
+            end
+          else
+            []
+          end
+        end
+
+        def optimize(options={})
+          @expression = @expression.optimize(options)
+          case op
+          when :NOT
+            optimize1(options)
+          else
+            self
+          end
+        end
+
+        def ==(other)
+          self.class === other and @op == other.op and @expression == other.expression
+        end
+
+        def dump(options={})
+          {unary_op: @op.to_s, expression: @expression.dump(options)}
+        end
+
+        def intermediates()
+          [self] + @expression.intermediates
+        end
+
+        def leafs()
+          @expression.leafs
+        end
+
+        private
+        def optimize1(options={})
+          case op
+          when :NOT
+            if UnaryExpressionNode === expression and expression.op == :NOT
+              expression.expression
+            else
+              if TagExpressionNode === expression
+                expr = expression.plan(options)
+                if expr and expr[1].length <= SQLITE_LIMIT_COMPOUND_SELECT
+                  q = "SELECT id AS host_id FROM hosts " \
+                        "EXCEPT #{expr[0].sub(/\s*;\s*\z/, "")};"
+                  QueryExpressionNode.new(q, expr[1])
+                else
+                  self
+                end
+              else
+                self
+              end
+            end
+          else
+            self
+          end
+        end
+      end
+
       class BinaryExpressionNode < ExpressionNode
         attr_reader :op, :left, :right
 
@@ -495,99 +588,6 @@ module Hotdog
               end
             else
               self
-            end
-          else
-            self
-          end
-        end
-      end
-
-      class UnaryExpressionNode < ExpressionNode
-        attr_reader :op, :expression
-
-        def initialize(op, expression)
-          case op
-          when "!", "~", /\Anot\z/i
-            @op = :NOT
-          else
-            raise(SyntaxError.new("unknown unary operator: #{@op.inspect}"))
-          end
-          @expression = expression
-        end
-
-        def evaluate(environment, options={})
-          case @op
-          when :NOT
-            values = @expression.evaluate(environment, options).tap do |values|
-              environment.logger.debug("expr: #{values.length} value(s)")
-            end
-            if values.empty?
-              environment.execute("SELECT id FROM hosts").map { |row| row.first }.tap do |values|
-                environment.logger.debug("NOT expr: #{values.length} value(s)")
-              end
-            else
-              # workaround for "too many terms in compound SELECT"
-              min, max = environment.execute("SELECT MIN(id), MAX(id) FROM hosts ORDER BY id LIMIT 1").first.to_a
-              (min / (SQLITE_LIMIT_COMPOUND_SELECT - 2)).upto(max / (SQLITE_LIMIT_COMPOUND_SELECT - 2)).flat_map { |i|
-                range = ((SQLITE_LIMIT_COMPOUND_SELECT - 2) * i)...((SQLITE_LIMIT_COMPOUND_SELECT - 2) * (i + 1))
-                selected = values.select { |n| range === n }
-                q = "SELECT id FROM hosts " \
-                      "WHERE ? <= id AND id < ? AND id NOT IN (%s);"
-                environment.execute(q % selected.map { "?" }.join(", "), [range.first, range.last] + selected).map { |row| row.first }
-              }.tap do |values|
-                environment.logger.debug("NOT expr: #{values.length} value(s)")
-              end
-            end
-          else
-            []
-          end
-        end
-
-        def optimize(options={})
-          @expression = @expression.optimize(options)
-          case op
-          when :NOT
-            optimize1(options)
-          else
-            self
-          end
-        end
-
-        def ==(other)
-          self.class === other and @op == other.op and @expression == other.expression
-        end
-
-        def dump(options={})
-          {unary_op: @op.to_s, expression: @expression.dump(options)}
-        end
-
-        def intermediates()
-          [self] + @expression.intermediates
-        end
-
-        def leafs()
-          @expression.leafs
-        end
-
-        private
-        def optimize1(options={})
-          case op
-          when :NOT
-            if UnaryExpressionNode === expression and expression.op == :NOT
-              expression.expression
-            else
-              if TagExpressionNode === expression
-                expr = expression.plan(options)
-                if expr and expr[1].length <= SQLITE_LIMIT_COMPOUND_SELECT
-                  q = "SELECT id AS host_id FROM hosts " \
-                        "EXCEPT #{expr[0].sub(/\s*;\s*\z/, "")};"
-                  QueryExpressionNode.new(q, expr[1])
-                else
-                  self
-                end
-              else
-                self
-              end
             end
           else
             self
