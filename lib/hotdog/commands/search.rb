@@ -218,7 +218,7 @@ module Hotdog
           RegexpTagNameNode.new(identifier_regexp.to_s, separator)
         }
         rule(identifier_regexp: simple(:identifier_regexp)) {
-          RegexpExpressionNode.new(identifier_regexp.to_s)
+          RegexpNode.new(identifier_regexp.to_s)
         }
         rule(identifier_glob: simple(:identifier_glob), separator: simple(:separator), attribute_glob: simple(:attribute_glob)) {
           if "host" == identifier_glob
@@ -238,7 +238,7 @@ module Hotdog
           GlobTagNameNode.new(identifier_glob.to_s, separator)
         }
         rule(identifier_glob: simple(:identifier_glob)) {
-          GlobExpressionNode.new(identifier_glob.to_s)
+          GlobNode.new(identifier_glob.to_s)
         }
         rule(identifier: simple(:identifier), separator: simple(:separator), attribute_glob: simple(:attribute_glob)) {
           if "host" == identifier
@@ -258,7 +258,7 @@ module Hotdog
           StringTagNameNode.new(identifier.to_s, separator)
         }
         rule(identifier: simple(:identifier)) {
-          StringExpressionNode.new(identifier.to_s)
+          StringNode.new(identifier.to_s)
         }
         rule(separator: simple(:separator), attribute_regexp: simple(:attribute_regexp)) {
           RegexpTagValueNode.new(attribute_regexp.to_s, separator)
@@ -655,7 +655,7 @@ module Hotdog
                         "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
                           "WHERE tags.name || ':' || tags.value IN (%s);" % expressions.map { "?" }.join(", ")
                   values = environment.execute(q, expressions.map { |expression| "#{expression.identifier}:#{expression.attribute}" }).map { |row| row.first }
-                when StringExpressionNode
+                when StringNode
                   q1 = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
                          "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
                          "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
@@ -772,6 +772,32 @@ module Hotdog
         end
 
         def plan(options={})
+          tables = condition_tables(options)
+          if tables.empty?
+            nil
+          else
+            case tables.sort
+            when [:hosts]
+              ["SELECT hosts.id AS host_id FROM hosts WHERE %s;" % condition(options), condition_values(options)]
+            when [:hosts, :tags]
+              ["SELECT DISTINCT hosts_tags.host_id FROM hosts_tags INNER JOIN hosts ON hosts_tags.host_id = hosts.id INNER JOIN tags ON hosts_tags.tag_id = tags.id WHERE %s;" % condition(options), condition_values(options)]
+            when [:tags]
+              ["SELECT DISTINCT hosts_tags.host_id FROM hosts_tags INNER JOIN tags ON hosts_tags.tag_id = tags.id WHERE %s;" % condition(options), condition_values(options)]
+            else
+              raise NotImplementedError
+            end
+          end
+        end
+
+        def condition(options={})
+          raise NotImplementedError
+        end
+
+        def condition_tables(options={})
+          raise NotImplementedError
+        end
+
+        def condition_values(options={})
           raise NotImplementedError
         end
 
@@ -863,25 +889,6 @@ module Hotdog
       end
 
       class StringExpressionNode < TagExpressionNode
-        def initialize(identifier, attribute=nil, separator=nil)
-          super(identifier, attribute, separator)
-        end
-
-        def plan(options={})
-          if identifier?
-            q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
-                  "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
-                  "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                    "WHERE hosts.name = ? OR tags.name = ? OR tags.value = ?;"
-            [q, [identifier, identifier, identifier]]
-          else
-            nil
-          end
-        end
-
-        def maybe_fallback(options={})
-          GlobExpressionNode.new(maybe_glob(identifier), maybe_glob(attribute), separator)
-        end
       end
 
       class StringHostNode < StringExpressionNode
@@ -889,10 +896,16 @@ module Hotdog
           super("host", attribute, separator)
         end
 
-        def plan(options={})
-          q = "SELECT hosts.id AS host_id FROM hosts " \
-                "WHERE hosts.name = ?;"
-          [q, [attribute]]
+        def condition(options={})
+          "hosts.name = ?"
+        end
+
+        def condition_tables(options={})
+          [:hosts]
+        end
+
+        def condition_values(options={})
+          [attribute]
         end
 
         def maybe_fallback(options={})
@@ -905,11 +918,16 @@ module Hotdog
           super(identifier, attribute, separator)
         end
 
-        def plan(options={})
-          q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
-                "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                  "WHERE tags.name = ? AND tags.value = ?;"
-          [q, [identifier, attribute]]
+        def condition(options={})
+          "tags.name = ? AND tags.value = ?"
+        end
+
+        def condition_tables(options={})
+          [:tags]
+        end
+
+        def condition_values(options={})
+          [identifier, attribute]
         end
 
         def maybe_fallback(options={})
@@ -922,11 +940,16 @@ module Hotdog
           super(identifier, nil, separator)
         end
 
-        def plan(options={})
-          q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
-                "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                  "WHERE tags.name = ?;"
-          [q, [identifier]]
+        def condition(options={})
+          "tags.name = ?"
+        end
+
+        def condition_tables(options={})
+          [:tags]
+        end
+
+        def condition_values(options={})
+          [identifier]
         end
 
         def maybe_fallback(options={})
@@ -939,11 +962,16 @@ module Hotdog
           super(nil, attribute, separator)
         end
 
-        def plan(options={})
-           q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
-                 "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                   "WHERE tags.value = ?;"
-          [q, [attribute]]
+        def condition(options={})
+          "tags.value = ?"
+        end
+
+        def condition_tables(options={})
+          [:tags]
+        end
+
+        def condition_values(options={})
+          [attribute]
         end
 
         def maybe_fallback(options={})
@@ -951,23 +979,29 @@ module Hotdog
         end
       end
 
+      class StringNode < StringExpressionNode
+        def initialize(identifier, separator=nil)
+          super(identifier, nil, separator)
+        end
+
+        def condition(options={})
+          "hosts.name = ? OR tags.name = ? OR tags.value = ?"
+        end
+
+        def condition_tables(options={})
+          [:hosts, :tags]
+        end
+
+        def condition_values(options={})
+          [identifier, identifier, identifier]
+        end
+
+        def maybe_fallback(options={})
+          GlobNode.new(maybe_glob(identifier), separator)
+        end
+      end
+
       class GlobExpressionNode < TagExpressionNode
-        def initialize(identifier, attribute=nil, separator=nil)
-          super(identifier, attribute, separator)
-        end
-
-        def plan(options={})
-          if identifier?
-            q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
-                  "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
-                  "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                    "WHERE LOWER(hosts.name) GLOB LOWER(?) OR LOWER(tags.name) GLOB LOWER(?) OR LOWER(tags.value) GLOB LOWER(?);"
-            [q, [identifier, identifier, identifier]]
-          else
-            nil
-          end
-        end
-
         def dump(options={})
           data = {}
           data[:identifier_glob] = identifier.to_s if identifier
@@ -983,10 +1017,16 @@ module Hotdog
           super("host", attribute, separator)
         end
 
-        def plan(options={})
-          q = "SELECT hosts.id AS host_id FROM hosts " \
-                "WHERE LOWER(hosts.name) GLOB LOWER(?);"
-          [q, [attribute]]
+        def condition(options={})
+          "LOWER(hosts.name) GLOB LOWER(?)"
+        end
+
+        def condition_tables(options={})
+          [:hosts]
+        end
+
+        def condition_values(options={})
+          [attribute]
         end
 
         def maybe_fallback(options={})
@@ -999,11 +1039,16 @@ module Hotdog
           super(identifier, attribute, separator)
         end
 
-        def plan(options={})
-          q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
-                "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                  "WHERE LOWER(tags.name) GLOB LOWER(?) AND LOWER(tags.value) GLOB LOWER(?);"
-          [q, [identifier, attribute]]
+        def condition(options={})
+          "LOWER(tags.name) GLOB LOWER(?) AND LOWER(tags.value) GLOB LOWER(?)"
+        end
+
+        def condition_tables(options={})
+          [:tags]
+        end
+
+        def condition_values(options={})
+          [identifier, attribute]
         end
 
         def maybe_fallback(options={})
@@ -1016,11 +1061,16 @@ module Hotdog
           super(identifier, nil, separator)
         end
 
-        def plan(options={})
-          q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
-                "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                  "WHERE LOWER(tags.name) GLOB LOWER(?);"
-          [q, [identifier]]
+        def condition(options={})
+          "LOWER(tags.name) GLOB LOWER(?)"
+        end
+
+        def condition_tables(options={})
+          [:tags]
+        end
+
+        def condition_values(options={})
+          [identifier]
         end
 
         def maybe_fallback(options={})
@@ -1033,11 +1083,16 @@ module Hotdog
           super(nil, attribute, separator)
         end
 
-        def plan(options={})
-          q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
-                "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                  "WHERE LOWER(tags.value) GLOB LOWER(?);"
-          [q, [attribute]]
+        def condition(options={})
+          "LOWER(tags.value) GLOB LOWER(?)"
+        end
+
+        def condition_tables(options={})
+          [:tags]
+        end
+
+        def condition_values(options={})
+          [attribute]
         end
 
         def maybe_fallback(options={})
@@ -1045,23 +1100,29 @@ module Hotdog
         end
       end
 
+      class GlobNode < GlobExpressionNode
+        def initialize(identifier, separator=nil)
+          super(identifier, nil, separator)
+        end
+
+        def condition(options={})
+          "LOWER(hosts.name) GLOB LOWER(?) OR LOWER(tags.name) GLOB LOWER(?) OR LOWER(tags.value) GLOB LOWER(?)"
+        end
+
+        def condition_tables(options={})
+          [:hosts, :tags]
+        end
+
+        def condition_values(options={})
+          [identifier, identifier, identifier]
+        end
+
+        def maybe_fallback(options={})
+          GlobNode.new(maybe_glob(identifier), separator)
+        end
+      end
+
       class RegexpExpressionNode < TagExpressionNode
-        def initialize(identifier, attribute=nil, separator=nil)
-          super(identifier, attribute, separator)
-        end
-
-        def plan(options={})
-          if identifier?
-            q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
-                  "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
-                  "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                    "WHERE hosts.name REGEXP ? OR tags.name REGEXP ? OR tags.value REGEXP ?;"
-            [q, [identifier, identifier, identifier]]
-          else
-            nil
-          end
-        end
-
         def dump(options={})
           data = {}
           data[:identifier_regexp] = identifier.to_s if identifier
@@ -1077,10 +1138,16 @@ module Hotdog
           super("host", attribute, separator)
         end
 
-        def plan(options={})
-          q = "SELECT hosts.id AS host_id FROM hosts " \
-                "WHERE hosts.name REGEXP ?;"
-          [q, [attribute]]
+        def condition(options={})
+          "hosts.name REGEXP ?"
+        end
+
+        def condition_tables(options={})
+          [:hosts]
+        end
+
+        def condition_values(options={})
+          [attribute]
         end
       end
 
@@ -1089,12 +1156,17 @@ module Hotdog
           super(identifier, attribute, separator)
         end
 
-        def plan(options={})
-           q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
-                "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                  "WHERE tags.name REGEXP ? AND tags.value REGEXP ?;"
-          [q, [identifier, attribute]]
-       end
+        def condition(options={})
+          "tags.name REGEXP ? AND tags.value REGEXP ?"
+        end
+
+        def condition_tables(options={})
+          [:tags]
+        end
+
+        def condition_values(options={})
+          [identifier, attribute]
+        end
       end
 
       class RegexpTagNameNode < RegexpExpressionNode
@@ -1102,11 +1174,16 @@ module Hotdog
           super(identifier, nil, separator)
         end
 
-        def plan(options={})
-          q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
-                "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                  "WHERE tags.name REGEXP ?;"
-          [q, [identifier]]
+        def condition(options={})
+          "tags.name REGEXP ?"
+        end
+
+        def condition_tables(options={})
+          [:tags]
+        end
+
+        def condition_values(options={})
+          [identifier]
         end
       end
 
@@ -1115,11 +1192,34 @@ module Hotdog
           super(nil, attribute, separator)
         end
 
-        def plan(options={})
-          q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
-                "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                  "WHERE tags.value REGEXP ?;"
-          [q, [attribute]]
+        def condition(options={})
+          "tags.value REGEXP ?"
+        end
+
+        def condition_tables(options={})
+          [:tags]
+        end
+
+        def condition_values(options={})
+          [attribute]
+        end
+      end
+
+      class RegexpNode < RegexpExpressionNode
+        def initialize(identifier, separator=nil)
+          super(identifier, separator)
+        end
+
+        def condition(options={})
+          "hosts.name REGEXP ? OR tags.name REGEXP ? OR tags.value REGEXP ?"
+        end
+
+        def condition_tables(options={})
+          [:hosts, :tags]
+        end
+
+        def condition_values(options={})
+          [identifier, identifier, identifier]
         end
       end
     end

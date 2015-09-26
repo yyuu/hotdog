@@ -51,7 +51,7 @@ describe "tag regexp expression" do
   end
 
   it "interprets tag regexp with identifier without separator" do
-    expr = Hotdog::Commands::Search::RegexpExpressionNode.new("foo", nil, nil)
+    expr = Hotdog::Commands::Search::RegexpNode.new("foo", nil)
     q = [
       "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags",
         "INNER JOIN hosts ON hosts_tags.host_id = hosts.id",
@@ -95,7 +95,9 @@ describe "tag regexp expression" do
 
   it "empty tag regexp" do
     expr = Hotdog::Commands::Search::RegexpExpressionNode.new(nil, nil, nil)
-    expect(expr.evaluate(cmd)).to eq([])
+    expect {
+      expr.evaluate(cmd)
+    }.to raise_error(NotImplementedError)
     expect(expr.dump).to eq({})
   end
 end
