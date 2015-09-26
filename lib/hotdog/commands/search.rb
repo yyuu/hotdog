@@ -69,14 +69,22 @@ module Hotdog
       def parse(expression)
         parser = ExpressionParser.new
         parser.parse(expression).tap do |parsed|
-          logger.debug(JSON.pretty_generate(JSON.load(parsed.to_json)))
+          logger.debug {
+            begin
+              JSON.pretty_generate(JSON.load(parsed.to_json))
+            rescue JSON::NestingError => error
+              error.message
+            end
+          }
         end
       end
 
       def evaluate(data, environment)
         node = ExpressionTransformer.new.apply(data)
         optimized = node.optimize.tap do |optimized|
-          logger.debug(JSON.pretty_generate(optimized.dump))
+          logger.debug {
+            JSON.pretty_generate(optimized.dump)
+          }
         end
         optimized.evaluate(environment)
       end
