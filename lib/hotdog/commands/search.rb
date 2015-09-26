@@ -424,33 +424,21 @@ module Hotdog
             if left == right
               left
             else
-              if MultinaryExpressionNode === left and left.op == op
-                if MultinaryExpressionNode === right and right.op == op
-                  begin
-                    MultinaryExpressionNode.new(op, left.expressions + right.expressions, fallback: self)
-                  rescue ArgumentError
-                    optimize1(options)
-                  end
+              if MultinaryExpressionNode === left
+                if left.op == op
+                  left.merge(right, fallback: self)
                 else
-                  begin
-                    MultinaryExpressionNode.new(op, left.expressions + [right], fallback: self)
-                  rescue ArgumentError
-                    optimize1(options)
-                  end
+                  optimize1(options)
                 end
               else
-                if MultinaryExpressionNode === right and right.op == op
-                  begin
-                    MultinaryExpressionNode.new(op, [left] + right.expressions, fallback: self)
-                  rescue ArgumentError
+                if MultinaryExpressionNode === right
+                  if right.op == op
+                    right.merge(left, fallback: self)
+                  else
                     optimize1(options)
                   end
                 else
-                  begin
-                    MultinaryExpressionNode.new(op, [left, right], fallback: self)
-                  rescue ArgumentError
-                    optimize1(options)
-                  end
+                  MultinaryExpressionNode.new(op, [left, right], fallback: self)
                 end
               end
             end
@@ -628,83 +616,41 @@ module Hotdog
           @fallback = options[:fallback]
         end
 
+        def merge(other, options={})
+          if MultinaryExpressionNode === other and op == other.op
+            MultinaryExpressionNode.new(op, expressions + other.expressions, options)
+          else
+            MultinaryExpressionNode.new(op, expressions + [other], options)
+          end
+        end
+
         def evaluate(environment, options={})
           case @op
           when :OR
-            if expressions.empty?
-              []
-            else
-              if expressions.group_by { |expression| expression.class }.length == 1
-                case expressions.first
-                when StringTagNameNode
-                  q = "SELECT DISTINCCT hosts_tags.host_id FROM hosts_tags " \
-                        "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                          "WHERE tags.name IN (%s);" % expressions.map { "?" }.join(", ")
-                  values = environment.execute(q, expressions.map { |expression| expression.identifier }).map { |row| row.first }
-                when StringTagValueNode
-                  q = "SELECT DISTINCCT hosts_tags.host_id FROM hosts_tags " \
-                        "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                          "WHERE tags.value IN (%s);" % expressions.map { "?" }.join(", ")
-                  values = environment.execute(q, expressions.map { |expression| expression.identifier }).map { |row| row.first }
-                when StringHostNode
-                  q = "SELECT hosts.id AS host_id FROM hosts " \
-                        "WHERE hosts.name IN (%s);" % expressions.map { "?" }.join(", ")
-                  values = environment.execute(q, expressions.map { |expression| expression.attribute }).map { |row| row.first }
-                when StringTagNode
-                  q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
-                        "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                          "WHERE tags.name || ':' || tags.value IN (%s);" % expressions.map { "?" }.join(", ")
-                  values = environment.execute(q, expressions.map { |expression| "#{expression.identifier}:#{expression.attribute}" }).map { |row| row.first }
-                when StringNode
-                  q1 = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
-                         "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
-                         "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                           "WHERE hosts.name IN (%s);" % expressions.map { "?" }.join(", ")
-                  values = environment.execute(q1, expressions.map { |expression| expression.identifier }).map { |row| row.first }
-                  if values.empty?
-                    q2 = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
-                           "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
-                           "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                             "WHERE tags.name IN (%s);" % expressions.map { "?" }.join(", ")
-                    values = environment.execute(q2, expressions.map { |expression| expression.identifier }).map { |row| row.first }
-                    if values.empty?
-                      q3 = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
-                             "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
-                             "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                               "WHERE tags.value IN (%s);" % expressions.map { "?" }.join(", ")
-                      values = environment.execute(q3, expressions.map { |expression| expression.identifier }).map { |row| row.first }
-                    end
-                  end
-                else
-                  values = []
-                end
-                if values.empty?
-                  if @fallback
-                    @fallback.evaluate(environment, options={})
-                  else
-                    []
-                  end
-                else
-                  values
-                end
+            if expressions.all? { |expression| TagExpressionNode === expression }
+              if query_without_condition = expressions.first.maybe_query_without_condition(options)
+                q = query_without_condition.sub(/\s*;\s*\z/, "") + " WHERE " + expressions.map { |expression| "( %s )" % expression.condition(options) }.join(" OR ") + ";"
+                condition_length = expressions.first.condition_values(options).length
+                values = expressions.each_slice(SQLITE_LIMIT_COMPOUND_SELECT / condition_length).flat_map { |expressions|
+                  environment.execute(q, expressions.flat_map { |expression| expression.condition_values(options) }).map { |row| row.first }
+                }
               else
-                if @fallback
-                  @fallback.evaluate(environment, options={})
-                else
-                  []
-                end
+                values = []
               end
+            else
+              values = []
             end
           else
-            if expressions.empty?
-              []
+            values = []
+          end
+          if values.empty?
+            if @fallback
+              @fallback.evaluate(environment, options={})
             else
-              if @fallback
-                @fallback.evaluate(environment, options={})
-              else
-                []
-              end
+              []
             end
+          else
+            values
           end
         end
 
