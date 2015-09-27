@@ -282,7 +282,7 @@ module Hotdog
 
       class ExpressionNode
         def evaluate(environment, options={})
-          raise(NotImplementedError)
+          raise(NotImplementedError.new("must be overridden"))
         end
 
         def optimize(options={})
@@ -649,7 +649,7 @@ module Hotdog
         end
 
         def dump(optinos={})
-          {multinary_op: @op.to_s, expressions: expressions.map { |expression| expression.dump }}
+          {multinary_op: @op.to_s, expressions: expressions.map { |expression| expression.dump(options) }}
         end
 
         def intermediates()
@@ -738,15 +738,15 @@ module Hotdog
         end
 
         def condition(options={})
-          raise NotImplementedError
+          raise(NotImplementedError.new("must be overridden"))
         end
 
         def condition_tables(options={})
-          raise NotImplementedError
+          raise(NotImplementedError.new("must be overridden"))
         end
 
         def condition_values(options={})
-          raise NotImplementedError
+          raise(NotImplementedError.new("must be overridden"))
         end
 
         def evaluate(environment, options={})
