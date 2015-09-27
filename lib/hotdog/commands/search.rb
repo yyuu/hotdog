@@ -724,7 +724,7 @@ module Hotdog
           if tables.empty?
             nil
           else
-            case tables.sort
+            case tables
             when [:hosts]
               "SELECT hosts.id AS host_id FROM hosts;"
             when [:hosts, :tags]
