@@ -857,7 +857,12 @@ module Hotdog
         end
 
         def maybe_fallback(options={})
-          GlobHostNode.new(maybe_glob(attribute), separator)
+          fallback = GlobHostNode.new(maybe_glob(attribute), separator)
+          if query = fallback.maybe_query(options)
+            QueryExpressionNode.new(query, fallback.condition_values(options))
+          else
+            nil
+          end
         end
       end
 
@@ -879,7 +884,12 @@ module Hotdog
         end
 
         def maybe_fallback(options={})
-          GlobTagNode.new(maybe_glob(identifier), maybe_glob(attribute), separator)
+          fallback = GlobTagNode.new(maybe_glob(identifier), maybe_glob(attribute), separator)
+          if query = fallback.maybe_query(options)
+            QueryExpressionNode.new(query, fallback.condition_values(options))
+          else
+            nil
+          end
         end
       end
 
@@ -901,7 +911,12 @@ module Hotdog
         end
 
         def maybe_fallback(options={})
-          GlobTagNameNode.new(maybe_glob(identifier), separator)
+          fallback = GlobTagNameNode.new(maybe_glob(identifier), separator)
+          if query = fallback.maybe_query(options)
+            QueryExpressionNode.new(query, fallback.condition_values(options))
+          else
+            nil
+          end
         end
       end
 
@@ -923,7 +938,12 @@ module Hotdog
         end
 
         def maybe_fallback(options={})
-          GlobTagValueNode.new(maybe_glob(attribute), separator)
+          fallback = GlobTagValueNode.new(maybe_glob(attribute), separator)
+          if query = fallback.maybe_query(options)
+            QueryExpressionNode.new(query, fallback.condition_values(options))
+          else
+            nil
+          end
         end
       end
 
@@ -945,7 +965,12 @@ module Hotdog
         end
 
         def maybe_fallback(options={})
-          GlobNode.new(maybe_glob(identifier), separator)
+          fallback = GlobNode.new(maybe_glob(identifier), separator)
+          if query = fallback.maybe_query(options)
+            QueryExpressionNode.new(query, fallback.condition_values(options))
+          else
+            nil
+          end
         end
       end
 
@@ -978,7 +1003,12 @@ module Hotdog
         end
 
         def maybe_fallback(options={})
-          GlobHostNode.new(maybe_glob(attribute), separator)
+          fallback = GlobHostNode.new(maybe_glob(attribute), separator)
+          if query = fallback.maybe_query(options)
+            QueryExpressionNode.new(query, fallback.condition_values(options))
+          else
+            nil
+          end
         end
       end
 
@@ -1000,7 +1030,12 @@ module Hotdog
         end
 
         def maybe_fallback(options={})
-          GlobTagNode.new(maybe_glob(identifier), maybe_glob(attribute), separator)
+          fallback = GlobTagNode.new(maybe_glob(identifier), maybe_glob(attribute), separator)
+          if query = fallback.maybe_query(options)
+            QueryExpressionNode.new(query, fallback.condition_values(options))
+          else
+            nil
+          end
         end
       end
 
@@ -1022,7 +1057,12 @@ module Hotdog
         end
 
         def maybe_fallback(options={})
-          GlobTagNameNode.new(maybe_glob(identifier), separator)
+          fallback = GlobTagNameNode.new(maybe_glob(identifier), separator)
+          if query = fallback.maybe_query(options)
+            QueryExpressionNode.new(query, fallback.condition_values(options))
+          else
+            nil
+          end
         end
       end
 
@@ -1044,7 +1084,12 @@ module Hotdog
         end
 
         def maybe_fallback(options={})
-          GlobTagValueNode.new(maybe_glob(attribute), separator)
+          fallback = GlobTagValueNode.new(maybe_glob(attribute), separator)
+          if query = fallback.maybe_query(options)
+            QueryExpressionNode.new(query, fallback.condition_values(options))
+          else
+            nil
+          end
         end
       end
 
@@ -1066,7 +1111,12 @@ module Hotdog
         end
 
         def maybe_fallback(options={})
-          GlobNode.new(maybe_glob(identifier), separator)
+          fallback = GlobNode.new(maybe_glob(identifier), separator).maybe_query(options)
+          if query = fallback.maybe_query(options)
+            QueryExpressionNode.new(query, fallback.condition_values(options))
+          else
+            nil
+          end
         end
       end
 
