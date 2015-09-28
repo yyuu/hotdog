@@ -43,6 +43,7 @@ module Hotdog
       end
 
       def parse_options(optparse, args=[])
+        optparse.order(args)
       end
 
       def run(args=[])
@@ -106,8 +107,7 @@ module Hotdog
         else
           cmdline << address
         end
-        cmdline.concat(args)
-
+        logger.debug("execute: #{Shellwords.join(cmdline)}")
         exec(*cmdline)
         exit(127)
       end

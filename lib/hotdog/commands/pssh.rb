@@ -89,16 +89,13 @@ module Hotdog
           else
             header = name
           end
-
           c = cmdline.dup
           if user
             c << (user + "@" + address)
           else
             c << address
           end
-
-          c.concat(args)
-
+          logger.debug("execute: #{Shellwords.join(c)}")
           IO.popen([*c, in: :close, err: [:child, :out]]) do |io|
             io.each_line do |line|
               STDOUT.write "#{header}: #{line}"
