@@ -146,9 +146,9 @@ module Hotdog
             ]
             fields.map { |tag_name|
               if tag_name == "host"
-                host_names.fetch(host_id, "")
+                host_names.fetch(host_id, nil)
               else
-                tag_values.fetch(tag_name, "")
+                tag_values.fetch(tag_name, nil)
               end
             }
           }

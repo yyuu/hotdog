@@ -4,7 +4,7 @@ module Hotdog
   module Formatters
     class Tsv < BaseFormatter
       def format(result, options={})
-        result = result.dup
+        result = prepare(result)
         if options[:headers] and options[:fields]
           result.unshift(options[:fields])
         end

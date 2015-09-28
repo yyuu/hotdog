@@ -11,6 +11,7 @@ module Hotdog
         else
           sep = " "
         end
+        result = prepare(result)
         if options[:print1] and options[:headers] and options[:fields]
           field_length = (0...result.last.length).map { |field_index|
             result.reduce(0) { |length, row|
