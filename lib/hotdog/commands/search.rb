@@ -1113,7 +1113,7 @@ module Hotdog
         end
 
         def maybe_fallback(options={})
-          fallback = GlobNode.new(maybe_glob(identifier), separator).maybe_query(options)
+          fallback = GlobNode.new(maybe_glob(identifier), separator)
           if query = fallback.maybe_query(options)
             QueryExpressionNode.new(query, fallback.condition_values(options))
           else
