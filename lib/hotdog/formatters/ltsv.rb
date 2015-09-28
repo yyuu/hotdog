@@ -8,7 +8,7 @@ module Hotdog
         if options[:fields]
           result.map { |row|
             options[:fields].zip(row).map { |(field, column)|
-              if column.empty?
+              if column.to_s.empty?
                 field.to_s
               else
                 "#{field}:#{column}"
