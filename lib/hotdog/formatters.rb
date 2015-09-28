@@ -11,6 +11,10 @@ module Hotdog
       def prepare(result)
         result.map { |row| row.map { |column| column or "<nil>" } }
       end
+
+      def newline()
+        "\n"
+      end
     end
   end
 end

@@ -7,7 +7,7 @@ module Hotdog
         if options[:print0]
           sep = "\0"
         elsif options[:print1]
-          sep = "\n"
+          sep = newline
         else
           sep = " "
         end
@@ -37,7 +37,7 @@ module Hotdog
         if s.empty? or options[:print0]
           s
         else
-          s + "\n"
+          s + newline
         end
       end
 

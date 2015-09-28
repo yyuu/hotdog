@@ -8,17 +8,13 @@ module Hotdog
         if options[:fields]
           result.map { |row|
             options[:fields].zip(row).map { |(field, column)|
-              if column.to_s.empty?
-                field.to_s
-              else
-                "#{field}:#{column}"
-              end
+              "#{field}:#{column}"
             }.join("\t")
-          }.join("\n") + "\n"
+          }.join(newline) + newline
         else
           result.map { |row|
             row.join("\t")
-          }.join("\n") + "\n"
+          }.join(newline) + newline
         end
       end
     end

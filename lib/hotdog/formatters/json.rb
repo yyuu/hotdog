@@ -10,7 +10,7 @@ module Hotdog
         if options[:headers] and options[:fields]
           result.unshift(options[:fields])
         end
-        JSON.pretty_generate(result) + "\n"
+        JSON.pretty_generate(result) + newline
       end
     end
   end

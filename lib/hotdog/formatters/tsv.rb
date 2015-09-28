@@ -10,7 +10,7 @@ module Hotdog
         end
         result.map { |row|
           row.join("\t")
-        }.join("\n") + "\n"
+        }.join(newline) + newline
       end
     end
   end
