@@ -148,7 +148,16 @@ module Hotdog
               if tag_name == "host"
                 host_names.fetch(host_id, nil)
               else
-                tag_values.fetch(tag_name, nil)
+                tag_value = tag_values.fetch(tag_name, nil)
+                if tag_value
+                  if tag_value.empty?
+                    tag_name # use `tag_name` as `tag_value` for the tags without any values
+                  else
+                    tag_value
+                  end
+                else
+                  nil
+                end
               end
             }
           }
