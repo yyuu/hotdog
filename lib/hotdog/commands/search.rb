@@ -622,15 +622,17 @@ module Hotdog
           case @op
           when :OR
             if expressions.all? { |expression| TagExpressionNode === expression }
-              if query_without_condition = expressions.first.maybe_query_without_condition(options)
-                q = query_without_condition.sub(/\s*;\s*\z/, "") + " WHERE " + expressions.map { |expression| "( %s )" % expression.condition(options) }.join(" OR ") + ";"
-                condition_length = expressions.first.condition_values(options).length
-                values = expressions.each_slice(SQLITE_LIMIT_COMPOUND_SELECT / condition_length).flat_map { |expressions|
-                  environment.execute(q, expressions.flat_map { |expression| expression.condition_values(options) }).map { |row| row.first }
-                }
-              else
-                values = []
-              end
+              values = expressions.group_by { |expression| expression.class }.values.flat_map { |expressions|
+                if query_without_condition = expressions.first.maybe_query_without_condition(options)
+                  condition_length = expressions.first.condition_values(options).length
+                  expressions.each_slice(SQLITE_LIMIT_COMPOUND_SELECT / condition_length).flat_map { |expressions|
+                    q = query_without_condition.sub(/\s*;\s*\z/, "") + " WHERE " + expressions.map { |expression| "( %s )" % expression.condition(options) }.join(" OR ") + ";"
+                    environment.execute(q, expressions.flat_map { |expression| expression.condition_values(options) }).map { |row| row.first }
+                  }
+                else
+                  []
+                end
+              }
             else
               values = []
             end
@@ -648,7 +650,7 @@ module Hotdog
           end
         end
 
-        def dump(optinos={})
+        def dump(options={})
           {multinary_op: @op.to_s, expressions: expressions.map { |expression| expression.dump(options) }}
         end
 
