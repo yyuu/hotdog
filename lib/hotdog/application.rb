@@ -54,6 +54,7 @@ module Hotdog
       begin
         command = ( args.shift || "help" )
         get_command(command).new(self).tap do |cmd|
+          @optparse.banner = "Usage: hotdog #{command} [options]"
           cmd.define_options(@optparse, @options)
           args = cmd.parse_options(@optparse, args)
           unless options[:api_key]
