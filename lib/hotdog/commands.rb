@@ -25,7 +25,7 @@ module Hotdog
       attr_reader :logger
       attr_reader :options
 
-      def run(args=[])
+      def run(args=[], options={})
         raise(NotImplementedError)
       end
 
@@ -52,7 +52,7 @@ module Hotdog
         update_db(options)
       end
 
-      def define_options(optparse)
+      def define_options(optparse, options={})
         # nop
       end
 

@@ -9,37 +9,31 @@ require "parallel"
 module Hotdog
   module Commands
     class Pssh < Search
-      def define_options(optparse)
-        @ssh_options = @options.merge({
-          options: [],
-          user: nil,
-          port: nil,
-          identity_file: nil,
-          max_parallelism: nil,
-        })
+      def define_options(optparse, options={})
+        options[:options] = []
+        options[:user] = nil
+        options[:port] = nil
+        options[:identity_file] = nil
+        options[:max_parallelism] = nil
 
         optparse.on("-o SSH_OPTION", "Passes this string to ssh command through shell. This option may be given multiple times") do |option|
-          @ssh_options[:options] += [option]
+          options[:options] += [option]
         end
         optparse.on("-i SSH_IDENTITY_FILE", "SSH identity file path") do |path|
-          @ssh_options[:identity_file] = path
+          options[:identity_file] = path
         end
         optparse.on("-p PORT", "Port of the remote host", Integer) do |port|
-          @ssh_options[:port] = port
+          options[:port] = port
         end
         optparse.on("-u SSH_USER", "SSH login user name") do |user|
-          @ssh_options[:user] = user
+          options[:user] = user
         end
         optparse.on("-P PARALLELISM", "Max parallelism", Integer) do |n|
-          @ssh_options[:max_parallelism] = n
+          options[:max_parallelism] = n
         end
       end
 
-      def parse_options(optparse, args=[])
-        optparse.order(args)
-      end
-
-      def run(args=[])
+      def run(args=[], options={})
         use_color = STDOUT.tty?
         expression = args.join(" ").strip
         if expression.empty? || args.empty?
@@ -65,24 +59,24 @@ module Hotdog
 
         # build ssh command
         cmdline = ["ssh"]
-        @ssh_options[:options].each do |option|
+        options[:options].each do |option|
           cmdline << "-o" << option
         end
-        if path = @ssh_options[:identity_file]
+        if path = options[:identity_file]
           cmdline << "-i" << Shellwords.escape(path)
         end
-        if port = @ssh_options[:port]
+        if port = options[:port]
           cmdline << "-p" << port.to_s
         end
-        if @ssh_options[:forward_agent]
+        if options[:forward_agent]
           cmdline << "-A"
         end
 
         cmdline << "-o" << "BatchMode=yes"
 
-        user = @ssh_options[:user]
+        user = options[:user]
 
-        threads = @ssh_options[:max_parallelism] || addresses.size
+        threads = options[:max_parallelism] || addresses.size
         stats = Parallel.map(addresses, in_threads: threads) { |address,name|
           if use_color
             header = "\e[0;36m#{name}\e[00m"

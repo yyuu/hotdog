@@ -5,7 +5,7 @@ require "fileutils"
 module Hotdog
   module Commands
     class Down < BaseCommand
-      def define_options(optparse)
+      def define_options(optparse, options={})
         @downtime = 86400
         @start = Time.new
         optparse.on("--downtime DURATION") do |v|
@@ -16,7 +16,7 @@ module Hotdog
         end
       end
 
-      def run(args=[])
+      def run(args=[], options={})
         args.each do |arg|
           if arg.index(":").nil?
             scope = "host:#{arg}"

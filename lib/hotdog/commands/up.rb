@@ -5,7 +5,7 @@ require "fileutils"
 module Hotdog
   module Commands
     class Up < BaseCommand
-      def run(args=[])
+      def run(args=[], options={})
         scopes = args.map { |arg|
           if arg.index(":").nil?
             "host:#{arg}"

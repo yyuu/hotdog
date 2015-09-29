@@ -54,7 +54,7 @@ module Hotdog
       begin
         command = ( args.shift || "help" )
         get_command(command).new(self).tap do |cmd|
-          cmd.define_options(@optparse)
+          cmd.define_options(@optparse, @options)
           args = cmd.parse_options(@optparse, args)
           unless options[:api_key]
             raise("DATADOG_API_KEY is not set")
@@ -76,7 +76,7 @@ module Hotdog
             options[:logger].level = Logger::INFO
           end
 
-          cmd.run(args)
+          cmd.run(args, @options)
         end
       rescue Errno::EPIPE
         # nop

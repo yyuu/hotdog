@@ -5,7 +5,7 @@ require "rbconfig"
 module Hotdog
   module Commands
     class Help < BaseCommand
-      def run(args=[])
+      def run(args=[], options={})
         ruby = File.join(RbConfig::CONFIG["bindir"], RbConfig::CONFIG["ruby_install_name"])
         exit(system(ruby, $0, "--help") ? 0 : 1)
       end
