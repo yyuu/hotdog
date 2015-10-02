@@ -212,6 +212,7 @@ module Hotdog
             known_tags.each_slice(SQLITE_LIMIT_COMPOUND_SELECT / 2) do |known_tags|
               q = "INSERT OR IGNORE INTO tags (name, value) VALUES %s" % known_tags.map { "(?, ?)" }.join(", ")
               begin
+                logger.debug("execute: #{q} -- #{known_tags.inspect}")
                 prepare(memory_db, q).execute(known_tags)
               rescue
                 logger.error("failed: #{q} -- #{known_tags.inspect}")
@@ -223,6 +224,7 @@ module Hotdog
             known_hosts.each_slice(SQLITE_LIMIT_COMPOUND_SELECT) do |known_hosts|
               q = "INSERT OR IGNORE INTO hosts (name) VALUES %s" % known_hosts.map { "(?)" }.join(", ")
               begin
+                logger.debug("execute: #{q} -- #{known_hosts.inspect}")
                 prepare(memory_db, q).execute(known_hosts)
               rescue
                 logger.error("failed: #{q} -- #{known_hosts.inspect}")
@@ -237,6 +239,7 @@ module Hotdog
                         "( SELECT id FROM hosts WHERE name IN (%s) ) AS host, " \
                         "( SELECT id FROM tags WHERE name = ? AND value = ? LIMIT 1 ) AS tag;" % hosts.map { "?" }.join(", ")
                 begin
+                  logger.debug("execute: #{q} -- #{(hosts + split_tag(tag)).inspect}")
                   prepare(memory_db, q).execute(hosts + split_tag(tag))
                 rescue
                   logger.error("failed: #{q} -- #{(hosts + split_tag(tag)).inspect}")
