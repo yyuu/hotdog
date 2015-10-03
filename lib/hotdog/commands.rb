@@ -35,13 +35,7 @@ module Hotdog
 
       def execute(q, args=[])
         update_db
-        begin
-          logger.debug("execute: #{q} -- #{args.inspect}")
-          prepare(@db, q).execute(args)
-        rescue
-          logger.error("failed: #{q} -- #{args.inspect}")
-          raise
-        end
+        execute_db(@db, q, args)
       end
 
       def fixed_string?()
@@ -202,12 +196,28 @@ module Hotdog
           end
 
           memory_db = SQLite3::Database.new(":memory:")
-          create_table_hosts(memory_db)
-          create_index_hosts(memory_db)
-          create_table_tags(memory_db)
-          create_index_tags(memory_db)
-          create_table_hosts_tags(memory_db)
-          create_index_hosts_tags(memory_db)
+          execute_db(memory_db, <<-EOS)
+            CREATE TABLE IF NOT EXISTS hosts (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              name VARCHAR(255) NOT NULL COLLATE NOCASE
+            );
+          EOS
+          execute_db(memory_db, "CREATE UNIQUE INDEX IF NOT EXISTS hosts_name ON hosts ( name );")
+          execute_db(memory_db, <<-EOS)
+            CREATE TABLE IF NOT EXISTS tags (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              name VARCHAR(200) NOT NULL COLLATE NOCASE,
+              value VARCHAR(200) NOT NULL COLLATE NOCASE
+            );
+          EOS
+          execute_db(memory_db, "CREATE UNIQUE INDEX IF NOT EXISTS tags_name_value ON tags ( name, value );")
+          execute_db(memory_db, <<-EOS)
+            CREATE TABLE IF NOT EXISTS hosts_tags (
+              host_id INTEGER NOT NULL,
+              tag_id INTEGER NOT NULL
+            );
+          EOS
+          execute_db(memory_db, "CREATE UNIQUE INDEX IF NOT EXISTS hosts_tags_host_id_tag_id ON hosts_tags ( host_id, tag_id );")
 
           all_tags = get_all_tags()
 
@@ -215,25 +225,13 @@ module Hotdog
             known_tags = all_tags.keys.map { |tag| split_tag(tag) }.uniq
             known_tags.each_slice(SQLITE_LIMIT_COMPOUND_SELECT / 2) do |known_tags|
               q = "INSERT OR IGNORE INTO tags (name, value) VALUES %s" % known_tags.map { "(?, ?)" }.join(", ")
-              begin
-                logger.debug("execute: #{q} -- #{known_tags.inspect}")
-                prepare(memory_db, q).execute(known_tags)
-              rescue
-                logger.error("failed: #{q} -- #{known_tags.inspect}")
-                raise
-              end
+              execute_db(memory_db, q, known_tags)
             end
 
             known_hosts = all_tags.values.reduce(:+).uniq
             known_hosts.each_slice(SQLITE_LIMIT_COMPOUND_SELECT) do |known_hosts|
               q = "INSERT OR IGNORE INTO hosts (name) VALUES %s" % known_hosts.map { "(?)" }.join(", ")
-              begin
-                logger.debug("execute: #{q} -- #{known_hosts.inspect}")
-                prepare(memory_db, q).execute(known_hosts)
-              rescue
-                logger.error("failed: #{q} -- #{known_hosts.inspect}")
-                raise
-              end
+              execute_db(memory_db, q, known_hosts)
             end
 
             all_tags.each do |tag, hosts|
@@ -242,14 +240,7 @@ module Hotdog
                       "SELECT host.id, tag.id FROM " \
                         "( SELECT id FROM hosts WHERE name IN (%s) ) AS host, " \
                         "( SELECT id FROM tags WHERE name = ? AND value = ? LIMIT 1 ) AS tag;" % hosts.map { "?" }.join(", ")
-                hosts_tag = hosts + split_tag(tag)
-                begin
-                  logger.debug("execute: #{q} -- #{hosts_tag.inspect}")
-                  prepare(memory_db, q).execute(hosts_tag)
-                rescue
-                  logger.error("failed: #{q} -- #{hosts_tag.inspect}")
-                  raise
-                end
+                execute_db(memory_db, q, (hosts + split_tag(tag)))
               end
             end
           end
@@ -262,6 +253,16 @@ module Hotdog
           @db = memory_db
         else
           @db
+        end
+      end
+
+      def execute_db(db, q, args=[])
+        begin
+          logger.debug("execute: #{q} -- #{args.inspect}")
+          prepare(db, q).execute(args)
+        rescue
+          logger.error("failed: #{q} -- #{args.inspect}")
+          raise
         end
       end
 
@@ -316,98 +317,9 @@ module Hotdog
       end
 
       def copy_db(src, dst)
-        # create index later for better insert performance
-        dst.transaction do
-          create_table_hosts(dst)
-          create_table_tags(dst)
-          create_table_hosts_tags(dst)
-
-          hosts = prepare(src, "SELECT id, name FROM hosts").execute().to_a
-          hosts.each_slice(SQLITE_LIMIT_COMPOUND_SELECT / 2) do |hosts|
-            q = "INSERT INTO hosts (id, name) VALUES %s" % hosts.map { "(?, ?)" }.join(", ")
-            begin
-              logger.debug("execute: #{q} -- #{hosts.inspect}")
-              prepare(dst, q).execute(hosts)
-            rescue
-              logger.error("failed: #{q} -- #{hosts.inspect}")
-              raise
-            end
-          end
-
-          tags = prepare(src, "SELECT id, name, value FROM tags").execute().to_a
-          tags.each_slice(SQLITE_LIMIT_COMPOUND_SELECT / 3) do |tags|
-            q = "INSERT INTO tags (id, name, value) VALUES %s" % tags.map { "(?, ?, ?)" }.join(", ")
-            begin
-              logger.debug("execute: #{q} -- #{tags.inspect}")
-              prepare(dst, q).execute(tags)
-            rescue
-              logger.error("failed: #{q} -- #{tags.inspect}")
-              raise
-            end
-          end
-
-          hosts_tags = prepare(src, "SELECT host_id, tag_id FROM hosts_tags").to_a
-          hosts_tags.each_slice(SQLITE_LIMIT_COMPOUND_SELECT / 2) do |hosts_tags|
-            q = "INSERT INTO hosts_tags (host_id, tag_id) VALUES %s" % hosts_tags.map { "(?, ?)" }.join(", ")
-            begin
-              logger.debug("execute: #{q} -- #{hosts_tags.inspect}")
-              prepare(dst, q).execute(hosts_tags)
-            rescue
-              logger.error("failed: #{q} -- #{hosts_tags.inspect}")
-              raise
-            end
-          end
-
-          create_index_hosts(dst)
-          create_index_tags(dst)
-          create_index_hosts_tags(dst)
-        end
-      end
-
-      def create_table_hosts(db)
-        q = "CREATE TABLE IF NOT EXISTS hosts ( " \
-              "id INTEGER PRIMARY KEY AUTOINCREMENT, " \
-              "name VARCHAR(255) NOT NULL COLLATE NOCASE " \
-            ");"
-        logger.debug(q)
-        db.execute(q)
-      end
-
-      def create_index_hosts(db)
-        q = "CREATE UNIQUE INDEX IF NOT EXISTS hosts_name ON hosts ( name );"
-        logger.debug(q)
-        db.execute(q)
-      end
-
-      def create_table_tags(db)
-        q = "CREATE TABLE IF NOT EXISTS tags ( " \
-              "id INTEGER PRIMARY KEY AUTOINCREMENT, " \
-              "name VARCHAR(200) NOT NULL COLLATE NOCASE, " \
-              "value VARCHAR(200) NOT NULL COLLATE NOCASE " \
-            ");"
-        logger.debug(q)
-        db.execute(q)
-      end
-
-      def create_index_tags(db)
-        q = "CREATE UNIQUE INDEX IF NOT EXISTS tags_name_value ON tags ( name, value );"
-        logger.debug(q)
-        db.execute(q)
-      end
-
-      def create_table_hosts_tags(db)
-        q = "CREATE TABLE IF NOT EXISTS hosts_tags ( " \
-              "host_id INTEGER NOT NULL, " \
-              "tag_id INTEGER NOT NULL " \
-            ");"
-        logger.debug(q)
-        db.execute(q)
-      end
-
-      def create_index_hosts_tags(db)
-        q = "CREATE UNIQUE INDEX IF NOT EXISTS hosts_tags_host_id_tag_id ON hosts_tags ( host_id, tag_id );"
-        logger.debug(q)
-        db.execute(q)
+        backup = SQLite3::Backup.new(dst, "main", src, "main")
+        backup.step(-1)
+        backup.finish
       end
     end
   end
