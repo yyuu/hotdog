@@ -316,52 +316,9 @@ module Hotdog
       end
 
       def copy_db(src, dst)
-        # create index later for better insert performance
-        dst.transaction do
-          create_table_hosts(dst)
-          create_table_tags(dst)
-          create_table_hosts_tags(dst)
-
-          hosts = prepare(src, "SELECT id, name FROM hosts").execute().to_a
-          hosts.each_slice(SQLITE_LIMIT_COMPOUND_SELECT / 2) do |hosts|
-            q = "INSERT INTO hosts (id, name) VALUES %s" % hosts.map { "(?, ?)" }.join(", ")
-            begin
-              logger.debug("execute: #{q} -- #{hosts.inspect}")
-              prepare(dst, q).execute(hosts)
-            rescue
-              logger.error("failed: #{q} -- #{hosts.inspect}")
-              raise
-            end
-          end
-
-          tags = prepare(src, "SELECT id, name, value FROM tags").execute().to_a
-          tags.each_slice(SQLITE_LIMIT_COMPOUND_SELECT / 3) do |tags|
-            q = "INSERT INTO tags (id, name, value) VALUES %s" % tags.map { "(?, ?, ?)" }.join(", ")
-            begin
-              logger.debug("execute: #{q} -- #{tags.inspect}")
-              prepare(dst, q).execute(tags)
-            rescue
-              logger.error("failed: #{q} -- #{tags.inspect}")
-              raise
-            end
-          end
-
-          hosts_tags = prepare(src, "SELECT host_id, tag_id FROM hosts_tags").to_a
-          hosts_tags.each_slice(SQLITE_LIMIT_COMPOUND_SELECT / 2) do |hosts_tags|
-            q = "INSERT INTO hosts_tags (host_id, tag_id) VALUES %s" % hosts_tags.map { "(?, ?)" }.join(", ")
-            begin
-              logger.debug("execute: #{q} -- #{hosts_tags.inspect}")
-              prepare(dst, q).execute(hosts_tags)
-            rescue
-              logger.error("failed: #{q} -- #{hosts_tags.inspect}")
-              raise
-            end
-          end
-
-          create_index_hosts(dst)
-          create_index_tags(dst)
-          create_index_hosts_tags(dst)
-        end
+        backup = SQLite3::Backup.new(dst, "main", src, "main")
+        backup.step(-1)
+        backup.finish
       end
 
       def create_table_hosts(db)
