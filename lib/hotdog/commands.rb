@@ -181,9 +181,12 @@ module Hotdog
           if (not options[:force] and File.exist?(persistent) and Time.new < File.mtime(persistent) + options[:expiry]) or options[:offline]
             begin
               persistent_db = SQLite3::Database.new(persistent)
-              persistent_db.execute("SELECT id, name FROM hosts LIMIT 1")
-              persistent_db.execute("SELECT id, name, value FROM tags LIMIT 1")
-              persistent_db.execute("SELECT host_id, tag_id FROM hosts_tags LIMIT 1")
+              persistent_db.execute(<<-EOS)
+                SELECT hosts_tags.host_id FROM hosts_tags
+                  INNER JOIN hosts ON hosts_tags.host_id = hosts.id
+                  INNER JOIN tags ON hosts_tags.tag_id = tags.id
+                    LIMIT 1;
+              EOS
               @db = persistent_db
               return
             rescue SQLite3::SQLException
