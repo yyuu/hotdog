@@ -13,6 +13,7 @@ module Hotdog
       @optparse = OptionParser.new
       @optparse.version = Hotdog::VERSION
       @options = {
+        endpoint: ENV.fetch("DATADOG_HOST", "https://app.datadoghq.com"),
         api_key: ENV["DATADOG_API_KEY"],
         application_key: ENV["DATADOG_APPLICATION_KEY"],
         application: self,
@@ -86,6 +87,9 @@ module Hotdog
 
     private
     def define_options
+      @optparse.on("--endpoint ENDPOINT", "Datadog API endpoint") do |endpoint|
+        options[:endpoint] = endpoint
+      end
       @optparse.on("--api-key API_KEY", "Datadog API key") do |api_key|
         options[:api_key] = api_key
       end
