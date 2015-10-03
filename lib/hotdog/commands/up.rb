@@ -13,7 +13,7 @@ module Hotdog
             arg
           end
         }
-        code, all_downtimes = @dog.get_all_downtimes()
+        code, all_downtimes = dog.get_all_downtimes()
         if code.to_i / 100 != 2
           raise("dog.get_all_downtimes() returns [%s, %s]" % [code.inspect, all_downtimes.inspect])
         end
@@ -23,7 +23,7 @@ module Hotdog
         }
 
         cancel_downtimes.each do |downtime|
-          code, cancel = @dog.cancel_downtime(downtime["id"])
+          code, cancel = dog.cancel_downtime(downtime["id"])
           if code.to_i / 100 != 2
             raise("dog.cancel_downtime(%s) returns [%s, %s]" % [downtime["id"].inspect, code.inspect, cancel.inspect])
           end

@@ -23,7 +23,9 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rspec", "~> 3.3.0"
 
   spec.add_dependency "dogapi", ">= 1.13.0"
+  spec.add_dependency "multi_json", "~> 1.11.2"
+  spec.add_dependency "oj", "~> 2.12.14"
+  spec.add_dependency "parallel", "~> 1.6.1"
   spec.add_dependency "parslet", "~> 1.6.2"
   spec.add_dependency "sqlite3", "~> 1.3.10"
-  spec.add_dependency "parallel", "~> 1.4.1"
 end

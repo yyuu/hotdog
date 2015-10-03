@@ -2,8 +2,12 @@
 
 require "fileutils"
 require "dogapi"
-require "json"
+require "multi_json"
+require "oj"
+require "open-uri"
+require "parallel"
 require "sqlite3"
+require "uri"
 
 module Hotdog
   module Commands
@@ -18,7 +22,7 @@ module Hotdog
         @application = application
         @logger = application.options[:logger]
         @options = application.options
-        @dog = Dogapi::Client.new(options[:api_key], options[:application_key])
+        @dog = nil # lazy initialization
         @prepared_statements = {}
       end
       attr_reader :application
@@ -262,18 +266,26 @@ module Hotdog
       end
 
       def get_all_tags() #==> Hash<Tag,Array<Host>>
-        code, all_tags = @dog.all_tags()
-        logger.debug("dog.all_tags() #==> [%s, ...]" % [code.inspect])
-        if code.to_i / 100 != 2
-          raise("dog.all_tags() returns [%s, ...]" % [code.inspect])
-        end
-        code, all_downtimes = @dog.get_all_downtimes()
-        logger.debug("dog.get_all_downtimes() #==> [%s, ...]" % [code.inspect])
-        if code.to_i / 100 != 2
-          raise("dog.get_all_downtimes() returns [%s, ...]" % [code.inspect])
+        endpoint = ENV.fetch("DATADOG_HOST", "https://app.datadoghq.com")
+        requests = {all_downtime: "/api/v1/downtime", all_tags: "/api/v1/tags/hosts"}
+        query = URI.encode_www_form(api_key: options[:api_key], application_key: options[:application_key])
+        begin
+          responses = Hash[Parallel.map(requests) { |name, request_path|
+            uri = URI.join(endpoint, "#{request_path}?#{query}")
+            begin
+              response = uri.open { |fp| fp.read }
+              [name, MultiJson.load(response)]
+            rescue OpenURI::HTTPError => error
+              code, body = error.io.status
+              raise(RuntimeError.new("dog.get_#{name}() returns [#{code.inspect}, ...]"))
+            end
+          }]
+        rescue => error
+          STDERR.puts(error.message)
+          exit(1)
         end
         now = Time.new.to_i
-        downtimes = all_downtimes.select { |downtime|
+        downtimes = responses.fetch(:all_downtime, []).select { |downtime|
           # active downtimes
           downtime["active"] and ( downtime["start"].nil? or downtime["start"] < now ) and ( downtime["end"].nil? or now <= downtime["end"] )
         }.flat_map { |downtime|
@@ -283,7 +295,11 @@ module Hotdog
         if not downtimes.empty?
           logger.info("ignore host(s) with scheduled downtimes: #{downtimes.inspect}")
         end
-        Hash[all_tags["tags"].map { |tag, hosts| [tag, hosts.reject { |host| downtimes.include?(host) }] }]
+        Hash[responses.fetch(:all_tags, {}).fetch("tags", []).map { |tag, hosts| [tag, hosts.reject { |host| downtimes.include?(host) }] }]
+      end
+
+      def dog()
+        @dog ||= Dogapi::Client.new(options[:api_key], options[:application_key])
       end
 
       def split_tag(tag)
