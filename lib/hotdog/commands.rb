@@ -240,7 +240,20 @@ module Hotdog
                       "SELECT host.id, tag.id FROM " \
                         "( SELECT id FROM hosts WHERE name IN (%s) ) AS host, " \
                         "( SELECT id FROM tags WHERE name = ? AND value = ? LIMIT 1 ) AS tag;" % hosts.map { "?" }.join(", ")
-                execute_db(memory_db, q, (hosts + split_tag(tag)))
+                begin
+                  execute_db(memory_db, q, (hosts + split_tag(tag)))
+                rescue SQLite3::RangeException => error
+                  # FIXME: bulk insert occationally fails even if there are no errors in bind parameters
+                  #        `bind_param': bind or column index out of range (SQLite3::RangeException)
+                  logger.warn("bulk insert failed due to #{error.message}. fallback to normal insert.")
+                  hosts.each do |host|
+                    q = "INSERT OR REPLACE INTO hosts_tags (host_id, tag_id) " \
+                          "SELECT host.id, tag.id FROM " \
+                            "( SELECT id FROM hosts WHERE name = ? ) AS host, " \
+                            "( SELECT id FROM tags WHERE name = ? AND value = ? LIMIT 1 ) AS tag;"
+                    execute_db(memory_db, q, [host] + split_tag(tag))
+                  end
+                end
               end
             end
           end
