@@ -238,11 +238,12 @@ module Hotdog
                       "SELECT host.id, tag.id FROM " \
                         "( SELECT id FROM hosts WHERE name IN (%s) ) AS host, " \
                         "( SELECT id FROM tags WHERE name = ? AND value = ? LIMIT 1 ) AS tag;" % hosts.map { "?" }.join(", ")
+                hosts_tag = hosts + split_tag(tag)
                 begin
-                  logger.debug("execute: #{q} -- #{(hosts + split_tag(tag)).inspect}")
-                  prepare(memory_db, q).execute(hosts + split_tag(tag))
+                  logger.debug("execute: #{q} -- #{hosts_tag.inspect}")
+                  prepare(memory_db, q).execute(hosts_tag)
                 rescue
-                  logger.error("failed: #{q} -- #{(hosts + split_tag(tag)).inspect}")
+                  logger.error("failed: #{q} -- #{hosts_tag.inspect}")
                   raise
                 end
               end
@@ -309,6 +310,7 @@ module Hotdog
           hosts.each_slice(SQLITE_LIMIT_COMPOUND_SELECT / 2) do |hosts|
             q = "INSERT INTO hosts (id, name) VALUES %s" % hosts.map { "(?, ?)" }.join(", ")
             begin
+              logger.debug("execute: #{q} -- #{hosts.inspect}")
               prepare(dst, q).execute(hosts)
             rescue
               logger.error("failed: #{q} -- #{hosts.inspect}")
@@ -320,6 +322,7 @@ module Hotdog
           tags.each_slice(SQLITE_LIMIT_COMPOUND_SELECT / 3) do |tags|
             q = "INSERT INTO tags (id, name, value) VALUES %s" % tags.map { "(?, ?, ?)" }.join(", ")
             begin
+              logger.debug("execute: #{q} -- #{tags.inspect}")
               prepare(dst, q).execute(tags)
             rescue
               logger.error("failed: #{q} -- #{tags.inspect}")
@@ -331,6 +334,7 @@ module Hotdog
           hosts_tags.each_slice(SQLITE_LIMIT_COMPOUND_SELECT / 2) do |hosts_tags|
             q = "INSERT INTO hosts_tags (host_id, tag_id) VALUES %s" % hosts_tags.map { "(?, ?)" }.join(", ")
             begin
+              logger.debug("execute: #{q} -- #{hosts_tags.inspect}")
               prepare(dst, q).execute(hosts_tags)
             rescue
               logger.error("failed: #{q} -- #{hosts_tags.inspect}")
