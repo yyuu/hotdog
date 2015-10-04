@@ -40,10 +40,21 @@ module Hotdog
         end
       end
 
+      def parse_options(optparse, args=[])
+        if args.index("--")
+          @remote_command = args.slice(args.index("--") + 1, args.length).join(" ")
+          optparse.parse(args.slice(0, args.index("--")))
+        else
+          @remote_command = nil
+          optparse.parse(args)
+        end
+      end
+
       def run(args=[], options={})
         expression = args.join(" ").strip
         if expression.empty?
-          exit(1)
+          # return everything if given expression is empty
+          expression = "*"
         end
 
         begin
@@ -58,7 +69,7 @@ module Hotdog
         if result.length == 1
           host = result[0]
         elsif result.empty?
-          STDERR.puts("no match found: #{search_args.join(" ")}")
+          STDERR.puts("no match found: #{expression}")
           exit(1)
         else
           if options[:index] && result.length > options[:index]
@@ -80,29 +91,31 @@ module Hotdog
         address = result.flatten.first
 
         # build ssh command
-        cmdline = ["ssh"]
-        options[:options].each do |option|
-          cmdline << "-o" << option
-        end
-        if path = options[:identity_file]
-          cmdline << "-i" << Shellwords.escape(path)
-        end
-        if port = options[:port]
-          cmdline << "-p" << port.to_s
-        end
+        base_cmdline = ["ssh"]
         if options[:forward_agent]
-          cmdline << "-A"
+          base_cmdline << "-A"
+        end
+        if options[:identity_file]
+          base_cmdline << "-i" << options[:identity_file]
+        end
+        if options[:user]
+          base_cmdline << "-l" << options[:user]
+        end
+        if options[:options]
+          base_cmdline += options[:options].flat_map { |option| ["-o", option] }
+        end
+        if options[:port]
+          base_cmdline << "-p" << options[:port].to_s
         end
         if options[:verbose]
-          cmdline << "-v"
+          base_cmdline << "-v"
         end
-        if user = options[:user]
-          cmdline << (user + "@" + address)
-        else
-          cmdline << address
+        cmdline = base_cmdline + [address]
+        if @remote_command
+          cmdline << "--" << @remote_command
         end
         logger.debug("execute: #{Shellwords.join(cmdline)}")
-        exec(*cmdline)
+        exec(Shellwords.join(cmdline))
         exit(127)
       end
     end

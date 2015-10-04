@@ -37,7 +37,7 @@ module Hotdog
             logger.info("found %d host(s), limited to %d in result." % [_result.length, result.length])
           end
         else
-          STDERR.puts("no match found: #{args.join(" ")}")
+          STDERR.puts("no match found: #{expression}")
           exit(1)
         end
       end
