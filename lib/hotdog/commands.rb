@@ -290,7 +290,7 @@ module Hotdog
           responses = Hash[Parallel.map(requests) { |name, request_path|
             uri = URI.join(endpoint, "#{request_path}?#{query}")
             begin
-              response = uri.open { |fp| fp.read }
+              response = uri.open("User-Agent" => "hotdog/#{Hotdog::VERSION}") { |fp| fp.read }
               [name, MultiJson.load(response)]
             rescue OpenURI::HTTPError => error
               code, body = error.io.status
