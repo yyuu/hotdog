@@ -16,6 +16,7 @@ module Hotdog
         options[:identity_file] = nil
         options[:forward_agent] = false
         options[:max_parallelism] = nil
+        options[:color] = :auto
 
         optparse.on("-o SSH_OPTION", "Passes this string to ssh command through shell. This option may be given multiple times") do |option|
           options[:options] += [option]
@@ -37,6 +38,9 @@ module Hotdog
         end
         optparse.on("-v", "--verbose", "Enable verbose ode") do |v|
           options[:verbose] = v
+        end
+        optparse.on("--color=WHEN", "--colour=WHEN", "Enable colors") do |color|
+          options[:color] = color
         end
       end
 
@@ -65,16 +69,40 @@ module Hotdog
           exit(1)
         end
 
-        result = evaluate(node, self)
-        result, fields = get_hosts(result)
-
-        if result.empty?
+        result0 = evaluate(node, self)
+        if 0 < result0.length
+          exec_command(result0, options)
+        else
           STDERR.puts("no match found: #{expression}")
           exit(1)
         end
+      end
 
-        addresses = result.map {|host| [host.first, host.last] }
+      def exec_command(result0, options={})
+        result, fields = get_hosts(result0)
+        hosts = result.flatten
+        threads = options[:max_parallelism] || hosts.size
+        stats = Parallel.map(hosts, in_threads: threads) { |host, name|
+          if use_color?
+            header = "\e[0;36m#{name}\e[00m"
+          else
+            header = name
+          end
+          cmdline = build_command_string(host, options)
+          logger.debug("execute: #{cmdline}")
+          IO.popen(cmdline, in: :close, err: [:child, :out]) do |io|
+            io.each_line do |line|
+              STDOUT.write("#{header}: #{line}")
+            end
+          end
+          $?.success? # $? is thread-local variable
+        }
+        unless stats.all?
+          exit(1)
+        end
+      end
 
+      def build_command_string(host, options={})
         # build ssh command
         base_cmdline = ["ssh"]
         if options[:forward_agent]
@@ -93,30 +121,22 @@ module Hotdog
         if options[:port]
           base_cmdline << "-p" << options[:port].to_s
         end
+        cmdline = base_cmdline + [host]
+        if @remote_command
+          cmdline << "--" << @remote_command
+        end
+        Shellwords.join(cmdline)
+      end
 
-        use_color = STDOUT.tty?
-        threads = options[:max_parallelism] || addresses.size
-        stats = Parallel.map(addresses, in_threads: threads) { |address, name|
-          if use_color
-            header = "\e[0;36m#{name}\e[00m"
-          else
-            header = name
-          end
-          cmdline = base_cmdline + [address]
-          if @remote_command
-            cmdline << "--" << @remote_command
-          end
-          logger.debug("execute: #{Shellwords.join(cmdline)}")
-          IO.popen(Shellwords.join(cmdline), in: :close, err: [:child, :out]) do |io|
-            io.each_line do |line|
-              STDOUT.write("#{header}: #{line}")
-            end
-          end
-          $?.success? # $? is thread-local variable
-        }
-
-        unless stats.all?
-          exit(1)
+      private
+      def use_color?
+        case options[:color]
+        when :always
+          true
+        when :never
+          false
+        else
+          STDOUT.tty?
         end
       end
     end

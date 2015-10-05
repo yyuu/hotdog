@@ -26,15 +26,15 @@ module Hotdog
           exit(1)
         end
 
-        result = evaluate(node, self)
-        if 0 < result.length
-          _result, fields = get_hosts_with_search_tags(result, node)
-          result = _result.take(options.fetch(:limit, _result.size))
-          STDOUT.print(format(result, fields: fields))
-          if _result.length == result.length
-            logger.info("found %d host(s)." % result.length)
+        result0 = evaluate(node, self)
+        if 0 < result0.length
+          result, fields = get_hosts_with_search_tags(result0, node)
+          if options[:limit]
+            STDOUT.print(format(result.take(options[:limit]), fields: fields))
+            logger.info("found %d host(s), limited to %d in result." % [result.length, options[:limit]])
           else
-            logger.info("found %d host(s), limited to %d in result." % [_result.length, result.length])
+            STDOUT.print(format(result, fields: fields))
+            logger.info("found %d host(s)." % result.length)
           end
         else
           STDERR.puts("no match found: #{expression}")

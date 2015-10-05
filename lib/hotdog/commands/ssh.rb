@@ -64,32 +64,41 @@ module Hotdog
           exit(1)
         end
 
-        result = evaluate(node, self)
+        result0 = evaluate(node, self)
+        if 0 < result0.length
+          if result0.length == 1
+            exec_command([result0.first], options)
+          else
+            if options[:index] and options[:index] < result0.length
+              exec_command([result0[options[:index]]], options)
+            else
+              result, fields = get_hosts_with_search_tags(result0, node)
 
-        if result.length == 1
-          host = result[0]
-        elsif result.empty?
+              # add "index" field
+              result = result.each_with_index.map { |host, i| [i] + host }
+              fields = ["index"] + fields
+
+              STDERR.print(format(result, fields: fields))
+              logger.info("found %d host(s)." % result.length)
+              exit(1)
+            end
+          end
+        else
           STDERR.puts("no match found: #{expression}")
           exit(1)
-        else
-          if options[:index] && result.length > options[:index]
-            host = result[options[:index]]
-          else
-            result, fields = get_hosts_with_search_tags(result, node)
-
-            # add "index" field
-            result = result.each_with_index.map {|host,i| [i] + host }
-            fields = ["index"] + fields
-
-            STDERR.print(format(result, fields: fields))
-            logger.info("found %d host(s)." % result.length)
-            exit(1)
-          end
         end
+        exit(127)
+      end
 
-        result, fields = get_hosts([host])
-        address = result.flatten.first
+      def exec_command(result0, options={})
+        result, fields = get_hosts(result0)
+        hosts = result.flatten
+        cmdline = build_command_string(hosts.first, options)
+        logger.debug("execute: #{cmdline}")
+        exec(cmdline)
+      end
 
+      def build_command_string(host, options={})
         # build ssh command
         base_cmdline = ["ssh"]
         if options[:forward_agent]
@@ -110,13 +119,11 @@ module Hotdog
         if options[:verbose]
           base_cmdline << "-v"
         end
-        cmdline = base_cmdline + [address]
+        cmdline = base_cmdline + [host]
         if @remote_command
           cmdline << "--" << @remote_command
         end
-        logger.debug("execute: #{Shellwords.join(cmdline)}")
-        exec(Shellwords.join(cmdline))
-        exit(127)
+        Shellwords.join(cmdline)
       end
     end
   end
