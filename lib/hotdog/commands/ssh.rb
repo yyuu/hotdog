@@ -15,7 +15,6 @@ module Hotdog
         options[:port] = nil
         options[:identity_file] = nil
         options[:forward_agent] = false
-        options[:verbose] = false
 
         optparse.on("-n", "--index INDEX", "Use this index of host if multiple servers are found", Integer) do |index|
           options[:index] = index
@@ -49,6 +48,7 @@ module Hotdog
           optparse.parse(args)
         end
       end
+      attr_reader :remote_command
 
       def run(args=[], options={})
         expression = args.join(" ").strip

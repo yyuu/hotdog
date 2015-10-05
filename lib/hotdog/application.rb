@@ -54,7 +54,7 @@ module Hotdog
 
       begin
         command = ( args.shift || "help" )
-        get_command(command).new(self).tap do |cmd|
+        get_command(command).tap do |cmd|
           @optparse.banner = "Usage: hotdog #{command} [options]"
           cmd.define_options(@optparse, @options)
           args = cmd.parse_options(@optparse, args)
@@ -70,7 +70,7 @@ module Hotdog
             options[:headers] = true
           end
 
-          options[:formatter] = get_formatter(options[:format]).new
+          options[:formatter] = get_formatter(options[:format])
 
           if options[:debug] or options[:verbose]
             options[:logger].level = Logger::DEBUG
@@ -143,29 +143,31 @@ module Hotdog
 
     def get_formatter(name)
       begin
-        Hotdog::Formatters.const_get(const_name(name))
+        klass = Hotdog::Formatters.const_get(const_name(name))
       rescue NameError
         if library = find_library("hotdog/formatters", name)
           load library
-          Hotdog::Formatters.const_get(const_name(File.basename(library, ".rb")))
+          klass = Hotdog::Formatters.const_get(const_name(File.basename(library, ".rb")))
         else
           raise(NameError.new("unknown format: #{name}"))
         end
       end
+      klass.new
     end
 
     def get_command(name)
       begin
-        Hotdog::Commands.const_get(const_name(name))
+        klass = Hotdog::Commands.const_get(const_name(name))
       rescue NameError
         if library = find_library("hotdog/commands", name)
           load library
-          Hotdog::Commands.const_get(const_name(File.basename(library, ".rb")))
+          klass = Hotdog::Commands.const_get(const_name(File.basename(library, ".rb")))
         else
           require "hotdog/commands/help"
-          Hotdog::Commands::Help
+          klass = Hotdog::Commands::Help
         end
       end
+      klass.new(self)
     end
 
     def find_library(dirname, name)

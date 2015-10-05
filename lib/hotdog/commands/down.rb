@@ -6,13 +6,13 @@ module Hotdog
   module Commands
     class Down < BaseCommand
       def define_options(optparse, options={})
-        @downtime = 86400
-        @start = Time.new
+        options[:downtime] = 86400
+        options[:start] = Time.new
         optparse.on("--downtime DURATION") do |v|
-          @downtime = v.to_i
+          options[:downtime] = v.to_i
         end
         optparse.on("--start TIME") do |v|
-          @start = Time.parse(v)
+          options[:start] = Time.parse(v)
         end
       end
 
@@ -23,8 +23,8 @@ module Hotdog
           else
             scope = arg
           end
-          code, schedule = dog.schedule_downtime(scope, :start => @start.to_i, :end => (@start+@downtime).to_i)
-          logger.debug("dog.schedule_donwtime(%s, :start => %s, :end => %s) #==> [%s, %s]" % [scope.inspect, @start.to_i, (@start+@downtime).to_i, code.inspect, schedule.inspect])
+          code, schedule = dog.schedule_downtime(scope, :start => options[:start].to_i, :end => (options[:start]+options[:downtime]).to_i)
+          logger.debug("dog.schedule_donwtime(%s, :start => %s, :end => %s) #==> [%s, %s]" % [scope.inspect, options[:start].to_i, (options[:start]+options[:downtime]).to_i, code.inspect, schedule.inspect])
           if code.to_i / 100 != 2
             raise("dog.schedule_downtime(%s, ...) returns [%s, %s]" % [scope.inspect, code.inspect, schedule.inspect])
           end

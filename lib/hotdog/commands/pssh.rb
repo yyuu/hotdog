@@ -16,7 +16,6 @@ module Hotdog
         options[:identity_file] = nil
         options[:forward_agent] = false
         options[:max_parallelism] = nil
-        options[:verbose] = false
 
         optparse.on("-o SSH_OPTION", "Passes this string to ssh command through shell. This option may be given multiple times") do |option|
           options[:options] += [option]
@@ -50,6 +49,7 @@ module Hotdog
           optparse.parse(args)
         end
       end
+      attr_reader :remote_command
 
       def run(args=[], options={})
         expression = args.join(" ").strip

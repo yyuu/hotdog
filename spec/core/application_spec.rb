@@ -23,9 +23,9 @@ describe "application" do
   end
 
   it "returns proper class by name" do
-    expect(app.__send__(:get_command, "hosts")).to be(Hotdog::Commands::Hosts)
-    expect(app.__send__(:get_command, "search")).to be(Hotdog::Commands::Search)
-    expect(app.__send__(:get_command, "tags")).to be(Hotdog::Commands::Tags)
+    expect(app.__send__(:get_command, "hosts")).to be_a(Hotdog::Commands::Hosts)
+    expect(app.__send__(:get_command, "search")).to be_a(Hotdog::Commands::Search)
+    expect(app.__send__(:get_command, "tags")).to be_a(Hotdog::Commands::Tags)
   end
 
   it "raises error if the action is base-command" do
