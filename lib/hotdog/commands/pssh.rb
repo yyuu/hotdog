@@ -82,7 +82,7 @@ module Hotdog
         result, fields = get_hosts(result0)
         hosts = result.flatten
         threads = options[:max_parallelism] || hosts.size
-        stats = Parallel.map(hosts, in_threads: threads) { |host, name|
+        stats = Parallel.map(hosts.zip(hosts), in_threads: threads) { |host, name|
           if use_color?
             header = "\e[0;36m#{name}\e[00m"
           else
