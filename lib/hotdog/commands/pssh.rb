@@ -78,21 +78,21 @@ module Hotdog
         end
       end
 
+      private
       def exec_command(result0, options={})
         result, fields = get_hosts(result0)
         hosts = result.flatten
         threads = options[:max_parallelism] || hosts.size
+        use_color_p = use_color?
         stats = Parallel.map(hosts.zip(hosts), in_threads: threads) { |host, name|
-          if use_color?
-            header = "\e[0;36m#{name}\e[00m"
-          else
-            header = name
-          end
           cmdline = build_command_string(host, options)
           logger.debug("execute: #{cmdline}")
           IO.popen(cmdline, in: :close, err: [:child, :out]) do |io|
-            io.each_line do |line|
-              STDOUT.write("#{header}: #{line}")
+            io.each_with_index do |s, i|
+              STDOUT.write("\e[0;36m") if use_color_p
+              STDOUT.write("#{name}:#{i}:")
+              STDOUT.write("\e[0m") if use_color_p
+              STDOUT.write(s)
             end
           end
           $?.success? # $? is thread-local variable
@@ -128,7 +128,6 @@ module Hotdog
         Shellwords.join(cmdline)
       end
 
-      private
       def use_color?
         case options[:color]
         when :always

@@ -90,6 +90,7 @@ module Hotdog
         exit(127)
       end
 
+      private
       def exec_command(result0, options={})
         result, fields = get_hosts(result0)
         hosts = result.flatten
