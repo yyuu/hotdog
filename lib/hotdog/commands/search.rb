@@ -213,10 +213,18 @@ module Hotdog
           end
         }
         rule(identifier_regexp: simple(:identifier_regexp), separator: simple(:separator)) {
-          RegexpTagNameNode.new(identifier_regexp.to_s, separator)
+          if "host" == identifier_regexp
+            AnyHostNode.new(separator)
+          else
+            RegexpTagNameNode.new(identifier_regexp.to_s, separator)
+          end
         }
         rule(identifier_regexp: simple(:identifier_regexp)) {
-          RegexpNode.new(identifier_regexp.to_s)
+          if "host" == identifier_regexp
+            AnyHostNode.new(separator)
+          else
+            RegexpNode.new(identifier_regexp.to_s)
+          end
         }
         rule(identifier_glob: simple(:identifier_glob), separator: simple(:separator), attribute_glob: simple(:attribute_glob)) {
           if "host" == identifier_glob
@@ -233,10 +241,18 @@ module Hotdog
           end
         }
         rule(identifier_glob: simple(:identifier_glob), separator: simple(:separator)) {
-          GlobTagNameNode.new(identifier_glob.to_s, separator)
+          if "host" == identifier_glob
+            AnyHostNode.new(separator)
+          else
+            GlobTagNameNode.new(identifier_glob.to_s, separator)
+          end
         }
         rule(identifier_glob: simple(:identifier_glob)) {
-          GlobNode.new(identifier_glob.to_s)
+          if "host" == identifier_glob
+            AnyHostNode.new(separator)
+          else
+            GlobNode.new(identifier_glob.to_s)
+          end
         }
         rule(identifier: simple(:identifier), separator: simple(:separator), attribute_glob: simple(:attribute_glob)) {
           if "host" == identifier
@@ -253,10 +269,18 @@ module Hotdog
           end
         }
         rule(identifier: simple(:identifier), separator: simple(:separator)) {
-          StringTagNameNode.new(identifier.to_s, separator)
+          if "host" == identifier
+            AnyHostNode.new(separator)
+          else
+            StringTagNameNode.new(identifier.to_s, separator)
+          end
         }
         rule(identifier: simple(:identifier)) {
-          StringNode.new(identifier.to_s)
+          if "host" == identifier
+            AnyHostNode.new(separator)
+          else
+            StringNode.new(identifier.to_s)
+          end
         }
         rule(separator: simple(:separator), attribute_regexp: simple(:attribute_regexp)) {
           RegexpTagValueNode.new(attribute_regexp.to_s, separator)
@@ -836,6 +860,42 @@ module Hotdog
         end
       end
 
+      class AnyHostNode < TagExpressionNode
+        def initialize(separator=nil)
+          super("host", nil, separator)
+        end
+
+        def condition(options={})
+          "1"
+        end
+
+        def condition_tables(options={})
+          [:hosts]
+        end
+
+        def condition_values(options={})
+          []
+        end
+      end
+
+      class AnyTagNode < TagExpressionNode
+        def initialize(separator=nil)
+          super(nil, nil, separator)
+        end
+
+        def condition(options={})
+          "1"
+        end
+
+        def condition_tables(options={})
+          [:tags]
+        end
+
+        def condition_values(options={})
+          []
+        end
+      end
+
       class StringExpressionNode < TagExpressionNode
       end
 
@@ -926,15 +986,15 @@ module Hotdog
         end
 
         def condition(options={})
-          "tags.value = ?"
+          "hosts.name = ? OR tags.value = ?"
         end
 
         def condition_tables(options={})
-          [:tags]
+          [:hosts, :tags]
         end
 
         def condition_values(options={})
-          [attribute]
+          [attribute, attribute]
         end
 
         def maybe_fallback(options={})
@@ -1072,15 +1132,15 @@ module Hotdog
         end
 
         def condition(options={})
-          "LOWER(tags.value) GLOB LOWER(?)"
+          "LOWER(hosts.name) GLOB LOWER(?) OR LOWER(tags.value) GLOB LOWER(?)"
         end
 
         def condition_tables(options={})
-          [:tags]
+          [:hosts, :tags]
         end
 
         def condition_values(options={})
-          [attribute]
+          [attribute, attribute]
         end
 
         def maybe_fallback(options={})
@@ -1191,15 +1251,15 @@ module Hotdog
         end
 
         def condition(options={})
-          "tags.value REGEXP ?"
+          "hosts.name REGEXP ? OR tags.value REGEXP ?"
         end
 
         def condition_tables(options={})
-          [:tags]
+          [:hosts, :tags]
         end
 
         def condition_values(options={})
-          [attribute]
+          [attribute, attribute]
         end
       end
 
