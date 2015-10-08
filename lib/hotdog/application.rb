@@ -80,6 +80,17 @@ module Hotdog
 
           cmd.run(args, @options)
         end
+      rescue OptionParser::ParseError => error
+        STDERR.puts("hotdog: #{error.message}")
+        require "hotdog/commands/help"
+        get_command(command).tap do |cmd|
+          if Hotdog::Commands::Help === cmd
+            STDERR.puts("hotdog: '#{command}' is not a hotdog command.")
+          else
+            cmd.parse_options(@optparse, ["--help"])
+          end
+        end
+        exit(1)
       rescue Errno::EPIPE
         # nop
       end
