@@ -69,10 +69,11 @@ describe "tag glob expression" do
     expr = Hotdog::Commands::Search::GlobTagValueNode.new("foo*", ":")
     q = [
       "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags",
+        "INNER JOIN hosts ON hosts_tags.host_id = hosts.id",
         "INNER JOIN tags ON hosts_tags.tag_id = tags.id",
-          "WHERE LOWER(tags.value) GLOB LOWER(?);",
+          "WHERE LOWER(hosts.name) GLOB LOWER(?) OR LOWER(tags.value) GLOB LOWER(?);",
     ]
-    allow(cmd).to receive(:execute).with(q.join(" "), ["foo*"]) {
+    allow(cmd).to receive(:execute).with(q.join(" "), ["foo*", "foo*"]) {
       [[1], [2], [3]]
     }
     expect(expr.evaluate(cmd)).to eq([1, 2, 3])
@@ -83,10 +84,11 @@ describe "tag glob expression" do
     expr = Hotdog::Commands::Search::GlobTagValueNode.new("foo*", nil)
     q = [
       "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags",
+        "INNER JOIN hosts ON hosts_tags.host_id = hosts.id",
         "INNER JOIN tags ON hosts_tags.tag_id = tags.id",
-          "WHERE LOWER(tags.value) GLOB LOWER(?);",
+          "WHERE LOWER(hosts.name) GLOB LOWER(?) OR LOWER(tags.value) GLOB LOWER(?);",
     ]
-    allow(cmd).to receive(:execute).with(q.join(" "), ["foo*"]) {
+    allow(cmd).to receive(:execute).with(q.join(" "), ["foo*", "foo*"]) {
       [[1], [2], [3]]
     }
     expect(expr.evaluate(cmd)).to eq([1, 2, 3])

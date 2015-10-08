@@ -878,24 +878,6 @@ module Hotdog
         end
       end
 
-      class AnyTagNode < TagExpressionNode
-        def initialize(separator=nil)
-          super(nil, nil, separator)
-        end
-
-        def condition(options={})
-          "1"
-        end
-
-        def condition_tables(options={})
-          [:tags]
-        end
-
-        def condition_values(options={})
-          []
-        end
-      end
-
       class StringExpressionNode < TagExpressionNode
       end
 
