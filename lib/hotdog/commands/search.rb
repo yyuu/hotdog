@@ -214,14 +214,14 @@ module Hotdog
         }
         rule(identifier_regexp: simple(:identifier_regexp), separator: simple(:separator)) {
           if "host" == identifier_regexp
-            AnyHostNode.new(separator)
+            EverythingNode.new()
           else
             RegexpTagNameNode.new(identifier_regexp.to_s, separator)
           end
         }
         rule(identifier_regexp: simple(:identifier_regexp)) {
           if "host" == identifier_regexp
-            AnyHostNode.new(separator)
+            EverythingNode.new()
           else
             RegexpNode.new(identifier_regexp.to_s)
           end
@@ -242,14 +242,14 @@ module Hotdog
         }
         rule(identifier_glob: simple(:identifier_glob), separator: simple(:separator)) {
           if "host" == identifier_glob
-            AnyHostNode.new(separator)
+            EverythingNode.new()
           else
             GlobTagNameNode.new(identifier_glob.to_s, separator)
           end
         }
         rule(identifier_glob: simple(:identifier_glob)) {
           if "host" == identifier_glob
-            AnyHostNode.new(separator)
+            EverythingNode.new()
           else
             GlobNode.new(identifier_glob.to_s)
           end
@@ -270,14 +270,14 @@ module Hotdog
         }
         rule(identifier: simple(:identifier), separator: simple(:separator)) {
           if "host" == identifier
-            AnyHostNode.new(separator)
+            EverythingNode.new()
           else
             StringTagNameNode.new(identifier.to_s, separator)
           end
         }
         rule(identifier: simple(:identifier)) {
           if "host" == identifier
-            AnyHostNode.new(separator)
+            EverythingNode.new()
           else
             StringNode.new(identifier.to_s)
           end
@@ -369,7 +369,14 @@ module Hotdog
           @expression = @expression.optimize(options)
           case op
           when :NOT
-            optimize1(options)
+            case expression
+            when EverythingNode
+              NothingNode.new(options)
+            when NothingNode
+              EverythingNode.new(options)
+            else
+              optimize1(options)
+            end
           else
             self
           end
@@ -398,7 +405,16 @@ module Hotdog
             if UnaryExpressionNode === expression and expression.op == :NOT
               expression.expression
             else
-              if TagExpressionNode === expression
+              case expression
+              when QueryExpressionNode
+                q = expression.query
+                v = expression.values
+                if q and v.length <= SQLITE_LIMIT_COMPOUND_SELECT
+                  QueryExpressionNode.new("SELECT id AS host_id FROM hosts EXCEPT #{q.sub(/\s*;\s*\z/, "")};", v)
+                else
+                  self
+                end
+              when TagExpressionNode
                 q = expression.maybe_query(options)
                 v = expression.condition_values(options)
                 if q and v.length <= SQLITE_LIMIT_COMPOUND_SELECT
@@ -529,30 +545,44 @@ module Hotdog
           @right = @right.optimize(options)
           case op
           when :AND
-            if left == right
+            case left
+            when EverythingNode
+              right
+            when NothingNode
               left
             else
-              optimize1(options)
+              if left == right
+                left
+              else
+                optimize1(options)
+              end
             end
           when :OR
-            if left == right
+            case left
+            when EverythingNode
+              left
+            when NothingNode
               left
             else
-              if MultinaryExpressionNode === left
-                if left.op == op
-                  left.merge(right, fallback: self)
-                else
-                  optimize1(options)
-                end
+              if left == right
+                left
               else
-                if MultinaryExpressionNode === right
-                  if right.op == op
-                    right.merge(left, fallback: self)
+                if MultinaryExpressionNode === left
+                  if left.op == op
+                    left.merge(right, fallback: self)
                   else
                     optimize1(options)
                   end
                 else
-                  MultinaryExpressionNode.new(op, [left, right], fallback: self)
+                  if MultinaryExpressionNode === right
+                    if right.op == op
+                      right.merge(left, fallback: self)
+                    else
+                      optimize1(options)
+                    end
+                  else
+                    MultinaryExpressionNode.new(op, [left, right], fallback: self)
+                  end
                 end
               end
             end
@@ -686,14 +716,16 @@ module Hotdog
       end
 
       class QueryExpressionNode < ExpressionNode
-        def initialize(query, args=[], options={})
+        def initialize(query, values=[], options={})
           @query = query
-          @args = args
+          @values = values
           @fallback = options[:fallback]
         end
+        attr_reader :query
+        attr_reader :values
 
         def evaluate(environment, options={})
-          values = environment.execute(@query, @args).map { |row| row.first }
+          values = environment.execute(@query, @values).map { |row| row.first }
           if values.empty? and @fallback
             @fallback.evaluate(environment, options).tap do |values|
               if values.empty?
@@ -706,9 +738,29 @@ module Hotdog
         end
 
         def dump(options={})
-          data = {query: @query, arguments: @args}
+          data = {query: @query, values: @values}
           data[:fallback] = @fallback.dump(options) if @fallback
           data
+        end
+      end
+
+      class EverythingNode < QueryExpressionNode
+        def initialize(options={})
+          super("SELECT id AS host_id FROM hosts", [], options)
+        end
+      end
+
+      class NothingNode < QueryExpressionNode
+        def initialize(options={})
+          super("SELECT NULL AS host_id WHERE host_id NOT NULL", [], options)
+        end
+
+        def evaluate(environment, options={})
+          if @fallback
+            @fallback.evaluate(environment, options)
+          else
+            []
+          end
         end
       end
 
