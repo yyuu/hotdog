@@ -39,17 +39,6 @@ module Hotdog
         end
       end
 
-      def parse_options(optparse, args=[])
-        if args.index("--")
-          @remote_command = args.slice(args.index("--") + 1, args.length).join(" ")
-          optparse.parse(args.slice(0, args.index("--")))
-        else
-          @remote_command = nil
-          optparse.parse(args)
-        end
-      end
-      attr_reader :remote_command
-
       def run(args=[], options={})
         expression = args.join(" ").strip
         if expression.empty?
