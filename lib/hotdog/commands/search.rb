@@ -343,7 +343,7 @@ module Hotdog
         attr_reader :op, :expression
 
         def initialize(op, expression)
-          case op
+          case (op || "not").to_s
           when "!", "~", /\Anot\z/i
             @op = :NOT
           else
@@ -451,7 +451,7 @@ module Hotdog
         attr_reader :op, :left, :right
 
         def initialize(op, left, right)
-          case op || "or"
+          case (op || "or").to_s
           when "&&", "&", /\Aand\z/i
             @op = :AND
           when "||", "|", /\Aor\z/i
@@ -664,8 +664,8 @@ module Hotdog
         attr_reader :op, :expressions
 
         def initialize(op, expressions, options={})
-          case op
-          when :OR
+          case (op || "or").to_s
+          when "||", "|", /\Aor\z/i
             @op = :OR
           else
             raise(SyntaxError.new("unknown multinary operator: #{op.inspect}"))
