@@ -53,44 +53,47 @@ module Hotdog
       args = @optparse.order(argv)
 
       begin
-        command = ( args.shift || "help" )
-        get_command(command).tap do |cmd|
-          @optparse.banner = "Usage: hotdog #{command} [options]"
-          cmd.define_options(@optparse, @options)
-          args = cmd.parse_options(@optparse, args)
-          unless options[:api_key]
-            raise("DATADOG_API_KEY is not set")
-          end
-
-          unless options[:application_key]
-            raise("DATADOG_APPLICATION_KEY is not set")
-          end
-
-          if options[:format] == "ltsv"
-            options[:headers] = true
-          end
-
-          options[:formatter] = get_formatter(options[:format])
-
-          if options[:debug] or options[:verbose]
-            options[:logger].level = Logger::DEBUG
-          else
-            options[:logger].level = Logger::INFO
-          end
-
-          cmd.run(args, @options)
+        command_name = ( args.shift || "help" )
+        begin
+          command = get_command(command_name)
+        rescue NameError
+          STDERR.puts("hotdog: '#{command_name}' is not a hotdog command.")
+          get_command("help").parse_options(@optparse, ["commands"])
+          exit(1)
         end
-      rescue OptionParser::ParseError => error
-        STDERR.puts("hotdog: #{error.message}")
-        require "hotdog/commands/help"
-        get_command(command).tap do |cmd|
-          if Hotdog::Commands::Help === cmd
-            STDERR.puts("hotdog: '#{command}' is not a hotdog command.")
-          else
-            cmd.parse_options(@optparse, ["--help"])
-          end
+
+        @optparse.banner = "Usage: hotdog #{command_name} [options]"
+        command.define_options(@optparse, @options)
+
+        begin
+          args = command.parse_options(@optparse, args)
+        rescue OptionParser::ParseError => error
+          STDERR.puts("hotdog: #{error.message}")
+          command.parse_options(@optparse, ["--help"])
+          exit(1)
         end
-        exit(1)
+
+        unless options[:api_key]
+          raise("DATADOG_API_KEY is not set")
+        end
+
+        unless options[:application_key]
+          raise("DATADOG_APPLICATION_KEY is not set")
+        end
+
+        if options[:format] == "ltsv"
+          options[:headers] = true
+        end
+
+        options[:formatter] = get_formatter(options[:format])
+
+        if options[:debug] or options[:verbose]
+          options[:logger].level = Logger::DEBUG
+        else
+          options[:logger].level = Logger::INFO
+        end
+
+        command.run(args, @options)
       rescue Errno::EPIPE
         # nop
       end
@@ -174,8 +177,7 @@ module Hotdog
           load library
           klass = Hotdog::Commands.const_get(const_name(File.basename(library, ".rb")))
         else
-          require "hotdog/commands/help"
-          klass = Hotdog::Commands::Help
+          raise(NameError.new("unknown command: #{name}"))
         end
       end
       klass.new(self)
