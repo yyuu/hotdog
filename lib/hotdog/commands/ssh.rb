@@ -16,6 +16,12 @@ module Hotdog
         options[:identity_file] = nil
         options[:forward_agent] = false
 
+        optparse.on("-D BIND_ADDRESS", "Specifies a local \"dynamic\" application-level port forwarding") do |bind_address|
+          options[:dynamic_port_forward] = bind_address
+        end
+        optparse.on("-L BIND_ADDRESS", "Specifies that the given port on the local (client) host is to be forwarded to the given host and port on the remote side") do |bind_address|
+          options[:port_forward] = bind_address
+        end
         optparse.on("-n", "--index INDEX", "Use this index of host if multiple servers are found", Integer) do |index|
           options[:index] = index
         end
@@ -93,6 +99,12 @@ module Hotdog
         base_cmdline = ["ssh"]
         if options[:forward_agent]
           base_cmdline << "-A"
+        end
+        if options[:dynamic_port_forward]
+          base_cmdline << "-D" << options[:dynamic_port_forward]
+        end
+        if options[:port_forward]
+          base_cmdline << "-L" << options[:port_forward]
         end
         if options[:identity_file]
           base_cmdline << "-i" << options[:identity_file]
