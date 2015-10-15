@@ -742,11 +742,7 @@ module Hotdog
         def evaluate(environment, options={})
           values = environment.execute(@query, @values).map { |row| row.first }
           if values.empty? and @fallback
-            @fallback.evaluate(environment, options).tap do |values|
-              if values.empty?
-                environment.logger.info("no result: #{self.dump.inspect}")
-              end
-            end
+            @fallback.evaluate(environment, options)
           else
             values
           end
