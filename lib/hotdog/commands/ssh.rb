@@ -2,8 +2,8 @@
 
 require "json"
 require "parslet"
-require "hotdog/commands/search"
 require "shellwords"
+require "hotdog/commands/search"
 
 module Hotdog
   module Commands
@@ -14,6 +14,8 @@ module Hotdog
         options[:port] = nil
         options[:identity_file] = nil
         options[:forward_agent] = false
+        options[:color] = :auto
+        options[:max_parallelism] = nil
 
         optparse.on("-o SSH_OPTION", "Passes this string to ssh command through shell. This option may be given multiple times") do |option|
           options[:options] += [option]
@@ -36,6 +38,12 @@ module Hotdog
         optparse.on("--filter=COMMAND", "Command to filter search result.") do |command|
           options[:filter_command] = command
         end
+        optparse.on("-P PARALLELISM", "Max parallelism", Integer) do |n|
+          options[:max_parallelism] = n
+        end
+        optparse.on("--color=WHEN", "--colour=WHEN", "Enable colors") do |color|
+          options[:color] = color
+        end
       end
 
       def run(args=[], options={})
@@ -56,12 +64,34 @@ module Hotdog
         result, fields = get_hosts_with_search_tags(result0, node)
         hosts = filter_hosts(result.flatten)
         validate_hosts!(hosts)
-        exec_command(hosts, options)
+        run_main(hosts, options)
       end
 
       private
+      def parallelism(hosts)
+        options[:max_parallelism] || hosts.size
+      end
+
       def filter_hosts(hosts)
-        hosts
+        if options[:filter_command]
+          use_color_p = use_color?
+          filtered_hosts = Parallel.map(hosts, in_threads: parallelism(hosts)) { |host|
+            cmdline = build_command_string(host, options[:filter_command], options)
+            [host, exec_command(host, cmdline, false, use_color_p)]
+          }.select { |host, stat|
+            stat
+          }.map { |host, stat|
+            host
+          }
+          if hosts == filtered_hosts
+            hosts
+          else
+            logger.info("filtered host(s): #{(hosts - filtered_hosts).inspect}")
+            filtered_hosts
+          end
+        else
+          hosts
+        end
       end
 
       def validate_hosts!(hosts)
@@ -71,7 +101,7 @@ module Hotdog
         end
       end
 
-      def exec_command(hosts, options={})
+      def run_main(hosts, options={})
         raise(NotImplementedError)
       end
 
@@ -106,6 +136,32 @@ module Hotdog
         end
         Shellwords.join(cmdline)
       end
+
+      def use_color?
+        case options[:color]
+        when :always
+          true
+        when :never
+          false
+        else
+          STDOUT.tty?
+        end
+      end
+
+      def exec_command(identifier, cmdline, output=true, colorize=false)
+        logger.debug("execute: #{cmdline}")
+        IO.popen(cmdline, in: :close, err: [:child, :out]) do |io|
+          io.each_with_index do |s, i|
+            if output
+              STDOUT.write("\e[0;36m") if colorize
+              STDOUT.write("#{identifier}:#{i}:")
+              STDOUT.write("\e[0m") if colorize
+              STDOUT.write(s)
+            end
+          end
+        end
+        $?.success? # $? is thread-local variable
+      end
     end
 
     class Ssh < SshAlike
@@ -125,6 +181,7 @@ module Hotdog
 
       private
       def filter_hosts(hosts)
+        hosts = super
         if options[:index] and options[:index] < hosts.length
           [hosts[options[:index]]]
         else
@@ -142,7 +199,7 @@ module Hotdog
         end
       end
 
-      def exec_command(hosts, options={})
+      def run_main(hosts, options={})
         cmdline = build_command_string(hosts.first, @remote_command, options)
         logger.debug("execute: #{cmdline}")
         exec(cmdline)
