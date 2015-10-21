@@ -90,42 +90,41 @@ module Hotdog
         result, fields = get_hosts(result0)
         hosts = result.flatten
         cmdline = build_command_string(hosts.first, options)
+        if @remote_command
+          cmdline += " -- #{Shellwords.shellescape(@remote_command)}"
+        end
         logger.debug("execute: #{cmdline}")
         exec(cmdline)
       end
 
       def build_command_string(host, options={})
         # build ssh command
-        base_cmdline = ["ssh"]
+        cmdline = ["ssh"]
         if options[:forward_agent]
-          base_cmdline << "-A"
+          cmdline << "-A"
         end
         if options[:dynamic_port_forward]
-          base_cmdline << "-D" << options[:dynamic_port_forward]
+          cmdline << "-D" << options[:dynamic_port_forward]
         end
         if options[:port_forward]
-          base_cmdline << "-L" << options[:port_forward]
+          cmdline << "-L" << options[:port_forward]
         end
         if options[:identity_file]
-          base_cmdline << "-i" << options[:identity_file]
+          cmdline << "-i" << options[:identity_file]
         end
         if options[:user]
-          base_cmdline << "-l" << options[:user]
+          cmdline << "-l" << options[:user]
         end
         if options[:options]
-          base_cmdline += options[:options].flat_map { |option| ["-o", option] }
+          cmdline += options[:options].flat_map { |option| ["-o", option] }
         end
         if options[:port]
-          base_cmdline << "-p" << options[:port].to_s
+          cmdline << "-p" << options[:port].to_s
         end
         if options[:verbose]
-          base_cmdline << "-v"
+          cmdline << "-v"
         end
-        cmdline = base_cmdline + [host]
-        if @remote_command
-          cmdline << "--" << @remote_command
-        end
-        Shellwords.join(cmdline)
+        Shellwords.join(cmdline + [host])
       end
     end
   end
