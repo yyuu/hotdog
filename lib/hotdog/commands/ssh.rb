@@ -96,7 +96,7 @@ module Hotdog
 
       def validate_hosts!(hosts)
         if hosts.length < 1
-          STDERR.puts("no match found: #{expression}")
+          STDERR.puts("no match found")
           exit(1)
         end
       end
