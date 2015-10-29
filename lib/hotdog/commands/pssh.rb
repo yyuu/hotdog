@@ -11,10 +11,9 @@ module Hotdog
     class Pssh < SshAlike
       private
       def run_main(hosts, options={})
-        use_color_p = use_color?
-        stats = Parallel.map(hosts, in_threads: parallelism(hosts)) { |host|
+        stats = Parallel.map(hosts.each_with_index.to_a, in_threads: parallelism(hosts)) { |host, i|
           cmdline = build_command_string(host, @remote_command, options)
-          exec_command(host, cmdline, true, use_color_p)
+          exec_command(host, cmdline, index: i, output: true)
         }
         if stats.all?
           exit(0)

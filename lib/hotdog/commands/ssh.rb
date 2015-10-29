@@ -74,10 +74,9 @@ module Hotdog
 
       def filter_hosts(hosts)
         if options[:filter_command]
-          use_color_p = use_color?
           filtered_hosts = Parallel.map(hosts, in_threads: parallelism(hosts)) { |host|
             cmdline = build_command_string(host, options[:filter_command], options)
-            [host, exec_command(host, cmdline, false, use_color_p)]
+            [host, exec_command(host, cmdline, output: false)]
           }.select { |host, stat|
             stat
           }.map { |host, stat|
@@ -148,15 +147,32 @@ module Hotdog
         end
       end
 
-      def exec_command(identifier, cmdline, output=true, colorize=false)
+      def exec_command(identifier, cmdline, options={})
+        output = options.fetch(:output, true)
         logger.debug("execute: #{cmdline}")
+        if use_color?
+          if options.key?(:index)
+            color = 31 + (options[:index] % 6)
+          else
+            color = 36
+          end
+        else
+          color = nil
+        end
         IO.popen(cmdline, in: :close, err: [:child, :out]) do |io|
           io.each_with_index do |s, i|
             if output
-              STDOUT.write("\e[0;36m") if colorize
-              STDOUT.write("#{identifier}:#{i}:")
-              STDOUT.write("\e[0m") if colorize
-              STDOUT.write(s)
+              if color
+                STDOUT.write("\e[0;#{color}m")
+              end
+              STDOUT.write(identifier)
+              STDOUT.write(":")
+              STDOUT.write(i.to_s)
+              STDOUT.write(":")
+              if color
+                STDOUT.write("\e[0m")
+              end
+              STDOUT.puts(s)
             end
           end
         end
