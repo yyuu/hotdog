@@ -359,7 +359,7 @@ module Hotdog
               environment.logger.debug("expr: #{values.length} value(s)")
             end
             if values.empty?
-              environment.execute("SELECT id FROM hosts").map { |row| row.first }.tap do |values|
+              EverythingNode.new().evaluate(environment, options).tap do |values|
                 environment.logger.debug("NOT expr: #{values.length} value(s)")
               end
             else
