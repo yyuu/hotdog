@@ -127,6 +127,7 @@ module Hotdog
           ( expression4.as(:left) >> spacing.maybe >> str('&&').as(:binary_op) >> spacing.maybe >> expression.as(:right) \
           | expression4.as(:left) >> spacing.maybe >> str('||').as(:binary_op) >> spacing.maybe >> expression.as(:right) \
           | expression4.as(:left) >> spacing.maybe >> str('&').as(:binary_op) >> spacing.maybe >> expression.as(:right) \
+          | expression4.as(:left) >> spacing.maybe >> str(',').as(:binary_op) >> spacing.maybe >> expression.as(:right) \
           | expression4.as(:left) >> spacing.maybe >> str('^').as(:binary_op) >> spacing.maybe >> expression.as(:right) \
           | expression4.as(:left) >> spacing.maybe >> str('|').as(:binary_op) >> spacing.maybe >> expression.as(:right) \
           | expression4 \
@@ -452,11 +453,11 @@ module Hotdog
 
         def initialize(op, left, right)
           case (op || "or").to_s
-          when "&&", "&", /\Aand\z/i
+          when "&&", "&", "AND", "and"
             @op = :AND
-          when "||", "|", /\Aor\z/i
+          when ",", "||", "|", "OR", "or"
             @op = :OR
-          when "^", /\Axor\z/i
+          when "^", "XOR", "xor"
             @op = :XOR
           else
             raise(SyntaxError.new("unknown binary operator: #{op.inspect}"))
@@ -665,7 +666,7 @@ module Hotdog
 
         def initialize(op, expressions, options={})
           case (op || "or").to_s
-          when "||", "|", /\Aor\z/i
+          when ",", "||", "|", "OR", "or"
             @op = :OR
           else
             raise(SyntaxError.new("unknown multinary operator: #{op.inspect}"))
