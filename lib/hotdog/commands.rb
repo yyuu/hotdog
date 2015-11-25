@@ -287,7 +287,8 @@ module Hotdog
         requests = {all_downtime: "/api/v1/downtime", all_tags: "/api/v1/tags/hosts"}
         query = URI.encode_www_form(api_key: options[:api_key], application_key: options[:application_key])
         begin
-          responses = Hash[Parallel.map(requests) { |name, request_path|
+          parallelism = Parallel.processor_count
+          responses = Hash[Parallel.map(requests, in_threads: parallelism) { |name, request_path|
             uri = URI.join(endpoint, "#{request_path}?#{query}")
             begin
               response = uri.open("User-Agent" => "hotdog/#{Hotdog::VERSION}") { |fp| fp.read }
