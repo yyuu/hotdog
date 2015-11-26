@@ -305,7 +305,7 @@ module Hotdog
         now = Time.new.to_i
         downtimes = responses.fetch(:all_downtime, []).select { |downtime|
           # active downtimes
-          downtime["active"] and ( downtime["start"].nil? or downtime["start"] < now ) and ( downtime["end"].nil? or now <= downtime["end"] )
+          downtime["active"] and ( downtime["start"].nil? or downtime["start"] < now ) and ( downtime["end"].nil? or now <= downtime["end"] ) and downtime["monitor_id"].nil?
         }.flat_map { |downtime|
           # find host scopes
           downtime["scope"].select { |scope| scope.start_with?("host:") }.map { |scope| scope.sub(/\Ahost:/, "") }
