@@ -162,15 +162,17 @@ module Hotdog
         IO.popen(cmdline, in: :close, err: [:child, :out]) do |io|
           io.each_with_index do |s, i|
             if output
-              if color
-                STDOUT.write("\e[0;#{color}m")
-              end
-              STDOUT.write(identifier)
-              STDOUT.write(":")
-              STDOUT.write(i.to_s)
-              STDOUT.write(":")
-              if color
-                STDOUT.write("\e[0m")
+              if identifier
+                if color
+                  STDOUT.write("\e[0;#{color}m")
+                end
+                STDOUT.write(identifier)
+                STDOUT.write(":")
+                STDOUT.write(i.to_s)
+                STDOUT.write(":")
+                if color
+                  STDOUT.write("\e[0m")
+                end
               end
               STDOUT.puts(s)
             end
