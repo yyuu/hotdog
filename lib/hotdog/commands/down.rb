@@ -33,8 +33,8 @@ module Hotdog
         # Remove persistent.db to schedule update on next invocation
         if @db
           close_db(@db)
-          FileUtils.rm_f(File.join(options[:confdir], PERSISTENT_DB))
         end
+        FileUtils.rm_f(File.join(options[:confdir], PERSISTENT_DB))
       end
     end
   end
