@@ -277,7 +277,7 @@ module Hotdog
           logger.debug("execute: #{q} -- #{args.inspect}")
           prepare(db, q).execute(args)
         rescue
-          logger.error("failed: #{q} -- #{args.inspect}")
+          logger.warn("failed: #{q} -- #{args.inspect}")
           raise
         end
       end
