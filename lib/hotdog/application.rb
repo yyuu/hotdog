@@ -193,7 +193,7 @@ module Hotdog
       if library
         library
       else
-        candidates = libraries.map { |file| [file, File.basename(file).slice(0, name.length)] }.select { |file, s| s == name }
+        candidates = libraries.map { |file| [file, File.basename(file).slice(0, name.length)] }.select { |_file, s| s == name }
         if candidates.length == 1
           candidates.first.first
         else

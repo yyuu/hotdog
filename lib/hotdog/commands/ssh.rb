@@ -77,9 +77,9 @@ module Hotdog
           filtered_hosts = Parallel.map(hosts, in_threads: parallelism(hosts)) { |host|
             cmdline = build_command_string(host, options[:filter_command], options)
             [host, exec_command(host, cmdline, output: false)]
-          }.select { |host, stat|
+          }.select { |_host, stat|
             stat
-          }.map { |host, stat|
+          }.map { |host, _stat|
             host
           }
           if hosts == filtered_hosts

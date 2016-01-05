@@ -14,15 +14,6 @@ Lint/ShadowingOuterLocalVariable:
     - 'lib/hotdog/commands/search.rb'
     - 'lib/hotdog/commands/tags.rb'
 
-# Offense count: 6
-# Cop supports --auto-correct.
-# Configuration parameters: IgnoreEmptyBlocks.
-Lint/UnusedBlockArgument:
-  Exclude:
-    - 'lib/hotdog/application.rb'
-    - 'lib/hotdog/commands/ssh.rb'
-    - 'lib/hotdog/commands/tags.rb'
-
 # Offense count: 70
 # Cop supports --auto-correct.
 # Configuration parameters: AllowUnusedKeywordArguments, IgnoreEmptyMethods.
