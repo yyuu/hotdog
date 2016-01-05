@@ -57,7 +57,7 @@ module Hotdog
       end
 
       def get_hosts_with_search_tags(result, node)
-        drilldown = ->(n){
+        drilldown = ->(n) {
           case
           when n[:left] && n[:right] then drilldown.(n[:left]) + drilldown.(n[:right])
           when n[:expression] then drilldown.(n[:expression])
