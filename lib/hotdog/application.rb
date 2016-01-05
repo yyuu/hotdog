@@ -94,8 +94,8 @@ module Hotdog
         end
 
         command.run(args, @options)
-      rescue Errno::EPIPE
-        # nop
+      rescue Errno::EPIPE => error
+        STDERR.puts(error)
       end
     end
 
