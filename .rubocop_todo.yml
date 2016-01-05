@@ -38,12 +38,6 @@ Lint/UnusedMethodArgument:
     - 'lib/hotdog/formatters.rb'
     - 'lib/hotdog/formatters/plain.rb'
 
-# Offense count: 3
-Lint/UselessAssignment:
-  Exclude:
-    - 'lib/hotdog/commands.rb'
-    - 'lib/hotdog/commands/ssh.rb'
-
 # Offense count: 28
 Metrics/AbcSize:
   Max: 151

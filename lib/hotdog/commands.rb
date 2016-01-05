@@ -80,7 +80,7 @@ module Hotdog
         else
           if 0 < tags.length
             fields = tags.map { |tag|
-              tag_name, tag_value = split_tag(tag)
+              tag_name, _tag_value = split_tag(tag)
               tag_name
             }
             get_hosts_fields(host_ids, fields)
@@ -294,7 +294,7 @@ module Hotdog
               response = uri.open("User-Agent" => "hotdog/#{Hotdog::VERSION}") { |fp| fp.read }
               [name, MultiJson.load(response)]
             rescue OpenURI::HTTPError => error
-              code, body = error.io.status
+              code, _body = error.io.status
               raise(RuntimeError.new("dog.get_#{name}() returns [#{code.inspect}, ...]"))
             end
           }]

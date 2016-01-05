@@ -61,7 +61,7 @@ module Hotdog
         end
 
         result0 = evaluate(node, self)
-        result, fields = get_hosts_with_search_tags(result0, node)
+        result, _fields = get_hosts_with_search_tags(result0, node)
         hosts = filter_hosts(result.flatten)
         validate_hosts!(hosts)
         run_main(hosts, options)
