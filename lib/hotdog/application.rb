@@ -159,7 +159,8 @@ module Hotdog
       begin
         klass = Hotdog::Formatters.const_get(const_name(name))
       rescue NameError
-        if library = find_library("hotdog/formatters", name)
+        library = find_library("hotdog/formatters", name)
+        if library
           load library
           klass = Hotdog::Formatters.const_get(const_name(File.basename(library, ".rb")))
         else
@@ -173,7 +174,8 @@ module Hotdog
       begin
         klass = Hotdog::Commands.const_get(const_name(name))
       rescue NameError
-        if library = find_library("hotdog/commands", name)
+        library = find_library("hotdog/commands", name)
+        if library
           load library
           klass = Hotdog::Commands.const_get(const_name(File.basename(library, ".rb")))
         else
@@ -187,7 +189,8 @@ module Hotdog
       load_path = $LOAD_PATH.map { |path| File.join(path, dirname) }.select { |path| File.directory?(path) }
       libraries = load_path.flat_map { |path| Dir.glob(File.join(path, "*.rb")) }.select { |file| File.file?(file) }
       rbname = "#{name}.rb"
-      if library = libraries.find { |file| File.basename(file) == rbname }
+      library = libraries.find { |file| File.basename(file) == rbname }
+      if library
         library
       else
         candidates = libraries.map { |file| [file, File.basename(file).slice(0, name.length)] }.select { |file, s| s == name }
