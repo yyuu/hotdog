@@ -58,7 +58,7 @@ module Hotdog
           command = get_command(command_name)
         rescue NameError
           STDERR.puts("hotdog: '#{command_name}' is not a hotdog command.")
-          get_command("help").parse_options(@optparse, ["commands"])
+          get_command("help").run(["commands"], options)
           exit(1)
         end
 
