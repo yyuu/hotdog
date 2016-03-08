@@ -15,7 +15,7 @@ module Hotdog
         options[:identity_file] = nil
         options[:forward_agent] = false
         options[:color] = :auto
-        options[:max_parallelism] = nil
+        options[:max_parallelism] = Parallel.processor_count
 
         optparse.on("-o SSH_OPTION", "Passes this string to ssh command through shell. This option may be given multiple times") do |option|
           options[:options] += [option]
