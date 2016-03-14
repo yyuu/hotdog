@@ -132,7 +132,7 @@ module Hotdog
               }
             ]
           end
-          q1 = "SELECT tags.name, GROUP_CONCAT(tags.value, ',') FROM hosts_tags " \
+          q1 = "SELECT LOWER(tags.name), GROUP_CONCAT(tags.value, ',') FROM hosts_tags " \
                  "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
                    "WHERE hosts_tags.host_id = ? AND tags.name IN (%s) " \
                      "GROUP BY tags.name;"
@@ -146,7 +146,7 @@ module Hotdog
               if tag_name == "host"
                 host_names.fetch(host_id, nil)
               else
-                tag_value = tag_values.fetch(tag_name, nil)
+                tag_value = tag_values.fetch(tag_name.downcase, nil)
                 if tag_value
                   if tag_value.empty?
                     tag_name # use `tag_name` as `tag_value` for the tags without any values
