@@ -81,7 +81,7 @@ describe "commands" do
 
   it "get host fields without host" do
     q1 = [
-      "SELECT tags.name, GROUP_CONCAT(tags.value, ',') FROM hosts_tags",
+      "SELECT LOWER(tags.name), GROUP_CONCAT(tags.value, ',') FROM hosts_tags",
         "INNER JOIN tags ON hosts_tags.tag_id = tags.id",
           "WHERE hosts_tags.host_id = ? AND tags.name IN (?, ?, ?)",
             "GROUP BY tags.name;",
@@ -103,7 +103,7 @@ describe "commands" do
       [[1, "host1"], [2, "host2"], [3, "host3"]]
     }
     q1 = [
-      "SELECT tags.name, GROUP_CONCAT(tags.value, ',') FROM hosts_tags",
+      "SELECT LOWER(tags.name), GROUP_CONCAT(tags.value, ',') FROM hosts_tags",
         "INNER JOIN tags ON hosts_tags.tag_id = tags.id",
           "WHERE hosts_tags.host_id = ? AND tags.name IN (?, ?)",
             "GROUP BY tags.name;",
