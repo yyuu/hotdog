@@ -10,8 +10,10 @@ module Hotdog
   module Commands
     class Pssh < SshAlike
       def define_options(optparse, options={})
+        options = {
+          show_identifier: true,
+        }.merge(options)
         super
-        options[:show_identifier] = true
         optparse.on("--[no-]identifier", "Each output line will be prepended with identifier.") do |identifier|
           options[:show_identifier] = identifier
         end
