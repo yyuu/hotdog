@@ -6,11 +6,9 @@ module Hotdog
   module Commands
     class Down < BaseCommand
       def define_options(optparse, options={})
-        options = {
-          downtime: 86400,
-          start: Time.new,
-          retry: 5,
-        }.merge(options)
+        default_value(options, :downtime, 86400)
+        default_value(options, :start, Time.new)
+        default_value(options, :retry, 5)
         optparse.on("--downtime DURATION") do |v|
           options[:downtime] = v.to_i
         end

@@ -9,15 +9,13 @@ module Hotdog
   module Commands
     class SshAlike < Search
       def define_options(optparse, options={})
-        options = {
-          options: [],
-          user: nil,
-          port: nil,
-          identity_file: nil,
-          forward_agent: false,
-          color: :auto,
-          max_parallelism: Parallel.processor_count,
-        }.merge(options)
+        default_value(options, :options, [])
+        default_value(options, :user, nil)
+        default_value(options, :port, nil)
+        default_value(options, :identity_file, nil)
+        default_value(options, :forward_agent, false)
+        default_value(options, :color, :auto)
+        default_value(options, :max_parallelism, Parallel.processor_count)
         optparse.on("-o SSH_OPTION", "Passes this string to ssh command through shell. This option may be given multiple times") do |option|
           options[:options] += [option]
         end

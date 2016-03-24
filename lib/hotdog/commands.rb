@@ -59,6 +59,14 @@ module Hotdog
       end
 
       private
+      def default_value(options, key, default_value)
+        if options.key?(key)
+          options[key]
+        else
+          options[key] = default_value
+        end
+      end
+
       def prepare(db, query)
         k = (db.hash & MASK_DATABASE) | (query.hash & MASK_QUERY)
         @prepared_statements[k] ||= db.prepare(query)
