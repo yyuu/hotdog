@@ -59,7 +59,7 @@ module Hotdog
       end
 
       private
-      def default_value(options, key, default_value)
+      def default_option(options, key, default_value)
         if options.key?(key)
           options[key]
         else

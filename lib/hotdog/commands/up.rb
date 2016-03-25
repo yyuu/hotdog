@@ -6,7 +6,7 @@ module Hotdog
   module Commands
     class Up < BaseCommand
       def define_options(optparse, options={})
-        default_value(options, :retry, 5)
+        default_option(options, :retry, 5)
         optparse.on("--retry NUM") do |v|
           options[:retry] = v.to_i
         end
