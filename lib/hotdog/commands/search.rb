@@ -3,6 +3,19 @@
 require "json"
 require "parslet"
 
+# Monkey patch to prevent `NoMethodError` after some parse error in parselet
+module Parslet
+  class Cause
+    def cause
+      self
+    end
+
+    def backtrace
+      []
+    end
+  end
+end
+
 module Hotdog
   module Commands
     class Search < BaseCommand
@@ -114,7 +127,8 @@ module Hotdog
           )
         }
         rule(:expression1) {
-          ( unary_op.as(:unary_op) >> spacing.maybe >> expression.as(:expression) \
+          ( unary_op.as(:unary_op) >> spacing >> expression.as(:expression) \
+          | unary_op.as(:unary_op) >> spacing.maybe >> str('(') >> spacing.maybe >> expression.as(:expression) >> spacing.maybe >> str(')') \
           | expression2 \
           )
         }
@@ -182,10 +196,14 @@ module Hotdog
         }
         rule(:identifier_glob) {
           ( binary_op.absent? >> unary_op.absent? >> identifier.repeat(0) >> (glob >> identifier.maybe).repeat(1) \
+          | binary_op >> identifier.repeat(1) >> (glob >> identifier.maybe).repeat(1) \
+          | unary_op >> identifier.repeat(1) >> (glob >> identifier.maybe).repeat(1) \
           )
         }
         rule(:identifier) {
           ( binary_op.absent? >> unary_op.absent? >> match('[A-Za-z]') >> match('[-./0-9A-Z_a-z]').repeat(0) \
+          | binary_op >> match('[-./0-9A-Z_a-z]').repeat(1) \
+          | unary_op >> match('[-./0-9A-Z_a-z]').repeat(1) \
           )
         }
         rule(:separator) {
@@ -199,10 +217,14 @@ module Hotdog
         }
         rule(:attribute_glob) {
           ( binary_op.absent? >> unary_op.absent? >> attribute.repeat(0) >> (glob >> attribute.maybe).repeat(1) \
+          | binary_op >> attribute.repeat(1) >> (glob >> attribute.maybe).repeat(1) \
+          | unary_op >> attribute.repeat(1) >> (glob >> attribute.maybe).repeat(1) \
           )
         }
         rule(:attribute) {
           ( binary_op.absent? >> unary_op.absent? >> match('[-./0-9:A-Z_a-z]').repeat(1) \
+          | binary_op >> match('[-./0-9:A-Z_a-z]').repeat(1) \
+          | unary_op >> match('[-./0-9:A-Z_a-z]').repeat(1) \
           )
         }
         rule(:glob) {
