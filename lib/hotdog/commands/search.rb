@@ -3,6 +3,19 @@
 require "json"
 require "parslet"
 
+# Monkey patch to prevent `NoMethodError` after some parse error in parselet
+module Parslet
+  class Cause
+    def cause
+      self
+    end
+
+    def backtrace
+      []
+    end
+  end
+end
+
 module Hotdog
   module Commands
     class Search < BaseCommand
