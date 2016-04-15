@@ -94,6 +94,42 @@ describe "parser" do
     expect(cmd.parse("( ( foo ) )")).to eq({identifier: "foo"})
   end
 
+  it "parses 'identifier with prefix and'" do
+    expect(cmd.parse("android")).to eq({identifier: "android"})
+  end
+
+  it "parses 'identifier with infix and'" do
+    expect(cmd.parse("islander")).to eq({identifier: "islander"})
+  end
+
+  it "parses 'identifier with suffix and'" do
+    expect(cmd.parse("mainland")).to eq({identifier: "mainland"})
+  end
+
+  it "parses 'identifier with prefix or'" do
+    expect(cmd.parse("oreo")).to eq({identifier: "oreo"})
+  end
+
+  it "parses 'identifier with infix or'" do
+    expect(cmd.parse("category")).to eq({identifier: "category"})
+  end
+
+  it "parses 'identifier with suffix or'" do
+    expect(cmd.parse("imperator")).to eq({identifier: "imperator"})
+  end
+
+  it "parses 'identifier with prefix not'" do
+    expect(cmd.parse("nothing")).to eq({identifier: "nothing"})
+  end
+
+  it "parses 'identifier with infix not'" do
+    expect(cmd.parse("annotation")).to eq({identifier: "annotation"})
+  end
+
+  it "parses 'identifier with suffix not'" do
+    expect(cmd.parse("forgetmenot")).to eq({identifier: "forgetmenot"})
+  end
+
   it "parses 'foo bar'" do
     expect(cmd.parse("foo bar")).to eq({left: {identifier: "foo"}, binary_op: nil, right: {identifier: "bar"}})
   end
