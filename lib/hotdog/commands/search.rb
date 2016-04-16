@@ -196,8 +196,8 @@ module Hotdog
         }
         rule(:identifier_glob) {
           ( binary_op.absent? >> unary_op.absent? >> identifier.repeat(0) >> (glob >> identifier.maybe).repeat(1) \
-          | binary_op >> identifier.repeat(1) >> (glob >> identifier.maybe).repeat(1) \
-          | unary_op >> identifier.repeat(1) >> (glob >> identifier.maybe).repeat(1) \
+          | binary_op >> (glob >> identifier.maybe).repeat(1) \
+          | unary_op >> (glob >> identifier.maybe).repeat(1) \
           )
         }
         rule(:identifier) {
@@ -217,8 +217,8 @@ module Hotdog
         }
         rule(:attribute_glob) {
           ( binary_op.absent? >> unary_op.absent? >> attribute.repeat(0) >> (glob >> attribute.maybe).repeat(1) \
-          | binary_op >> attribute.repeat(1) >> (glob >> attribute.maybe).repeat(1) \
-          | unary_op >> attribute.repeat(1) >> (glob >> attribute.maybe).repeat(1) \
+          | binary_op >> (glob >> attribute.maybe).repeat(1) \
+          | unary_op >> (glob >> attribute.maybe).repeat(1) \
           )
         }
         rule(:attribute) {
