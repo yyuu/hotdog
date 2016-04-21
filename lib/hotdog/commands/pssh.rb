@@ -30,6 +30,7 @@ module Hotdog
             if !success && options[:stop_on_error]
               raise StopException.new
             end
+            success
           }
           if stats.all?
             exit(0)
