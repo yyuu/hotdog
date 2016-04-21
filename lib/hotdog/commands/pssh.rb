@@ -15,20 +15,34 @@ module Hotdog
         optparse.on("--[no-]identifier", "Each output line will be prepended with identifier.") do |identifier|
           options[:show_identifier] = identifier
         end
+        optparse.on("--stop-on-error", "Stop execution when a remote command fails (valid only if -P is set)") do |v|
+          options[:stop_on_error] = v
+        end
       end
 
       private
       def run_main(hosts, options={})
-        stats = Parallel.map(hosts.each_with_index.to_a, in_threads: parallelism(hosts)) { |host, i|
-          cmdline = build_command_string(host, @remote_command, options)
-          identifier = options[:show_identifier] ? host : nil
-          exec_command(identifier, cmdline, index: i, output: true)
-        }
-        if stats.all?
-          exit(0)
-        else
+        begin
+          stats = Parallel.map(hosts.each_with_index.to_a, in_threads: parallelism(hosts)) { |host, i|
+            cmdline = build_command_string(host, @remote_command, options)
+            identifier = options[:show_identifier] ? host : nil
+            success = exec_command(identifier, cmdline, index: i, output: true)
+            if !success && options[:stop_on_error]
+              raise StopException.new
+            end
+          }
+          if stats.all?
+            exit(0)
+          else
+            exit(1)
+          end
+        rescue StopException
+          logger.info("stopped.")
           exit(1)
         end
+      end
+
+      class StopException < StandardError
       end
     end
   end
