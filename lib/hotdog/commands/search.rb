@@ -367,7 +367,7 @@ module Hotdog
 
         def initialize(op, expression)
           case (op || "not").to_s
-          when "!", "~", /\Anot\z/i
+          when "!", "~", "NOT", "not"
             @op = :NOT
           else
             raise(SyntaxError.new("unknown unary operator: #{@op.inspect}"))
