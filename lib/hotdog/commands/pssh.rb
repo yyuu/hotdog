@@ -4,6 +4,7 @@ require "json"
 require "parallel"
 require "parslet"
 require "shellwords"
+require "tempfile"
 require "hotdog/commands/ssh"
 
 module Hotdog
@@ -22,11 +23,21 @@ module Hotdog
 
       private
       def run_main(hosts, options={})
+        if STDIN.tty?
+          infile = nil
+        else
+          infile = Tempfile.new()
+          while cs = STDIN.read(4096)
+            infile.write(cs)
+          end
+          infile.flush
+          infile.seek(0)
+        end
         begin
           stats = Parallel.map(hosts.each_with_index.to_a, in_threads: parallelism(hosts)) { |host, i|
             cmdline = build_command_string(host, @remote_command, options)
             identifier = options[:show_identifier] ? host : nil
-            success = exec_command(identifier, cmdline, index: i, output: true)
+            success = exec_command(identifier, cmdline, index: i, output: true, infile: infile.path)
             if !success && options[:stop_on_error]
               raise StopException.new
             end
