@@ -158,7 +158,12 @@ module Hotdog
         else
           color = nil
         end
-        IO.popen(cmdline, in: :close, err: [:child, :out]) do |io|
+        if options[:infile]
+          stdin = IO.popen("cat #{Shellwords.shellescape(options[:infile])}")
+        else
+          stdin = :close
+        end
+        IO.popen(cmdline, in: stdin, err: [:child, :out]) do |io|
           io.each_with_index do |s, i|
             if output
               if identifier
