@@ -37,7 +37,7 @@ module Hotdog
           stats = Parallel.map(hosts.each_with_index.to_a, in_threads: parallelism(hosts)) { |host, i|
             cmdline = build_command_string(host, @remote_command, options)
             identifier = options[:show_identifier] ? host : nil
-            success = exec_command(identifier, cmdline, index: i, output: true, infile: infile.path)
+            success = exec_command(identifier, cmdline, index: i, output: true, infile: (infile ? infile.path : nil))
             if !success && options[:stop_on_error]
               raise StopException.new
             end
