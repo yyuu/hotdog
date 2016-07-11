@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
 
+require "erb"
 require "logger"
 require "optparse"
 require "yaml"
@@ -45,7 +46,7 @@ module Hotdog
     def main(argv=[])
       config = File.join(options[:confdir], "config.yml")
       if File.file?(config)
-        loaded = YAML.load(File.read(config))
+        loaded = YAML.load(ERB.new(File.read(config)).result)
         if Hash === loaded
           @options = @options.merge(Hash[loaded.map { |key, value| [Symbol === key ? key : key.to_s.to_sym, value] }])
         end
