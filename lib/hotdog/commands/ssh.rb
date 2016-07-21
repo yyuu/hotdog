@@ -163,7 +163,7 @@ module Hotdog
         else
           stdin = :close
         end
-        IO.popen(cmdline, in: stdin, err: [:child, :out]) do |io|
+        IO.popen(cmdline, in: stdin) do |io|
           io.each_with_index do |s, i|
             if output
               if identifier
