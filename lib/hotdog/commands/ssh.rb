@@ -216,7 +216,7 @@ module Hotdog
         if hosts.length != 1
           result = hosts.each_with_index.map { |host, i| [i, host] }
           STDERR.print(format(result, fields: ["index", "host"]))
-          logger.error("found %d hosts." % result.length)
+          logger.error("found %d candidates." % result.length)
           exit(1)
         end
       end
