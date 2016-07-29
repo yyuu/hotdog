@@ -186,16 +186,10 @@ module Hotdog
       end
     end
 
-    class Ssh < SshAlike
+    class SingularSshAlike < SshAlike
       def define_options(optparse, options={})
         super
         options[:index] = nil
-        optparse.on("-D BIND_ADDRESS", "Specifies a local \"dynamic\" application-level port forwarding") do |bind_address|
-          options[:dynamic_port_forward] = bind_address
-        end
-        optparse.on("-L BIND_ADDRESS", "Specifies that the given port on the local (client) host is to be forwarded to the given host and port on the remote side") do |bind_address|
-          options[:port_forward] = bind_address
-        end
         optparse.on("-n", "--index INDEX", "Use this index of host if multiple servers are found", Integer) do |index|
           options[:index] = index
         end
@@ -227,7 +221,20 @@ module Hotdog
         exec(cmdline)
         exit(127)
       end
+    end
 
+    class Ssh < SingularSshAlike
+      def define_options(optparse, options={})
+        super
+        optparse.on("-D BIND_ADDRESS", "Specifies a local \"dynamic\" application-level port forwarding") do |bind_address|
+          options[:dynamic_port_forward] = bind_address
+        end
+        optparse.on("-L BIND_ADDRESS", "Specifies that the given port on the local (client) host is to be forwarded to the given host and port on the remote side") do |bind_address|
+          options[:port_forward] = bind_address
+        end
+      end
+
+      private
       def build_command_options(options={})
         arguments = super
         if options[:dynamic_port_forward]
