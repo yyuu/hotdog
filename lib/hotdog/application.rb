@@ -95,8 +95,13 @@ module Hotdog
         end
 
         command.run(args, @options)
+      rescue Interrupt
+        STDERR.puts("Interrupt")
       rescue Errno::EPIPE => error
         STDERR.puts(error)
+      rescue => error
+        STDERR.puts(error)
+        exit(1)
       end
     end
 
