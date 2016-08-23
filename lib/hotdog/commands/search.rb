@@ -600,7 +600,7 @@ module Hotdog
             when EverythingNode
               left
             when NothingNode
-              left
+              right
             else
               if left == right
                 left
