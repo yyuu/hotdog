@@ -352,14 +352,6 @@ module Hotdog
         def dump(options={})
           {}
         end
-
-        def intermediates()
-          []
-        end
-
-        def leafs()
-          [self]
-        end
       end
 
       class UnaryExpressionNode < ExpressionNode
@@ -426,14 +418,6 @@ module Hotdog
 
         def dump(options={})
           {unary_op: @op.to_s, expression: @expression.dump(options)}
-        end
-
-        def intermediates()
-          [self] + @expression.intermediates
-        end
-
-        def leafs()
-          @expression.leafs
         end
 
         private
@@ -643,14 +627,6 @@ module Hotdog
           {left: @left.dump(options), binary_op: @op.to_s, right: @right.dump(options)}
         end
 
-        def intermediates()
-          [self] + @left.intermediates + @right.intermediates
-        end
-
-        def leafs()
-          @left.leafs + @right.leafs
-        end
-
         private
         def optimize1(options)
           if TagExpressionNode === left and TagExpressionNode === right
@@ -743,14 +719,6 @@ module Hotdog
 
         def dump(options={})
           {multinary_op: @op.to_s, expressions: expressions.map { |expression| expression.dump(options) }}
-        end
-
-        def intermediates()
-          [self] + @expression.flat_map { |expression| expression.intermediates }
-        end
-
-        def leafs()
-          @expressions.flat_map { |expression| expression.leafs }
         end
       end
 
