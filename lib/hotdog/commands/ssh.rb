@@ -60,10 +60,10 @@ module Hotdog
         end
 
         result0 = evaluate(node, self)
-        result, _fields = get_hosts_with_search_tags(result0, node)
-        hosts = filter_hosts(result.flatten)
-        validate_hosts!(hosts)
-        run_main(hosts, options)
+        tuples, fields = get_hosts_with_search_tags(result0, node)
+        tuples = filter_hosts(tuples)
+        validate_hosts!(tuples, fields)
+        run_main(tuples.map {|tuple| tuple.first }, options)
       end
 
       private
@@ -71,29 +71,29 @@ module Hotdog
         options[:max_parallelism] || hosts.size
       end
 
-      def filter_hosts(hosts)
+      def filter_hosts(tuples)
         if options[:filter_command]
-          filtered_hosts = Parallel.map(hosts, in_threads: parallelism(hosts)) { |host|
-            cmdline = build_command_string(host, options[:filter_command], options)
-            [host, exec_command(host, cmdline, output: false)]
+          filtered_tuples = Parallel.map(tuples, in_threads: parallelism(tuples)) { |tuple|
+            cmdline = build_command_string(tuple.first, options[:filter_command], options)
+            [tuple, exec_command(tuple.first, cmdline, output: false)]
           }.select { |_host, stat|
             stat
-          }.map { |host, _stat|
-            host
+          }.map { |tuple, _stat|
+            tuple
           }
-          if hosts == filtered_hosts
-            hosts
+          if tuples == filtered_tuples
+            tuples
           else
-            logger.info("filtered host(s): #{(hosts - filtered_hosts).inspect}")
-            filtered_hosts
+            logger.info("filtered host(s): #{(tuples - filtered_tuples).map {|tuple| tuple.first }.inspect}")
+            filtered_tuples
           end
         else
-          hosts
+          tuples
         end
       end
 
-      def validate_hosts!(hosts)
-        if hosts.length < 1
+      def validate_hosts!(tuples, fields)
+        if tuples.length < 1
           STDERR.puts("no match found")
           exit(1)
         end
@@ -196,21 +196,21 @@ module Hotdog
       end
 
       private
-      def filter_hosts(hosts)
-        hosts = super
-        if options[:index] and options[:index] < hosts.length
-          [hosts[options[:index]]]
+      def filter_hosts(tuples)
+        tuples = super
+        if options[:index] and options[:index] < tuples.length
+          [tuples[options[:index]]]
         else
-          hosts
+          tuples
         end
       end
 
-      def validate_hosts!(hosts)
+      def validate_hosts!(tuples, fields)
         super
-        if hosts.length != 1
-          result = hosts.each_with_index.map { |host, i| [i, host] }
-          STDERR.print(format(result, fields: ["index", "host"]))
-          logger.error("found %d candidates." % result.length)
+        if tuples.length != 1
+          result = tuples.each_with_index.map { |tuple, i| [i] + tuple }
+          STDERR.print(format(result, fields: ["index"] + fields))
+          logger.error("found %d candidates. use '-n INDEX' option to select one." % result.length)
           exit(1)
         end
       end
