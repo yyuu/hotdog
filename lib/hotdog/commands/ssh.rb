@@ -210,7 +210,7 @@ module Hotdog
         if tuples.length != 1
           result = tuples.each_with_index.map { |tuple, i| [i] + tuple }
           STDERR.print(format(result, fields: ["index"] + fields))
-          logger.error("found %d candidates." % result.length)
+          logger.error("found %d candidates. use '-n INDEX' option to select one." % result.length)
           exit(1)
         end
       end
