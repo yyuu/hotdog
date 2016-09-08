@@ -11,8 +11,6 @@ require "uri"
 
 module Hotdog
   module Commands
-    SQLITE_LIMIT_COMPOUND_SELECT = 500 # TODO: get actual value from `sqlite3_limit()`?
-
     class BaseCommand
       PERSISTENT_DB = "persistent.db"
       MASK_DATABASE = 0xffff0000

@@ -9,6 +9,8 @@ require "hotdog/formatters"
 require "hotdog/version"
 
 module Hotdog
+  SQLITE_LIMIT_COMPOUND_SELECT = 500 # TODO: get actual value from `sqlite3_limit()`?
+
   class Application
     def initialize()
       @optparse = OptionParser.new
