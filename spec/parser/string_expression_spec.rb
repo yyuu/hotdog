@@ -10,7 +10,7 @@ describe "tag expression" do
   }
 
   it "interprets tag with host" do
-    expr = Hotdog::Commands::Search::StringHostNode.new("foo", ":")
+    expr = Hotdog::Expression::StringHostNode.new("foo", ":")
     q = [
       "SELECT hosts.id AS host_id FROM hosts",
         "WHERE hosts.name = ?;",
@@ -23,7 +23,7 @@ describe "tag expression" do
   end
 
   it "interprets tag with identifier and attribute" do
-    expr = Hotdog::Commands::Search::StringTagNode.new("foo", "bar", ":")
+    expr = Hotdog::Expression::StringTagNode.new("foo", "bar", ":")
     q = [
       "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags",
         "INNER JOIN tags ON hosts_tags.tag_id = tags.id",
@@ -37,7 +37,7 @@ describe "tag expression" do
   end
 
   it "interprets tag with identifier with separator" do
-    expr = Hotdog::Commands::Search::StringTagNameNode.new("foo", ":")
+    expr = Hotdog::Expression::StringTagNameNode.new("foo", ":")
     q = [
       "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags",
         "INNER JOIN tags ON hosts_tags.tag_id = tags.id",
@@ -51,7 +51,7 @@ describe "tag expression" do
   end
 
   it "interprets tag with identifier without separator" do
-    expr = Hotdog::Commands::Search::StringNode.new("foo", nil)
+    expr = Hotdog::Expression::StringNode.new("foo", nil)
     q = [
       "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags",
         "INNER JOIN hosts ON hosts_tags.host_id = hosts.id",
@@ -66,7 +66,7 @@ describe "tag expression" do
   end
 
   it "interprets tag with attribute with separator" do
-    expr = Hotdog::Commands::Search::StringTagValueNode.new("foo", ":")
+    expr = Hotdog::Expression::StringTagValueNode.new("foo", ":")
     q = [
       "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags",
         "INNER JOIN hosts ON hosts_tags.host_id = hosts.id",
@@ -81,7 +81,7 @@ describe "tag expression" do
   end
 
   it "interprets tag with attribute without separator" do
-    expr = Hotdog::Commands::Search::StringTagValueNode.new("foo", nil)
+    expr = Hotdog::Expression::StringTagValueNode.new("foo", nil)
     q = [
       "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags",
         "INNER JOIN hosts ON hosts_tags.host_id = hosts.id",
@@ -96,7 +96,7 @@ describe "tag expression" do
   end
 
   it "empty tag" do
-    expr = Hotdog::Commands::Search::StringExpressionNode.new(nil, nil, nil)
+    expr = Hotdog::Expression::StringExpressionNode.new(nil, nil, nil)
     expect {
       expr.evaluate(cmd)
     }.to raise_error(NotImplementedError)

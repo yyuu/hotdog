@@ -10,7 +10,7 @@ describe "tag regexp expression" do
   }
 
   it "interprets tag regexp with host" do
-    expr = Hotdog::Commands::Search::RegexpHostNode.new("foo", ":")
+    expr = Hotdog::Expression::RegexpHostNode.new("foo", ":")
     q = [
       "SELECT hosts.id AS host_id FROM hosts",
         "WHERE hosts.name REGEXP ?;",
@@ -23,7 +23,7 @@ describe "tag regexp expression" do
   end
 
   it "interprets tag regexp with identifier and attribute" do
-    expr = Hotdog::Commands::Search::RegexpTagNode.new("foo", "bar", ":")
+    expr = Hotdog::Expression::RegexpTagNode.new("foo", "bar", ":")
     q = [
       "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags",
         "INNER JOIN tags ON hosts_tags.tag_id = tags.id",
@@ -37,7 +37,7 @@ describe "tag regexp expression" do
   end
 
   it "interprets tag regexp with identifier with separator" do
-    expr = Hotdog::Commands::Search::RegexpTagNameNode.new("foo", ":")
+    expr = Hotdog::Expression::RegexpTagNameNode.new("foo", ":")
     q = [
       "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags",
         "INNER JOIN tags ON hosts_tags.tag_id = tags.id",
@@ -51,7 +51,7 @@ describe "tag regexp expression" do
   end
 
   it "interprets tag regexp with identifier without separator" do
-    expr = Hotdog::Commands::Search::RegexpNode.new("foo", nil)
+    expr = Hotdog::Expression::RegexpNode.new("foo", nil)
     q = [
       "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags",
         "INNER JOIN hosts ON hosts_tags.host_id = hosts.id",
@@ -66,7 +66,7 @@ describe "tag regexp expression" do
   end
 
   it "interprets tag regexp with attribute with separator" do
-    expr = Hotdog::Commands::Search::RegexpTagValueNode.new("foo", ":")
+    expr = Hotdog::Expression::RegexpTagValueNode.new("foo", ":")
     q = [
       "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags",
         "INNER JOIN hosts ON hosts_tags.host_id = hosts.id",
@@ -81,7 +81,7 @@ describe "tag regexp expression" do
   end
 
   it "interprets tag regexp with attribute without separator" do
-    expr = Hotdog::Commands::Search::RegexpTagValueNode.new("foo", nil)
+    expr = Hotdog::Expression::RegexpTagValueNode.new("foo", nil)
     q = [
       "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags",
         "INNER JOIN hosts ON hosts_tags.host_id = hosts.id",
@@ -96,7 +96,7 @@ describe "tag regexp expression" do
   end
 
   it "empty tag regexp" do
-    expr = Hotdog::Commands::Search::RegexpExpressionNode.new(nil, nil, nil)
+    expr = Hotdog::Expression::RegexpExpressionNode.new(nil, nil, nil)
     expect {
       expr.evaluate(cmd)
     }.to raise_error(NotImplementedError)
