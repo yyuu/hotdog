@@ -16,6 +16,7 @@ module Hotdog
         default_option(options, :forward_agent, false)
         default_option(options, :color, :auto)
         default_option(options, :max_parallelism, Parallel.processor_count)
+        default_option(options, :shuffle, false)
         optparse.on("-o SSH_OPTION", "Passes this string to ssh command through shell. This option may be given multiple times") do |option|
           options[:options] += [option]
         end
@@ -43,6 +44,9 @@ module Hotdog
         optparse.on("--color=WHEN", "--colour=WHEN", "Enable colors") do |color|
           options[:color] = color
         end
+        optparse.on("--shuffle", "Shuffle result") do |v|
+          options[:shuffle] = v
+        end
       end
 
       def run(args=[], options={})
@@ -61,6 +65,9 @@ module Hotdog
 
         result0 = evaluate(node, self)
         tuples, fields = get_hosts_with_search_tags(result0, node)
+        if options[:shuffle]
+          tuples = tuples.shuffle()
+        end
         tuples = filter_hosts(tuples)
         validate_hosts!(tuples, fields)
         run_main(tuples.map {|tuple| tuple.first }, options)
