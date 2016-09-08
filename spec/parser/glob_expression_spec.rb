@@ -10,7 +10,7 @@ describe "tag glob expression" do
   }
 
   it "interprets tag glob with host" do
-    expr = Hotdog::Commands::Search::GlobHostNode.new("foo*", ":")
+    expr = Hotdog::Expression::GlobHostNode.new("foo*", ":")
     q = [
       "SELECT hosts.id AS host_id FROM hosts",
         "WHERE LOWER(hosts.name) GLOB LOWER(?);",
@@ -23,7 +23,7 @@ describe "tag glob expression" do
   end
 
   it "interprets tag glob with identifier and attribute" do
-    expr = Hotdog::Commands::Search::GlobTagNode.new("foo*", "bar*", ":")
+    expr = Hotdog::Expression::GlobTagNode.new("foo*", "bar*", ":")
     q = [
       "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags",
         "INNER JOIN tags ON hosts_tags.tag_id = tags.id",
@@ -37,7 +37,7 @@ describe "tag glob expression" do
   end
 
   it "interprets tag glob with identifier with separator" do
-    expr = Hotdog::Commands::Search::GlobTagNameNode.new("foo*", ":")
+    expr = Hotdog::Expression::GlobTagNameNode.new("foo*", ":")
     q = [
       "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags",
         "INNER JOIN tags ON hosts_tags.tag_id = tags.id",
@@ -51,7 +51,7 @@ describe "tag glob expression" do
   end
 
   it "interprets tag glob with identifier without separator" do
-    expr = Hotdog::Commands::Search::GlobNode.new("foo*", nil)
+    expr = Hotdog::Expression::GlobNode.new("foo*", nil)
     q = [
       "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags",
         "INNER JOIN hosts ON hosts_tags.host_id = hosts.id",
@@ -66,7 +66,7 @@ describe "tag glob expression" do
   end
 
   it "interprets tag glob with attribute with separator" do
-    expr = Hotdog::Commands::Search::GlobTagValueNode.new("foo*", ":")
+    expr = Hotdog::Expression::GlobTagValueNode.new("foo*", ":")
     q = [
       "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags",
         "INNER JOIN hosts ON hosts_tags.host_id = hosts.id",
@@ -81,7 +81,7 @@ describe "tag glob expression" do
   end
 
   it "interprets tag glob with attribute without separator" do
-    expr = Hotdog::Commands::Search::GlobTagValueNode.new("foo*", nil)
+    expr = Hotdog::Expression::GlobTagValueNode.new("foo*", nil)
     q = [
       "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags",
         "INNER JOIN hosts ON hosts_tags.host_id = hosts.id",
@@ -96,7 +96,7 @@ describe "tag glob expression" do
   end
 
   it "empty tag glob" do
-    expr = Hotdog::Commands::Search::GlobExpressionNode.new(nil, nil, nil)
+    expr = Hotdog::Expression::GlobExpressionNode.new(nil, nil, nil)
     expect {
       expr.evaluate(cmd)
     }.to raise_error(NotImplementedError)
