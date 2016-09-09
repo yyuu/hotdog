@@ -1,7 +1,5 @@
 #!/usr/bin/env ruby
 
-require "parslet"
-
 module Hotdog
   module Expression
     class ExpressionNode
