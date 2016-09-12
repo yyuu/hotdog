@@ -95,12 +95,16 @@ module Hotdog
 
       def evaluate(data, environment)
         node = Hotdog::Expression::ExpressionTransformer.new.apply(data)
-        optimized = node.optimize.tap do |optimized|
-          logger.debug {
-            JSON.pretty_generate(optimized.dump)
-          }
+        if Hotdog::Expression::ExpressionNode === node
+          optimized = node.optimize.tap do |optimized|
+            logger.debug {
+              JSON.pretty_generate(optimized.dump)
+            }
+          end
+          optimized.evaluate(environment)
+        else
+          raise("parser error: unknown expression: #{node.inspect}")
         end
-        optimized.evaluate(environment)
       end
     end
   end

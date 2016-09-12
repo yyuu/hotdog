@@ -23,7 +23,7 @@ describe "parser" do
   end
 
   it "parses ':/foo/'" do
-    expect(cmd.parse(":/foo/")).to eq({separator: ":", attribute_regexp: "foo"})
+    expect(cmd.parse(":/foo/")).to eq({separator: ":", attribute_regexp: "/foo/"})
   end
 
   it "parses 'foo'" do
@@ -63,11 +63,11 @@ describe "parser" do
   end
 
   it "parses '/foo/'" do
-    expect(cmd.parse("/foo/")).to eq({identifier_regexp: "foo"})
+    expect(cmd.parse("/foo/")).to eq({identifier_regexp: "/foo/"})
   end
 
   it "parses '/foo/:/bar/'" do
-    expect(cmd.parse("/foo/:/bar/")).to eq({identifier_regexp: "foo", separator: ":", attribute_regexp: "bar"})
+    expect(cmd.parse("/foo/:/bar/")).to eq({identifier_regexp: "/foo/", separator: ":", attribute_regexp: "/bar/"})
   end
 
   it "parses '(foo)'" do

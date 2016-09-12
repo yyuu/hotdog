@@ -37,11 +37,11 @@ module Hotdog
         )
       }
       rule(:expression4) {
-        ( str('!').as(:unary_op) >> spacing.maybe >> atom.as(:expression) >> spacing.maybe \
-        | str('~').as(:unary_op) >> spacing.maybe >> atom.as(:expression) >> spacing.maybe \
+        ( str('!').as(:unary_op) >> spacing.maybe >> primary.as(:expression) >> spacing.maybe \
+        | str('~').as(:unary_op) >> spacing.maybe >> primary.as(:expression) >> spacing.maybe \
         | str('!').as(:unary_op) >> spacing.maybe >> expression.as(:expression) \
         | str('~').as(:unary_op) >> spacing.maybe >> expression.as(:expression) \
-        | spacing.maybe >> atom >> spacing.maybe \
+        | spacing.maybe >> primary >> spacing.maybe \
         )
       }
       rule(:binary_op) {
@@ -58,35 +58,69 @@ module Hotdog
         | str('not') \
         )
       }
-      rule(:atom) {
+      rule(:funcall) {
+        ( identifier.as(:funcall) >> str('(') >> str(')') \
+        | identifier.as(:funcall) >> str('(') >> funcall_args.as(:funcall_args) >> str(')') \
+        )
+      }
+      rule(:funcall_args) {
+        ( funcall_arg.as(:funcall_args_head) >> spacing.maybe >> str(',') >> spacing.maybe >> funcall_args.as(:funcall_args_tail) \
+        | funcall_arg.as(:funcall_args_head) \
+        | primary.as(:funcall_args_head) >> spacing.maybe >> str(',') >> spacing.maybe >> funcall_args.as(:funcall_args_tail) \
+        | primary.as(:funcall_args_head) \
+        )
+      }
+      rule(:funcall_arg) {
+        ( float.as(:float) \
+        | integer.as(:integer) \
+        | string.as(:string) \
+        | regexp.as(:regexp) \
+        )
+      }
+      rule(:float) {
+        ( match('[0-9]').repeat(1) >> str('.') >> match('[0-9]').repeat(1) \
+        )
+      }
+      rule(:integer) {
+        ( match('[1-9]').repeat(1) >> match('[0-9]').repeat(0) \
+        )
+      }
+      rule(:string) {
+        ( str('"') >> (str('"').absent? >> any).repeat(0) >> str('"') \
+        | str("'") >> (str("'").absent? >> any).repeat(0) >> str("'") \
+        )
+      }
+      rule(:regexp) {
+        ( str('/') >> (str('/').absent? >> any).repeat(0) >> str('/') \
+        )
+      }
+      rule(:primary) {
         ( str('(') >> expression >> str(')') \
-        | str('/') >> identifier_regexp.as(:identifier_regexp) >> str('/') >> separator.as(:separator) >> str('/') >> attribute_regexp.as(:attribute_regexp) >> str('/') \
-        | str('/') >> identifier_regexp.as(:identifier_regexp) >> str('/') >> separator.as(:separator) \
-        | str('/') >> identifier_regexp.as(:identifier_regexp) >> str('/') \
-        | identifier_glob.as(:identifier_glob) >> separator.as(:separator) >> attribute_glob.as(:attribute_glob) \
-        | identifier_glob.as(:identifier_glob) >> separator.as(:separator) >> attribute.as(:attribute) \
-        | identifier_glob.as(:identifier_glob) >> separator.as(:separator) \
-        | identifier_glob.as(:identifier_glob) \
-        | identifier.as(:identifier) >> separator.as(:separator) >> attribute_glob.as(:attribute_glob) \
-        | identifier.as(:identifier) >> separator.as(:separator) >> attribute.as(:attribute) \
+        | funcall \
+        | atom \
+        )
+      }
+      rule(:atom) {
+        ( regexp.as(:identifier_regexp) >> separator.as(:separator) >> regexp.as(:attribute_regexp) \
+        | regexp.as(:identifier_regexp) >> separator.as(:separator) \
+        | regexp.as(:identifier_regexp) \
+        | glob.as(:identifier_glob) >> separator.as(:separator) >> glob.as(:attribute_glob) \
+        | glob.as(:identifier_glob) >> separator.as(:separator) >> identifier.as(:attribute) \
+        | glob.as(:identifier_glob) >> separator.as(:separator) \
+        | glob.as(:identifier_glob) \
+        | identifier.as(:identifier) >> separator.as(:separator) >> glob.as(:attribute_glob) \
+        | identifier.as(:identifier) >> separator.as(:separator) >> identifier.as(:attribute) \
         | identifier.as(:identifier) >> separator.as(:separator) \
         | identifier.as(:identifier) \
-        | separator.as(:separator) >> str('/') >> attribute_regexp.as(:attribute_regexp) >> str('/') \
-        | separator.as(:separator) >> attribute_glob.as(:attribute_glob) \
-        | separator.as(:separator) >> attribute.as(:attribute) \
-        | str('/') >> attribute_regexp.as(:attribute_regexp) >> str('/') \
-        | attribute_glob.as(:attribute_glob) \
-        | attribute.as(:attribute) \
+        | separator.as(:separator) >> regexp.as(:attribute_regexp) \
+        | separator.as(:separator) >> glob.as(:attribute_glob) \
+        | separator.as(:separator) >> identifier.as(:attribute) \
         )
       }
-      rule(:identifier_regexp) {
-        ( (str('/').absent? >> any).repeat(0) \
-        )
-      }
-      rule(:identifier_glob) {
-        ( binary_op.absent? >> unary_op.absent? >> identifier.repeat(0) >> (glob >> identifier.maybe).repeat(1) \
-        | binary_op >> (glob >> identifier.maybe).repeat(1) \
-        | unary_op >> (glob >> identifier.maybe).repeat(1) \
+      rule(:glob) {
+        ( binary_op.absent? >> unary_op.absent? >> identifier.repeat(0) >> (glob_char >> identifier.maybe).repeat(1) \
+        | binary_op >> (glob_char >> identifier.maybe).repeat(1) \
+        | unary_op >> (glob_char >> identifier.maybe).repeat(1) \
         )
       }
       rule(:identifier) {
@@ -100,23 +134,7 @@ module Hotdog
         | str('=') \
         )
       }
-      rule(:attribute_regexp) {
-        ( (str('/').absent? >> any).repeat(0) \
-        )
-      }
-      rule(:attribute_glob) {
-        ( binary_op.absent? >> unary_op.absent? >> attribute.repeat(0) >> (glob >> attribute.maybe).repeat(1) \
-        | binary_op >> (glob >> attribute.maybe).repeat(1) \
-        | unary_op >> (glob >> attribute.maybe).repeat(1) \
-        )
-      }
-      rule(:attribute) {
-        ( binary_op.absent? >> unary_op.absent? >> match('[-./0-9:A-Z_a-z]').repeat(1) \
-        | binary_op >> match('[-./0-9:A-Z_a-z]').repeat(1) \
-        | unary_op >> match('[-./0-9:A-Z_a-z]').repeat(1) \
-        )
-      }
-      rule(:glob) {
+      rule(:glob_char) {
         ( str('*') | str('?') | str('[') | str(']') )
       }
       rule(:spacing) {

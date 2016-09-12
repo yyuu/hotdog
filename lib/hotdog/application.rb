@@ -103,7 +103,11 @@ module Hotdog
         STDERR.puts(error)
       rescue => error
         STDERR.puts(error)
-        exit(1)
+        if @options[:debug]
+          raise # to show error stacktrace
+        else
+          exit(1)
+        end
       end
     end
 
