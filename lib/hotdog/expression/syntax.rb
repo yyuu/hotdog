@@ -37,11 +37,11 @@ module Hotdog
         )
       }
       rule(:expression4) {
-        ( str('!').as(:unary_op) >> spacing.maybe >> atom.as(:expression) \
-        | str('~').as(:unary_op) >> spacing.maybe >> atom.as(:expression) \
+        ( str('!').as(:unary_op) >> spacing.maybe >> atom.as(:expression) >> spacing.maybe \
+        | str('~').as(:unary_op) >> spacing.maybe >> atom.as(:expression) >> spacing.maybe \
         | str('!').as(:unary_op) >> spacing.maybe >> expression.as(:expression) \
         | str('~').as(:unary_op) >> spacing.maybe >> expression.as(:expression) \
-        | atom \
+        | spacing.maybe >> atom >> spacing.maybe \
         )
       }
       rule(:binary_op) {
@@ -59,24 +59,24 @@ module Hotdog
         )
       }
       rule(:atom) {
-        ( spacing.maybe >> str('(') >> expression >> str(')') >> spacing.maybe \
-        | spacing.maybe >> str('/') >> identifier_regexp.as(:identifier_regexp) >> str('/') >> separator.as(:separator) >> str('/') >> attribute_regexp.as(:attribute_regexp) >> str('/') >> spacing.maybe \
-        | spacing.maybe >> str('/') >> identifier_regexp.as(:identifier_regexp) >> str('/') >> separator.as(:separator) >> spacing.maybe \
-        | spacing.maybe >> str('/') >> identifier_regexp.as(:identifier_regexp) >> str('/') >> spacing.maybe \
-        | spacing.maybe >> identifier_glob.as(:identifier_glob) >> separator.as(:separator) >> attribute_glob.as(:attribute_glob) >> spacing.maybe \
-        | spacing.maybe >> identifier_glob.as(:identifier_glob) >> separator.as(:separator) >> attribute.as(:attribute) >> spacing.maybe \
-        | spacing.maybe >> identifier_glob.as(:identifier_glob) >> separator.as(:separator) >> spacing.maybe \
-        | spacing.maybe >> identifier_glob.as(:identifier_glob) >> spacing.maybe \
-        | spacing.maybe >> identifier.as(:identifier) >> separator.as(:separator) >> attribute_glob.as(:attribute_glob) >> spacing.maybe \
-        | spacing.maybe >> identifier.as(:identifier) >> separator.as(:separator) >> attribute.as(:attribute) >> spacing.maybe \
-        | spacing.maybe >> identifier.as(:identifier) >> separator.as(:separator) >> spacing.maybe \
-        | spacing.maybe >> identifier.as(:identifier) >> spacing.maybe \
-        | spacing.maybe >> separator.as(:separator) >> str('/') >> attribute_regexp.as(:attribute_regexp) >> str('/') >> spacing.maybe \
-        | spacing.maybe >> separator.as(:separator) >> attribute_glob.as(:attribute_glob) >> spacing.maybe \
-        | spacing.maybe >> separator.as(:separator) >> attribute.as(:attribute) >> spacing.maybe \
-        | spacing.maybe >> str('/') >> attribute_regexp.as(:attribute_regexp) >> str('/') >> spacing.maybe \
-        | spacing.maybe >> attribute_glob.as(:attribute_glob) >> spacing.maybe \
-        | spacing.maybe >> attribute.as(:attribute) >> spacing.maybe \
+        ( str('(') >> expression >> str(')') \
+        | str('/') >> identifier_regexp.as(:identifier_regexp) >> str('/') >> separator.as(:separator) >> str('/') >> attribute_regexp.as(:attribute_regexp) >> str('/') \
+        | str('/') >> identifier_regexp.as(:identifier_regexp) >> str('/') >> separator.as(:separator) \
+        | str('/') >> identifier_regexp.as(:identifier_regexp) >> str('/') \
+        | identifier_glob.as(:identifier_glob) >> separator.as(:separator) >> attribute_glob.as(:attribute_glob) \
+        | identifier_glob.as(:identifier_glob) >> separator.as(:separator) >> attribute.as(:attribute) \
+        | identifier_glob.as(:identifier_glob) >> separator.as(:separator) \
+        | identifier_glob.as(:identifier_glob) \
+        | identifier.as(:identifier) >> separator.as(:separator) >> attribute_glob.as(:attribute_glob) \
+        | identifier.as(:identifier) >> separator.as(:separator) >> attribute.as(:attribute) \
+        | identifier.as(:identifier) >> separator.as(:separator) \
+        | identifier.as(:identifier) \
+        | separator.as(:separator) >> str('/') >> attribute_regexp.as(:attribute_regexp) >> str('/') \
+        | separator.as(:separator) >> attribute_glob.as(:attribute_glob) \
+        | separator.as(:separator) >> attribute.as(:attribute) \
+        | str('/') >> attribute_regexp.as(:attribute_regexp) >> str('/') \
+        | attribute_glob.as(:attribute_glob) \
+        | attribute.as(:attribute) \
         )
       }
       rule(:identifier_regexp) {
