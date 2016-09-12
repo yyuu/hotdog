@@ -24,7 +24,7 @@ module Hotdog
         when "!", "~", "NOT", "not"
           @op = :NOT
         else
-          raise(SyntaxError.new("unknown unary operator: #{@op.inspect}"))
+          raise(SyntaxError.new("unknown unary operator: #{op.inspect}"))
         end
         @expression = expression
       end
@@ -409,6 +409,66 @@ module Hotdog
       end
     end
 
+    class FuncallNode < ExpressionNode
+      attr_reader :function, :args
+
+      def initialize(function, args)
+        # FIXME: smart argument handling (e.g. arity & type checking)
+        case function.to_s
+        when "HEAD", "head"
+          @function = :HEAD
+        when "GROUP_BY", "group_by"
+          @function = :GROUP_BY
+        when "SHUFFLE", "shuffle"
+          @function = :SHUFFLE
+        when "SORT", "sort"
+          @function = :SORT
+        when "TAIL", "tail"
+          @function = :TAIL
+        else
+          raise(SyntaxError.new("unknown function call: #{function}"))
+        end
+        @args = args
+      end
+
+      def optimize(options={})
+        self
+      end
+
+      def dump(options={})
+        args = @args.map { |arg|
+          if ExpressionNode === arg
+            arg.dump(options)
+          else
+            arg
+          end
+        }
+        {funcall: @function.to_s, args: args}
+      end
+
+      def evaluate(environment, options={})
+        case function
+        when :HEAD
+          args[0].evaluate(environment, options).take(args[1] || 1)
+        when :GROUP_BY
+          intermediate = args[0].evaluate(environment, options)
+          q = "SELECT hosts_tags.host_id FROM hosts_tags " \
+                "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                "WHERE tags.name = ? AND hosts_tags.host_id IN (%s) " \
+                "GROUP BY tags.value;" % intermediate.map { "?" }.join(", ")
+          QueryExpressionNode.new(q, [args[1]] + intermediate, fallback: nil).evaluate(environment, options)
+        when :SHUFFLE
+          args[0].evaluate(environment, options).shuffle()
+        when :SORT
+          args[0].evaluate(environment, options).sort()
+        when :TAIL
+          args[0].evaluate(environment, options).last(args[1] || 1)
+        else
+          []
+        end
+      end
+    end
+
     class EverythingNode < QueryExpressionNode
       def initialize(options={})
         super("SELECT id AS host_id FROM hosts", [], options)
@@ -602,7 +662,7 @@ module Hotdog
 
     class StringHostNode < StringExpressionNode
       def initialize(attribute, separator=nil)
-        super("host", attribute, separator)
+        super("host", attribute.to_s, separator)
       end
 
       def condition(options={})
@@ -630,7 +690,7 @@ module Hotdog
 
     class StringTagNode < StringExpressionNode
       def initialize(identifier, attribute, separator=nil)
-        super(identifier, attribute, separator)
+        super(identifier.to_s, attribute.to_s, separator)
       end
 
       def condition(options={})
@@ -658,7 +718,7 @@ module Hotdog
 
     class StringTagNameNode < StringExpressionNode
       def initialize(identifier, separator=nil)
-        super(identifier, nil, separator)
+        super(identifier.to_s, nil, separator)
       end
 
       def condition(options={})
@@ -686,7 +746,7 @@ module Hotdog
 
     class StringTagValueNode < StringExpressionNode
       def initialize(attribute, separator=nil)
-        super(nil, attribute, separator)
+        super(nil, attribute.to_s, separator)
       end
 
       def condition(options={})
@@ -714,7 +774,7 @@ module Hotdog
 
     class StringNode < StringExpressionNode
       def initialize(identifier, separator=nil)
-        super(identifier, nil, separator)
+        super(identifier.to_s, nil, separator)
       end
 
       def condition(options={})
@@ -753,7 +813,7 @@ module Hotdog
 
     class GlobHostNode < GlobExpressionNode
       def initialize(attribute, separator=nil)
-        super("host", attribute, separator)
+        super("host", attribute.to_s, separator)
       end
 
       def condition(options={})
@@ -781,7 +841,7 @@ module Hotdog
 
     class GlobTagNode < GlobExpressionNode
       def initialize(identifier, attribute, separator=nil)
-        super(identifier, attribute, separator)
+        super(identifier.to_s, attribute.to_s, separator)
       end
 
       def condition(options={})
@@ -809,7 +869,7 @@ module Hotdog
 
     class GlobTagNameNode < GlobExpressionNode
       def initialize(identifier, separator=nil)
-        super(identifier, nil, separator)
+        super(identifier.to_s, nil, separator)
       end
 
       def condition(options={})
@@ -837,7 +897,7 @@ module Hotdog
 
     class GlobTagValueNode < GlobExpressionNode
       def initialize(attribute, separator=nil)
-        super(nil, attribute, separator)
+        super(nil, attribute.to_s, separator)
       end
 
       def condition(options={})
@@ -865,7 +925,7 @@ module Hotdog
 
     class GlobNode < GlobExpressionNode
       def initialize(identifier, separator=nil)
-        super(identifier, nil, separator)
+        super(identifier.to_s, nil, separator)
       end
 
       def condition(options={})
@@ -904,6 +964,10 @@ module Hotdog
 
     class RegexpHostNode < RegexpExpressionNode
       def initialize(attribute, separator=nil)
+        case attribute
+        when /\A\/(.*)\/\z/
+          attribute = $1
+        end
         super("host", attribute, separator)
       end
 
@@ -922,6 +986,14 @@ module Hotdog
 
     class RegexpTagNode < RegexpExpressionNode
       def initialize(identifier, attribute, separator=nil)
+        case identifier
+        when /\A\/(.*)\/\z/
+          identifier = $1
+        end
+        case attribute
+        when /\A\/(.*)\/\z/
+          attribute = $1
+        end
         super(identifier, attribute, separator)
       end
 
@@ -940,7 +1012,11 @@ module Hotdog
 
     class RegexpTagNameNode < RegexpExpressionNode
       def initialize(identifier, separator=nil)
-        super(identifier, nil, separator)
+        case identifier
+        when /\A\/(.*)\/\z/
+          identifier = $1
+        end
+        super(identifier.to_s, nil, separator)
       end
 
       def condition(options={})
@@ -958,7 +1034,11 @@ module Hotdog
 
     class RegexpTagValueNode < RegexpExpressionNode
       def initialize(attribute, separator=nil)
-        super(nil, attribute, separator)
+        case attribute
+        when /\A\/(.*)\/\z/
+          attribute = $1
+        end
+        super(nil, attribute.to_s, separator)
       end
 
       def condition(options={})
