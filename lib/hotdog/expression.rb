@@ -63,100 +63,100 @@ module Hotdog
       rule(unary_op: simple(:unary_op), expression: simple(:expression)) {
         UnaryExpressionNode.new(unary_op, expression)
       }
-      rule(identifier_regexp: simple(:identifier_regexp), separator: simple(:separator), attribute_regexp: simple(:attribute_regexp)) {
-        if "/host/" == identifier_regexp
-          RegexpHostNode.new(attribute_regexp, separator)
+      rule(tag_name_regexp: simple(:tag_name_regexp), separator: simple(:separator), tag_value_regexp: simple(:tag_value_regexp)) {
+        if "/host/" == tag_name_regexp
+          RegexpHostNode.new(tag_value_regexp, separator)
         else
-          RegexpTagNode.new(identifier_regexp, attribute_regexp, separator)
+          RegexpTagNode.new(tag_name_regexp, tag_value_regexp, separator)
         end
       }
-      rule(identifier_regexp: simple(:identifier_regexp), separator: simple(:separator)) {
-        if "/host/" == identifier_regexp
+      rule(tag_name_regexp: simple(:tag_name_regexp), separator: simple(:separator)) {
+        if "/host/" == tag_name_regexp
           EverythingNode.new()
         else
-          RegexpTagNameNode.new(identifier_regexp, separator)
+          RegexpTagNameNode.new(tag_name_regexp, separator)
         end
       }
-      rule(identifier_regexp: simple(:identifier_regexp)) {
-        if "/host/" == identifier_regexp
+      rule(tag_name_regexp: simple(:tag_name_regexp)) {
+        if "/host/" == tag_name_regexp
           EverythingNode.new()
         else
-          RegexpNode.new(identifier_regexp)
+          RegexpNode.new(tag_name_regexp)
         end
       }
-      rule(identifier_glob: simple(:identifier_glob), separator: simple(:separator), attribute_glob: simple(:attribute_glob)) {
-        if "host" == identifier_glob
-          GlobHostNode.new(attribute_glob, separator)
+      rule(tag_name_glob: simple(:tag_name_glob), separator: simple(:separator), tag_value_glob: simple(:tag_value_glob)) {
+        if "host" == tag_name_glob
+          GlobHostNode.new(tag_value_glob, separator)
         else
-          GlobTagNode.new(identifier_glob, attribute_glob, separator)
+          GlobTagNode.new(tag_name_glob, tag_value_glob, separator)
         end
       }
-      rule(identifier_glob: simple(:identifier_glob), separator: simple(:separator), attribute: simple(:attribute)) {
-        if "host" == identifier_glob
-          GlobHostNode.new(attribute, separator)
+      rule(tag_name_glob: simple(:tag_name_glob), separator: simple(:separator), tag_value: simple(:tag_value)) {
+        if "host" == tag_name_glob
+          GlobHostNode.new(tag_value, separator)
         else
-          GlobTagNode.new(identifier, attribute, separator)
+          GlobTagNode.new(tag_name_glob, tag_value, separator)
         end
       }
-      rule(identifier_glob: simple(:identifier_glob), separator: simple(:separator)) {
-        if "host" == identifier_glob
+      rule(tag_name_glob: simple(:tag_name_glob), separator: simple(:separator)) {
+        if "host" == tag_name_glob
           EverythingNode.new()
         else
-          GlobTagNameNode.new(identifier_glob, separator)
+          GlobTagNameNode.new(tag_name_glob, separator)
         end
       }
-      rule(identifier_glob: simple(:identifier_glob)) {
-        if "host" == identifier_glob
+      rule(tag_name_glob: simple(:tag_name_glob)) {
+        if "host" == tag_name_glob
           EverythingNode.new()
         else
-          GlobNode.new(identifier_glob)
+          GlobNode.new(tag_name_glob)
         end
       }
-      rule(identifier: simple(:identifier), separator: simple(:separator), attribute_glob: simple(:attribute_glob)) {
-        if "host" == identifier
-          GlobHostNode.new(attribute_glob, separator)
+      rule(tag_name: simple(:tag_name), separator: simple(:separator), tag_value_glob: simple(:tag_value_glob)) {
+        if "host" == tag_name
+          GlobHostNode.new(tag_value_glob, separator)
         else
-          GlobTagNode.new(identifier, attribute_glob, separator)
+          GlobTagNode.new(tag_name, tag_value_glob, separator)
         end
       }
-      rule(identifier: simple(:identifier), separator: simple(:separator), attribute: simple(:attribute)) {
-        if "host" == identifier
-          StringHostNode.new(attribute, separator)
+      rule(tag_name: simple(:tag_name), separator: simple(:separator), tag_value: simple(:tag_value)) {
+        if "host" == tag_name
+          StringHostNode.new(tag_value, separator)
         else
-          StringTagNode.new(identifier, attribute, separator)
+          StringTagNode.new(tag_name, tag_value, separator)
         end
       }
-      rule(identifier: simple(:identifier), separator: simple(:separator)) {
-        if "host" == identifier
+      rule(tag_name: simple(:tag_name), separator: simple(:separator)) {
+        if "host" == tag_name
           EverythingNode.new()
         else
-          StringTagNameNode.new(identifier, separator)
+          StringTagNameNode.new(tag_name, separator)
         end
       }
-      rule(identifier: simple(:identifier)) {
-        if "host" == identifier
+      rule(tag_name: simple(:tag_name)) {
+        if "host" == tag_name
           EverythingNode.new()
         else
-          StringNode.new(identifier)
+          StringNode.new(tag_name)
         end
       }
-      rule(separator: simple(:separator), attribute_regexp: simple(:attribute_regexp)) {
-        RegexpTagValueNode.new(attribute_regexp, separator)
+      rule(separator: simple(:separator), tag_value_regexp: simple(:tag_value_regexp)) {
+        RegexpTagValueNode.new(tag_value_regexp, separator)
       }
-      rule(attribute_regexp: simple(:attribute_regexp)) {
-        RegexpTagValueNode.new(attribute_regexp)
+      rule(tag_value_regexp: simple(:tag_value_regexp)) {
+        RegexpTagValueNode.new(tag_value_regexp)
       }
-      rule(separator: simple(:separator), attribute_glob: simple(:attribute_glob)) {
-        GlobTagValueNode.new(attribute_glob, separator)
+      rule(separator: simple(:separator), tag_value_glob: simple(:tag_value_glob)) {
+        GlobTagValueNode.new(tag_value_glob, separator)
       }
-      rule(attribute_glob: simple(:attribute_glob)) {
-        GlobTagValueNode.new(attribute_glob)
+      rule(tag_value_glob: simple(:tag_value_glob)) {
+        GlobTagValueNode.new(tag_value_glob)
       }
-      rule(separator: simple(:separator), attribute: simple(:attribute)) {
-        StringTagValueNode.new(attribute, separator)
+      rule(separator: simple(:separator), tag_value: simple(:tag_value)) {
+        StringTagValueNode.new(tag_value, separator)
       }
-      rule(attribute: simple(:attribute)) {
-        StringTagValueNode.new(attribute)
+      rule(tag_value: simple(:tag_value)) {
+        StringTagValueNode.new(tag_value)
       }
     end
   end

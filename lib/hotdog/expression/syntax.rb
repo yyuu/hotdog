@@ -106,20 +106,20 @@ module Hotdog
         )
       }
       rule(:tag) {
-        ( regexp.as(:identifier_regexp) >> separator.as(:separator) >> regexp.as(:attribute_regexp) \
-        | regexp.as(:identifier_regexp) >> separator.as(:separator) \
-        | regexp.as(:identifier_regexp) \
-        | tag_glob.as(:identifier_glob) >> separator.as(:separator) >> tag_glob.as(:attribute_glob) \
-        | tag_glob.as(:identifier_glob) >> separator.as(:separator) >> tag_identifier.as(:attribute) \
-        | tag_glob.as(:identifier_glob) >> separator.as(:separator) \
-        | tag_glob.as(:identifier_glob) \
-        | tag_identifier.as(:identifier) >> separator.as(:separator) >> tag_glob.as(:attribute_glob) \
-        | tag_identifier.as(:identifier) >> separator.as(:separator) >> tag_identifier.as(:attribute) \
-        | tag_identifier.as(:identifier) >> separator.as(:separator) \
-        | tag_identifier.as(:identifier) \
-        | separator.as(:separator) >> regexp.as(:attribute_regexp) \
-        | separator.as(:separator) >> tag_glob.as(:attribute_glob) \
-        | separator.as(:separator) >> tag_identifier.as(:attribute) \
+        ( regexp.as(:tag_name_regexp) >> separator.as(:separator) >> regexp.as(:tag_value_regexp) \
+        | regexp.as(:tag_name_regexp) >> separator.as(:separator) \
+        | regexp.as(:tag_name_regexp) \
+        | tag_glob.as(:tag_name_glob) >> separator.as(:separator) >> tag_glob.as(:tag_value_glob) \
+        | tag_glob.as(:tag_name_glob) >> separator.as(:separator) >> tag_identifier.as(:tag_value) \
+        | tag_glob.as(:tag_name_glob) >> separator.as(:separator) \
+        | tag_glob.as(:tag_name_glob) \
+        | tag_identifier.as(:tag_name) >> separator.as(:separator) >> tag_glob.as(:tag_value_glob) \
+        | tag_identifier.as(:tag_name) >> separator.as(:separator) >> tag_identifier.as(:tag_value) \
+        | tag_identifier.as(:tag_name) >> separator.as(:separator) \
+        | tag_identifier.as(:tag_name) \
+        | separator.as(:separator) >> regexp.as(:tag_value_regexp) \
+        | separator.as(:separator) >> tag_glob.as(:tag_value_glob) \
+        | separator.as(:separator) >> tag_identifier.as(:tag_value) \
         )
       }
       rule(:tag_glob) {

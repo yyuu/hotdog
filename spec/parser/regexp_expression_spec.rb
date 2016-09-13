@@ -19,10 +19,10 @@ describe "tag regexp expression" do
       [[1], [2], [3]]
     }
     expect(expr.evaluate(cmd)).to eq([1, 2, 3])
-    expect(expr.dump).to eq({identifier_regexp: "host", separator: ":", attribute_regexp: "foo"})
+    expect(expr.dump).to eq({tag_name_regexp: "host", separator: ":", tag_value_regexp: "foo"})
   end
 
-  it "interprets tag regexp with identifier and attribute" do
+  it "interprets tag regexp with tag_name and tag_value" do
     expr = Hotdog::Expression::RegexpTagNode.new("foo", "bar", ":")
     q = [
       "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags",
@@ -33,10 +33,10 @@ describe "tag regexp expression" do
       [[1], [2], [3]]
     }
     expect(expr.evaluate(cmd)).to eq([1, 2, 3])
-    expect(expr.dump).to eq({identifier_regexp: "foo", separator: ":", attribute_regexp: "bar"})
+    expect(expr.dump).to eq({tag_name_regexp: "foo", separator: ":", tag_value_regexp: "bar"})
   end
 
-  it "interprets tag regexp with identifier with separator" do
+  it "interprets tag regexp with tag_name with separator" do
     expr = Hotdog::Expression::RegexpTagNameNode.new("foo", ":")
     q = [
       "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags",
@@ -47,10 +47,10 @@ describe "tag regexp expression" do
       [[1], [2], [3]]
     }
     expect(expr.evaluate(cmd)).to eq([1, 2, 3])
-    expect(expr.dump).to eq({identifier_regexp: "foo", separator: ":"})
+    expect(expr.dump).to eq({tag_name_regexp: "foo", separator: ":"})
   end
 
-  it "interprets tag regexp with identifier without separator" do
+  it "interprets tag regexp with tag_name without separator" do
     expr = Hotdog::Expression::RegexpNode.new("foo", nil)
     q = [
       "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags",
@@ -62,10 +62,10 @@ describe "tag regexp expression" do
       [[1], [2], [3]]
     }
     expect(expr.evaluate(cmd)).to eq([1, 2, 3])
-    expect(expr.dump).to eq({identifier_regexp: "foo"})
+    expect(expr.dump).to eq({tag_name_regexp: "foo"})
   end
 
-  it "interprets tag regexp with attribute with separator" do
+  it "interprets tag regexp with tag_value with separator" do
     expr = Hotdog::Expression::RegexpTagValueNode.new("foo", ":")
     q = [
       "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags",
@@ -77,10 +77,10 @@ describe "tag regexp expression" do
       [[1], [2], [3]]
     }
     expect(expr.evaluate(cmd)).to eq([1, 2, 3])
-    expect(expr.dump).to eq({separator: ":", attribute_regexp: "foo"})
+    expect(expr.dump).to eq({separator: ":", tag_value_regexp: "foo"})
   end
 
-  it "interprets tag regexp with attribute without separator" do
+  it "interprets tag regexp with tag_value without separator" do
     expr = Hotdog::Expression::RegexpTagValueNode.new("foo", nil)
     q = [
       "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags",
@@ -92,7 +92,7 @@ describe "tag regexp expression" do
       [[1], [2], [3]]
     }
     expect(expr.evaluate(cmd)).to eq([1, 2, 3])
-    expect(expr.dump).to eq({attribute_regexp: "foo"})
+    expect(expr.dump).to eq({tag_value_regexp: "foo"})
   end
 
   it "empty tag regexp" do
