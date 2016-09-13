@@ -72,8 +72,6 @@ module Hotdog
       rule(:funcall_args) {
         ( funcall_arg.as(:funcall_args_head) >> spacing.maybe >> str(',') >> spacing.maybe >> funcall_args.as(:funcall_args_tail) \
         | funcall_arg.as(:funcall_args_head) \
-        | primary.as(:funcall_args_head) >> spacing.maybe >> str(',') >> spacing.maybe >> funcall_args.as(:funcall_args_tail) \
-        | primary.as(:funcall_args_head) \
         )
       }
       rule(:funcall_arg) {
@@ -81,6 +79,7 @@ module Hotdog
         | integer.as(:integer) \
         | string.as(:string) \
         | regexp.as(:regexp) \
+        | primary \
         )
       }
       rule(:float) {
