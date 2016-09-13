@@ -129,16 +129,35 @@ expression4: '!' atom
            | '~' atom
            | '!' expression
            | '~' expression
-           | atom
+           | primary
            ;
 
-atom: '(' expression ')'
-    | IDENTIFIER separator ATTRIBUTE
-    | IDENTIFIER separator
-    | separator ATTRIBUTE
-    | IDENTIFIER
-    | ATTRIBUTE
-    ;
+primary: '(' expression ')'
+       | funcall
+       | tag
+       ;
+
+funcall: IDENTIFIER '(' ')'
+       | IDENTIFIER '(' funcall_args ')'
+       ;
+
+funcall_args: funcall_arg ',' funcall_args
+            | funcall_arg
+            ;
+
+funcall_arg: FLOAT
+           | INTEGER
+           | STRING
+           | REGEXP
+           | primary
+           ;
+
+tag: IDENTIFIER separator IDENTIFIER
+   | IDENTIFIER separator
+   | separator IDENTIFIER
+   | IDENTIFIER
+   | IDENTIFIER
+   ;
 
 separator: ':'
          | '='
