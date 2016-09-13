@@ -72,8 +72,6 @@ module Hotdog
       rule(:funcall_args) {
         ( funcall_arg.as(:funcall_args_head) >> spacing.maybe >> str(',') >> spacing.maybe >> funcall_args.as(:funcall_args_tail) \
         | funcall_arg.as(:funcall_args_head) \
-        | primary.as(:funcall_args_head) >> spacing.maybe >> str(',') >> spacing.maybe >> funcall_args.as(:funcall_args_tail) \
-        | primary.as(:funcall_args_head) \
         )
       }
       rule(:funcall_arg) {
@@ -81,6 +79,7 @@ module Hotdog
         | integer.as(:integer) \
         | string.as(:string) \
         | regexp.as(:regexp) \
+        | primary \
         )
       }
       rule(:float) {
@@ -103,33 +102,33 @@ module Hotdog
       rule(:primary) {
         ( str('(') >> expression >> str(')') \
         | funcall \
-        | atom \
+        | tag \
         )
       }
-      rule(:atom) {
-        ( regexp.as(:identifier_regexp) >> separator.as(:separator) >> regexp.as(:attribute_regexp) \
-        | regexp.as(:identifier_regexp) >> separator.as(:separator) \
-        | regexp.as(:identifier_regexp) \
-        | glob.as(:identifier_glob) >> separator.as(:separator) >> glob.as(:attribute_glob) \
-        | glob.as(:identifier_glob) >> separator.as(:separator) >> identifier.as(:attribute) \
-        | glob.as(:identifier_glob) >> separator.as(:separator) \
-        | glob.as(:identifier_glob) \
-        | identifier.as(:identifier) >> separator.as(:separator) >> glob.as(:attribute_glob) \
-        | identifier.as(:identifier) >> separator.as(:separator) >> identifier.as(:attribute) \
-        | identifier.as(:identifier) >> separator.as(:separator) \
-        | identifier.as(:identifier) \
-        | separator.as(:separator) >> regexp.as(:attribute_regexp) \
-        | separator.as(:separator) >> glob.as(:attribute_glob) \
-        | separator.as(:separator) >> identifier.as(:attribute) \
+      rule(:tag) {
+        ( regexp.as(:tag_name_regexp) >> separator.as(:separator) >> regexp.as(:tag_value_regexp) \
+        | regexp.as(:tag_name_regexp) >> separator.as(:separator) \
+        | regexp.as(:tag_name_regexp) \
+        | tag_glob.as(:tag_name_glob) >> separator.as(:separator) >> tag_glob.as(:tag_value_glob) \
+        | tag_glob.as(:tag_name_glob) >> separator.as(:separator) >> tag_identifier.as(:tag_value) \
+        | tag_glob.as(:tag_name_glob) >> separator.as(:separator) \
+        | tag_glob.as(:tag_name_glob) \
+        | tag_identifier.as(:tag_name) >> separator.as(:separator) >> tag_glob.as(:tag_value_glob) \
+        | tag_identifier.as(:tag_name) >> separator.as(:separator) >> tag_identifier.as(:tag_value) \
+        | tag_identifier.as(:tag_name) >> separator.as(:separator) \
+        | tag_identifier.as(:tag_name) \
+        | separator.as(:separator) >> regexp.as(:tag_value_regexp) \
+        | separator.as(:separator) >> tag_glob.as(:tag_value_glob) \
+        | separator.as(:separator) >> tag_identifier.as(:tag_value) \
         )
       }
-      rule(:glob) {
-        ( binary_op.absent? >> unary_op.absent? >> identifier.repeat(0) >> (glob_char >> identifier.maybe).repeat(1) \
-        | binary_op >> (glob_char >> identifier.maybe).repeat(1) \
-        | unary_op >> (glob_char >> identifier.maybe).repeat(1) \
+      rule(:tag_glob) {
+        ( binary_op.absent? >> unary_op.absent? >> tag_identifier.repeat(0) >> (glob_char >> tag_identifier.maybe).repeat(1) \
+        | binary_op >> (glob_char >> tag_identifier.maybe).repeat(1) \
+        | unary_op >> (glob_char >> tag_identifier.maybe).repeat(1) \
         )
       }
-      rule(:identifier) {
+      rule(:tag_identifier) {
         ( binary_op.absent? >> unary_op.absent? >> match('[A-Z_a-z]') >> match('[-./0-9A-Z_a-z]').repeat(0) \
         | binary_op >> match('[-./0-9A-Z_a-z]').repeat(1) \
         | unary_op >> match('[-./0-9A-Z_a-z]').repeat(1) \

@@ -62,16 +62,16 @@ module Hotdog
           case
           when n[:left] && n[:right] then drilldown.(n[:left]) + drilldown.(n[:right])
           when n[:expression] then drilldown.(n[:expression])
-          when n[:identifier] then [n[:identifier]]
+          when n[:tag_name] then [n[:tag_name]]
           else []
           end
         }
         if options[:display_search_tags]
-          identifiers = drilldown.call(node).map(&:to_s)
+          tag_names = drilldown.call(node).map(&:to_s)
           if options[:primary_tag]
-            tags = [options[:primary_tag]] + identifiers
+            tags = [options[:primary_tag]] + tag_names
           else
-            tags = identifiers
+            tags = tag_names
           end
         else
           tags = nil

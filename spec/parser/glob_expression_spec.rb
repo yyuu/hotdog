@@ -19,10 +19,10 @@ describe "tag glob expression" do
       [[1], [2], [3]]
     }
     expect(expr.evaluate(cmd)).to eq([1, 2, 3])
-    expect(expr.dump).to eq({identifier_glob: "host", separator: ":", attribute_glob: "foo*"})
+    expect(expr.dump).to eq({tag_name_glob: "host", separator: ":", tag_value_glob: "foo*"})
   end
 
-  it "interprets tag glob with identifier and attribute" do
+  it "interprets tag glob with tag_name and tag_value" do
     expr = Hotdog::Expression::GlobTagNode.new("foo*", "bar*", ":")
     q = [
       "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags",
@@ -33,10 +33,10 @@ describe "tag glob expression" do
       [[1], [2], [3]]
     }
     expect(expr.evaluate(cmd)).to eq([1, 2, 3])
-    expect(expr.dump).to eq({identifier_glob: "foo*", separator: ":", attribute_glob: "bar*"})
+    expect(expr.dump).to eq({tag_name_glob: "foo*", separator: ":", tag_value_glob: "bar*"})
   end
 
-  it "interprets tag glob with identifier with separator" do
+  it "interprets tag glob with tag_name with separator" do
     expr = Hotdog::Expression::GlobTagNameNode.new("foo*", ":")
     q = [
       "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags",
@@ -47,10 +47,10 @@ describe "tag glob expression" do
       [[1], [2], [3]]
     }
     expect(expr.evaluate(cmd)).to eq([1, 2, 3])
-    expect(expr.dump).to eq({identifier_glob: "foo*", separator: ":"})
+    expect(expr.dump).to eq({tag_name_glob: "foo*", separator: ":"})
   end
 
-  it "interprets tag glob with identifier without separator" do
+  it "interprets tag glob with tag_name without separator" do
     expr = Hotdog::Expression::GlobNode.new("foo*", nil)
     q = [
       "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags",
@@ -62,10 +62,10 @@ describe "tag glob expression" do
       [[1], [2], [3]]
     }
     expect(expr.evaluate(cmd)).to eq([1, 2, 3])
-    expect(expr.dump).to eq({identifier_glob: "foo*"})
+    expect(expr.dump).to eq({tag_name_glob: "foo*"})
   end
 
-  it "interprets tag glob with attribute with separator" do
+  it "interprets tag glob with tag_value with separator" do
     expr = Hotdog::Expression::GlobTagValueNode.new("foo*", ":")
     q = [
       "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags",
@@ -77,10 +77,10 @@ describe "tag glob expression" do
       [[1], [2], [3]]
     }
     expect(expr.evaluate(cmd)).to eq([1, 2, 3])
-    expect(expr.dump).to eq({separator: ":", attribute_glob: "foo*"})
+    expect(expr.dump).to eq({separator: ":", tag_value_glob: "foo*"})
   end
 
-  it "interprets tag glob with attribute without separator" do
+  it "interprets tag glob with tag_value without separator" do
     expr = Hotdog::Expression::GlobTagValueNode.new("foo*", nil)
     q = [
       "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags",
@@ -92,7 +92,7 @@ describe "tag glob expression" do
       [[1], [2], [3]]
     }
     expect(expr.evaluate(cmd)).to eq([1, 2, 3])
-    expect(expr.dump).to eq({attribute_glob: "foo*"})
+    expect(expr.dump).to eq({tag_value_glob: "foo*"})
   end
 
   it "empty tag glob" do
