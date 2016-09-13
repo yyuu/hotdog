@@ -286,6 +286,42 @@ describe "parser" do
     expect(cmd.parse("! foo && bar")).to eq({left: {unary_op: "!", expression: {identifier: "foo"}}, binary_op: "&&", right: {identifier: "bar"}})
   end
 
+  it "parses 'f(x)'" do
+    expect(cmd.parse("f(x)")).to eq({funcall: "f", funcall_args: {funcall_args_head: {identifier: "x"}}})
+  end
+
+  it "parses 'f(x, \"y\")'" do
+    expect(cmd.parse("f(x, \"y\")")).to eq({funcall: "f", funcall_args: {funcall_args_head: {identifier: "x"}, funcall_args_tail: {funcall_args_head: {string: "\"y\""}}}})
+  end
+
+  it "parses 'f(x, \"y\", /z/)'" do
+    expect(cmd.parse("f(x, \"y\", /z/)")).to eq({funcall: "f", funcall_args: {funcall_args_head: {identifier: "x"}, funcall_args_tail: {funcall_args_head: {string: "\"y\""}, funcall_args_tail: {funcall_args_head: {regexp: "/z/"}}}}})
+  end
+
+  it "parses 'g ( 12345 )'" do
+    expect(cmd.parse("g ( 12345 )")).to eq({funcall: "g", funcall_args: {funcall_args_head: {integer: "12345"}}})
+  end
+
+  it "parses 'g ( 12345 , 3.1415 )'" do
+    expect(cmd.parse("g ( 12345 , 3.1415 )")).to eq({funcall: "g", funcall_args: {funcall_args_head: {integer: "12345"}, funcall_args_tail: {funcall_args_head: {float: "3.1415"}}}})
+  end
+
+  it "parses 'f()'" do
+    expect(cmd.parse("f()")).to eq({funcall: "f"})
+  end
+
+  it "parses 'g(f())'" do
+    expect(cmd.parse("g(f())")).to eq({funcall: "g", funcall_args: {funcall_args_head: {funcall: "f"}}})
+  end
+
+  it "parses 'foo and bar(y)'" do
+    expect(cmd.parse("foo and bar(y)")).to eq({binary_op: "and", left: {identifier: "foo"}, right: {funcall: "bar", funcall_args: {funcall_args_head: {identifier: "y"}}}})
+  end
+
+  it "parses 'foo(x) and bar(y)'" do
+    expect(cmd.parse("foo(x) and bar(y)")).to eq({binary_op: "and", left: {funcall: "foo", funcall_args: {funcall_args_head: {identifier: "x"}}}, right: {funcall: "bar", funcall_args: {funcall_args_head: {identifier: "y"}}}})
+  end
+
   it "is unable to parse ' '" do
     expect {
       cmd.parse(" ")

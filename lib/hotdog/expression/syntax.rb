@@ -59,8 +59,14 @@ module Hotdog
         )
       }
       rule(:funcall) {
-        ( identifier.as(:funcall) >> str('(') >> str(')') \
-        | identifier.as(:funcall) >> str('(') >> funcall_args.as(:funcall_args) >> str(')') \
+        ( funcall_identifier.as(:funcall) >> spacing.maybe >> str('(') >> spacing.maybe >> str(')') \
+        | funcall_identifier.as(:funcall) >> spacing.maybe >> str('(') >> spacing.maybe >> funcall_args.as(:funcall_args) >> spacing.maybe >> str(')') \
+        )
+      }
+      rule(:funcall_identifier) {
+        ( binary_op.absent? >> unary_op.absent? >> match('[A-Z_a-z]') >> match('[0-9A-Z_a-z]').repeat(0) \
+        | binary_op >> match('[0-9A-Z_a-z]').repeat(1) \
+        | unary_op >> match('[0-9A-Z_a-z]').repeat(1) \
         )
       }
       rule(:funcall_args) {
@@ -124,7 +130,7 @@ module Hotdog
         )
       }
       rule(:identifier) {
-        ( binary_op.absent? >> unary_op.absent? >> match('[A-Za-z]') >> match('[-./0-9A-Z_a-z]').repeat(0) \
+        ( binary_op.absent? >> unary_op.absent? >> match('[A-Z_a-z]') >> match('[-./0-9A-Z_a-z]').repeat(0) \
         | binary_op >> match('[-./0-9A-Z_a-z]').repeat(1) \
         | unary_op >> match('[-./0-9A-Z_a-z]').repeat(1) \
         )
