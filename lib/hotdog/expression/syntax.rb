@@ -109,29 +109,52 @@ module Hotdog
         ( regexp.as(:tag_name_regexp) >> separator.as(:separator) >> regexp.as(:tag_value_regexp) \
         | regexp.as(:tag_name_regexp) >> separator.as(:separator) \
         | regexp.as(:tag_name_regexp) \
-        | tag_glob.as(:tag_name_glob) >> separator.as(:separator) >> tag_glob.as(:tag_value_glob) \
-        | tag_glob.as(:tag_name_glob) >> separator.as(:separator) >> tag_identifier.as(:tag_value) \
-        | tag_glob.as(:tag_name_glob) >> separator.as(:separator) \
-        | tag_glob.as(:tag_name_glob) \
-        | tag_identifier.as(:tag_name) >> separator.as(:separator) >> tag_glob.as(:tag_value_glob) \
-        | tag_identifier.as(:tag_name) >> separator.as(:separator) >> tag_identifier.as(:tag_value) \
-        | tag_identifier.as(:tag_name) >> separator.as(:separator) \
-        | tag_identifier.as(:tag_name) \
+        | tag_name_glob.as(:tag_name_glob) >> separator.as(:separator) >> tag_value_glob.as(:tag_value_glob) \
+        | tag_name_glob.as(:tag_name_glob) >> separator.as(:separator) >> tag_value.as(:tag_value) \
+        | tag_name_glob.as(:tag_name_glob) >> separator.as(:separator) \
+        | tag_name_glob.as(:tag_name_glob) \
+        | tag_name.as(:tag_name) >> separator.as(:separator) >> tag_value_glob.as(:tag_value_glob) \
+        | tag_name.as(:tag_name) >> separator.as(:separator) >> tag_value.as(:tag_value) \
+        | tag_name.as(:tag_name) >> separator.as(:separator) \
+        | tag_name.as(:tag_name) \
         | separator.as(:separator) >> regexp.as(:tag_value_regexp) \
-        | separator.as(:separator) >> tag_glob.as(:tag_value_glob) \
-        | separator.as(:separator) >> tag_identifier.as(:tag_value) \
+        | separator.as(:separator) >> tag_value_glob.as(:tag_value_glob) \
+        | separator.as(:separator) >> tag_value.as(:tag_value) \
+        | tag_value_regexp.as(:tag_value_regexp) \
+        | tag_value_glob.as(:tag_value_glob) \
+        | tag_value.as(:tag_value) \
         )
       }
-      rule(:tag_glob) {
-        ( binary_op.absent? >> unary_op.absent? >> tag_identifier.repeat(0) >> (glob_char >> tag_identifier.maybe).repeat(1) \
-        | binary_op >> (glob_char >> tag_identifier.maybe).repeat(1) \
-        | unary_op >> (glob_char >> tag_identifier.maybe).repeat(1) \
+      rule(:tag_name_regexp) {
+        ( regexp \
         )
       }
-      rule(:tag_identifier) {
+      rule(:tag_value_regexp) {
+        ( regexp \
+        )
+      }
+      rule(:tag_name_glob) {
+        ( binary_op.absent? >> unary_op.absent? >> tag_name.repeat(0) >> (glob_char >> tag_name.maybe).repeat(1) \
+        | binary_op >> (glob_char >> tag_name.maybe).repeat(1) \
+        | unary_op >> (glob_char >> tag_name.maybe).repeat(1) \
+        )
+      }
+      rule(:tag_value_glob) {
+        ( binary_op.absent? >> unary_op.absent? >> tag_value.repeat(0) >> (glob_char >> tag_value.maybe).repeat(1) \
+        | binary_op >> (glob_char >> tag_value.maybe).repeat(1) \
+        | unary_op >> (glob_char >> tag_value.maybe).repeat(1) \
+        )
+      }
+      rule(:tag_name) {
         ( binary_op.absent? >> unary_op.absent? >> match('[A-Z_a-z]') >> match('[-./0-9A-Z_a-z]').repeat(0) \
         | binary_op >> match('[-./0-9A-Z_a-z]').repeat(1) \
         | unary_op >> match('[-./0-9A-Z_a-z]').repeat(1) \
+        )
+      }
+      rule(:tag_value) {
+        ( binary_op.absent? >> unary_op.absent? >> match('[-./0-9:A-Z_a-z]').repeat(1) \
+        | binary_op >> match('[-./0-9:A-Z_a-z]').repeat(1) \
+        | unary_op >> match('[-./0-9:A-Z_a-z]').repeat(1) \
         )
       }
       rule(:separator) {
