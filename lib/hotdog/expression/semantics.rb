@@ -419,10 +419,16 @@ module Hotdog
           @function = :HEAD
         when "GROUP_BY", "group_by"
           @function = :GROUP_BY
+        when "LIMIT", "limit"
+          @function = :HEAD
+        when "ORDER_BY", "order_by"
+          @function = :ORDER_BY
+        when "REVERSE", "reverse"
+          @function = :REVERSE
         when "SHUFFLE", "shuffle"
           @function = :SHUFFLE
         when "SORT", "sort"
-          @function = :SORT
+          @function = :ORDER_BY
         when "TAIL", "tail"
           @function = :TAIL
         else
@@ -457,10 +463,25 @@ module Hotdog
                 "WHERE tags.name = ? AND hosts_tags.host_id IN (%s) " \
                 "GROUP BY tags.value;" % intermediate.map { "?" }.join(", ")
           QueryExpressionNode.new(q, [args[1]] + intermediate, fallback: nil).evaluate(environment, options)
+        when :ORDER_BY
+          intermediate = args[0].evaluate(environment, options)
+          if args[1]
+            q = "SELECT hosts_tags.host_id FROM hosts_tags " \
+                  "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                  "WHERE tags.name = ? AND hosts_tags.host_id IN (%s) " \
+                  "ORDER BY tags.value;" % intermediate.map { "?" }.join(", ")
+            QueryExpressionNode.new(q, [args[1]] + intermediate, fallback: nil).evaluate(environment, options)
+          else
+            q = "SELECT hosts_tags.host_id FROM hosts_tags " \
+                  "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                  "WHERE hosts_tags.host_id IN (%s) " \
+                  "ORDER BY hosts_tags.host_id;" % intermediate.map { "?" }.join(", ")
+            QueryExpressionNode.new(q, intermediate, fallback: nil).evaluate(environment, options)
+          end
+        when :REVERSE
+          args[0].evaluate(environment, options).reverse()
         when :SHUFFLE
           args[0].evaluate(environment, options).shuffle()
-        when :SORT
-          args[0].evaluate(environment, options).sort()
         when :TAIL
           args[0].evaluate(environment, options).last(args[1] || 1)
         else
