@@ -291,7 +291,7 @@ module Hotdog
       def get_all_tags() #==> Hash<Tag,Array<Host>>
         endpoint = options[:endpoint]
         requests = {all_downtime: "/api/v1/downtime", all_tags: "/api/v1/tags/hosts"}
-        query = URI.encode_www_form(api_key: options[:api_key], application_key: options[:application_key])
+        query = URI.encode_www_form(api_key: application.api_key, application_key: application.application_key)
         begin
           parallelism = Parallel.processor_count
           responses = Hash[Parallel.map(requests, in_threads: parallelism) { |name, request_path|
@@ -323,7 +323,7 @@ module Hotdog
       end
 
       def dog()
-        @dog ||= Dogapi::Client.new(options[:api_key], options[:application_key])
+        @dog ||= Dogapi::Client.new(application.api_key, application.application_key)
       end
 
       def split_tag(tag)

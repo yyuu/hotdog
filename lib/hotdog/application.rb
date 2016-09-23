@@ -76,14 +76,6 @@ module Hotdog
           exit(1)
         end
 
-        unless options[:api_key]
-          raise("DATADOG_API_KEY is not set")
-        end
-
-        unless options[:application_key]
-          raise("DATADOG_APPLICATION_KEY is not set")
-        end
-
         if options[:format] == "ltsv"
           options[:headers] = true
         end
@@ -108,6 +100,22 @@ module Hotdog
         else
           exit(1)
         end
+      end
+    end
+
+    def api_key()
+      if @options[:api_key]
+        @options[:api_key]
+      else
+        raise("DATADOG_API_KEY is not set")
+      end
+    end
+
+    def application_key()
+      if options[:application_key]
+        options[:application_key]
+      else
+        raise("DATADOG_APPLICATION_KEY is not set")
       end
     end
 
