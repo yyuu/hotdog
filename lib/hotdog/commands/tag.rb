@@ -6,7 +6,11 @@ module Hotdog
   module Commands
     class Tag < BaseCommand
       def define_options(optparse, options={})
+        default_option(options, :tag_source, "user")
         default_option(options, :tags, [])
+        optparse.on("--source SOURCE") do |v|
+          options[:tag_source] = v
+        end
         optparse.on("--tag TAG") do |v|
           options[:tags] << v
         end
@@ -20,9 +24,9 @@ module Hotdog
             # nop
           else
             # add all as user tags
-            code, add_tags = dog.add_tags(host_name, options[:tags], source="user")
+            code, add_tags = dog.add_tags(host_name, options[:tags], source=options[:tag_source])
             if code.to_i / 100 != 2
-              raise("dog.add_tags(#{host_name.inspect}, #{options[:tags].inspect}, source=\"user\") returns [#{code.inspect}, #{add_tags.inspect}]")
+              raise("dog.add_tags(#{host_name.inspect}, #{options[:tags].inspect}, source=#{options[:tag_source].inspect}) returns [#{code.inspect}, #{add_tags.inspect}]")
             end
           end
         end
