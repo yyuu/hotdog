@@ -19,6 +19,9 @@ module Hotdog
         optparse.on("--stop-on-error", "Stop execution when a remote command fails (valid only if -P is set)") do |v|
           options[:stop_on_error] = v
         end
+        optparse.on("--sleep SECONDS", "Sleep between execution (valid only if -P is set)", Float) do |v|
+          options[:sleep] = v
+        end
       end
 
       private
@@ -40,6 +43,9 @@ module Hotdog
             success = exec_command(identifier, cmdline, index: i, output: true, infile: (infile ? infile.path : nil))
             if !success && options[:stop_on_error]
               raise StopException.new
+            end
+            if options[:sleep]
+              sleep options[:sleep]
             end
             success
           }
