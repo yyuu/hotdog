@@ -104,10 +104,15 @@ module Hotdog
     end
 
     def api_key()
-      if @options[:api_key]
-        @options[:api_key]
+      if options[:api_key]
+        options[:api_key]
       else
-        raise("DATADOG_API_KEY is not set")
+        update_api_key!
+        if options[:api_key]
+          options[:api_key]
+        else
+          raise("DATADOG_API_KEY is not set")
+        end
       end
     end
 
@@ -115,7 +120,12 @@ module Hotdog
       if options[:application_key]
         options[:application_key]
       else
-        raise("DATADOG_APPLICATION_KEY is not set")
+        update_application_key!
+        if options[:application_key]
+          options[:application_key]
+        else
+          raise("DATADOG_APPLICATION_KEY is not set")
+        end
       end
     end
 
@@ -237,6 +247,28 @@ module Hotdog
         else
           find_confdir(File.dirname(path))
         end
+      end
+    end
+
+    def update_api_key!()
+      if options[:api_key_command]
+        options[:api_key] = IO.popen(options[:api_key_command]).read.strip
+      else
+        update_keys!
+      end
+    end
+
+    def update_application_key!()
+      if options[:application_key_command]
+        options[:application_key] = IO.popen(options[:application_key_command]).read.strip
+      else
+        update_keys!
+      end
+    end
+
+    def update_keys!()
+      if options[:key_command]
+        options[:api_key], options[:application_key] = IO.popen(options[:key_command]).read.strip.split(":", 2)
       end
     end
   end
