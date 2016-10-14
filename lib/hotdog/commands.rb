@@ -18,7 +18,7 @@ module Hotdog
 
       def initialize(application)
         @application = application
-        @logger = application.options[:logger]
+        @logger = application.logger
         @options = application.options
         @dog = nil # lazy initialization
         @prepared_statements = {}
