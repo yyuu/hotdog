@@ -13,6 +13,9 @@ module Hotdog
 
   class Application
     def initialize()
+      @logger = Logger.new(STDERR).tap { |logger|
+        logger.level = Logger::INFO
+      }
       @optparse = OptionParser.new
       @optparse.version = Hotdog::VERSION
       @options = {
@@ -28,9 +31,7 @@ module Hotdog
         format: "plain",
         headers: false,
         listing: false,
-        logger: Logger.new(STDERR).tap { |logger|
-          logger.level = Logger::INFO
-        },
+        logger: @logger,
         max_time: 5,
         offline: false,
         print0: false,
@@ -42,6 +43,7 @@ module Hotdog
       }
       define_options
     end
+    attr_reader :logger
     attr_reader :options
     attr_reader :optparse
 
@@ -252,6 +254,7 @@ module Hotdog
 
     def update_api_key!()
       if options[:api_key_command]
+        logger.info("api_key_command> #{options[:api_key_command]}")
         options[:api_key] = IO.popen(options[:api_key_command]).read.strip
       else
         update_keys!
@@ -260,6 +263,7 @@ module Hotdog
 
     def update_application_key!()
       if options[:application_key_command]
+        logger.info("application_key_command> #{options[:application_key_command]}")
         options[:application_key] = IO.popen(options[:application_key_command]).read.strip
       else
         update_keys!
@@ -268,6 +272,7 @@ module Hotdog
 
     def update_keys!()
       if options[:key_command]
+        logger.info("key_command> #{options[:key_command]}")
         options[:api_key], options[:application_key] = IO.popen(options[:key_command]).read.strip.split(":", 2)
       end
     end
