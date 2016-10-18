@@ -11,7 +11,7 @@ module Hotdog
         optparse.on("--source SOURCE") do |v|
           options[:tag_source] = v
         end
-        optparse.on("--tag TAG") do |v|
+        optparse.on("-a TAG", "-t TAG", "--tag TAG", "Use specified tag name/value") do |v|
           options[:tags] << v
         end
       end
