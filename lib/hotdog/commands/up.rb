@@ -24,17 +24,7 @@ module Hotdog
           end
         }
         all_downtimes = nil
-        if 0 < options[:retry]
-          options[:retry].times do |i|
-            begin
-              all_downtimes = get_all_downtimes(options)
-              break
-            rescue => error
-              logger.warn(error.to_s)
-              sleep(options[:retry_delay] || (1<<i))
-            end
-          end
-        else
+        with_retry(options) do
           all_downtimes = get_all_downtimes(options)
         end
 
@@ -43,17 +33,7 @@ module Hotdog
         }
 
         cancel_downtimes.each do |downtime|
-          if 0 < options[:retry]
-            options[:retry].times do |i|
-              begin
-                cancel_downtime(downtime["id"], options)
-                break
-              rescue => error
-                logger.warn(error.to_s)
-                sleep(options[:retry_delay] || (1<<i))
-              end
-            end
-          else
+          with_retry(options) do
             cancel_downtime(downtime["id"], options)
           end
         end

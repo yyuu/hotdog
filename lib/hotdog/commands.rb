@@ -344,6 +344,18 @@ module Hotdog
         backup.step(-1)
         backup.finish
       end
+
+      def with_retry(options={}, &block)
+        (options[:retry] || 1).times do |i|
+          begin
+            return yield
+          rescue => error
+            logger.warn(error.to_s)
+            sleep(options[:retry_delay] || (1<<i))
+          end
+        end
+        raise("retry count exceeded")
+      end
     end
   end
 end
