@@ -7,8 +7,8 @@ module Hotdog
     class Down < BaseCommand
       def define_options(optparse, options={})
         default_option(options, :downtime, 86400)
-        default_option(options, :start, Time.new)
         default_option(options, :retry, 5)
+        default_option(options, :start, Time.new)
         optparse.on("--downtime DURATION") do |v|
           options[:downtime] = v.to_i
         end
@@ -30,17 +30,7 @@ module Hotdog
           else
             scope = arg
           end
-          if 0 < options[:retry]
-            options[:retry].times do |i|
-              begin
-                schedule_downtime(scope, options)
-                break
-              rescue => error
-                logger.warn(error.to_s)
-                sleep(options[:retry_delay] || (1<<i))
-              end
-            end
-          else
+          with_retry(options) do
             schedule_downtime(scope, options)
           end
         end

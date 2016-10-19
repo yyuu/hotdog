@@ -6,8 +6,15 @@ module Hotdog
   module Commands
     class Tag < BaseCommand
       def define_options(optparse, options={})
+        default_option(options, :retry, 5)
         default_option(options, :tag_source, "user")
         default_option(options, :tags, [])
+        optparse.on("--retry NUM") do |v|
+          options[:retry] = v.to_i
+        end
+        optparse.on("--retry-delay SECONDS") do |v|
+          options[:retry_delay] = v.to_i
+        end
         optparse.on("--source SOURCE") do |v|
           options[:tag_source] = v
         end
@@ -24,9 +31,8 @@ module Hotdog
             # nop
           else
             # add all as user tags
-            code, add_tags = dog.add_tags(host_name, options[:tags], source=options[:tag_source])
-            if code.to_i / 100 != 2
-              raise("dog.add_tags(#{host_name.inspect}, #{options[:tags].inspect}, source=#{options[:tag_source].inspect}) returns [#{code.inspect}, #{add_tags.inspect}]")
+            with_retry(options) do
+              add_tags(host_name, options[:tags], source=options[:tag_source])
             end
           end
         end
@@ -37,6 +43,15 @@ module Hotdog
         end
         FileUtils.rm_f(File.join(options[:confdir], PERSISTENT_DB))
       end
+    end
+
+    private
+    def add_tags(host_name, tags, options={})
+      code, add_tags = dog.add_tags(host_name, tags, options)
+      if code.to_i / 100 != 2
+        raise("dog.add_tags(#{host_name.inspect}, #{tags.inspect}, #{options.inspect}) returns [#{code.inspect}, #{add_tags.inspect}]")
+      end
+      add_tags
     end
   end
 end
