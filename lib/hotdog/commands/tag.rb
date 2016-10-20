@@ -43,15 +43,15 @@ module Hotdog
         end
         FileUtils.rm_f(File.join(options[:confdir], PERSISTENT_DB))
       end
-    end
 
-    private
-    def add_tags(host_name, tags, options={})
-      code, add_tags = dog.add_tags(host_name, tags, options)
-      if code.to_i / 100 != 2
-        raise("dog.add_tags(#{host_name.inspect}, #{tags.inspect}, #{options.inspect}) returns [#{code.inspect}, #{add_tags.inspect}]")
+      private
+      def add_tags(host_name, tags, options={})
+        code, resp = dog.add_tags(host_name, tags, options)
+        if code.to_i / 100 != 2
+          raise("dog.add_tags(#{host_name.inspect}, #{tags.inspect}, #{options.inspect}) returns [#{code.inspect}, #{resp.inspect}]")
+        end
+        resp
       end
-      add_tags
     end
   end
 end
