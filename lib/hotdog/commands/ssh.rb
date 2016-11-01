@@ -17,6 +17,10 @@ module Hotdog
         default_option(options, :color, :auto)
         default_option(options, :max_parallelism, Parallel.processor_count)
         default_option(options, :shuffle, false)
+        default_option(options, :ssh_config, nil)
+        optparse.on("-F SSH_CONFIG", "Specifies an alternative per-user SSH configuration file.") do |configfile|
+          options[:ssh_config] = configfile
+        end
         optparse.on("-o SSH_OPTION", "Passes this string to ssh command through shell. This option may be given multiple times") do |option|
           options[:options] += [option]
         end
@@ -114,6 +118,9 @@ module Hotdog
         cmdline = []
         if options[:forward_agent]
           cmdline << "-A"
+        end
+        if options[:ssh_config]
+          cmdline << "-F" << options[:ssh_config]
         end
         if options[:identity_file]
           cmdline << "-i" << options[:identity_file]

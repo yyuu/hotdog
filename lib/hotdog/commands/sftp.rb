@@ -21,6 +21,9 @@ module Hotdog
         if options[:forward_agent]
           # nop
         end
+        if options[:ssh_config]
+          cmdline << "-F" << options[:ssh_config]
+        end
         if options[:identity_file]
           arguments << "-i" << options[:identity_file]
         end
