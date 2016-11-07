@@ -120,7 +120,7 @@ module Hotdog
           cmdline << "-A"
         end
         if options[:ssh_config]
-          cmdline << "-F" << options[:ssh_config]
+          cmdline << "-F" << File.expand_path(options[:ssh_config])
         end
         if options[:identity_file]
           cmdline << "-i" << options[:identity_file]
