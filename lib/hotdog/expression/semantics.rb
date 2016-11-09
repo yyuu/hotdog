@@ -462,15 +462,27 @@ module Hotdog
                 "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
                 "WHERE tags.name = ? AND hosts_tags.host_id IN (%s) " \
                 "GROUP BY tags.value;" % intermediate.map { "?" }.join(", ")
-          QueryExpressionNode.new(q, [args[1]] + intermediate, fallback: nil).evaluate(environment, options)
+          if TagExpressionNode === args[1]
+            # workaround for expressions like `ORDER_BY((environment:development),role)`
+            args1 = args[1].tag_name
+          else
+            args1 = args[1]
+          end
+          QueryExpressionNode.new(q, [args1] + intermediate, fallback: nil).evaluate(environment, options)
         when :ORDER_BY
           intermediate = args[0].evaluate(environment, options)
           if args[1]
+            if TagExpressionNode === args[1]
+              # workaround for expressions like `ORDER_BY((environment:development),role)`
+              args1 = args[1].tag_name
+            else
+              args1 = args[1]
+            end
             q = "SELECT hosts_tags.host_id FROM hosts_tags " \
                   "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
                   "WHERE tags.name = ? AND hosts_tags.host_id IN (%s) " \
                   "ORDER BY tags.value;" % intermediate.map { "?" }.join(", ")
-            QueryExpressionNode.new(q, [args[1]] + intermediate, fallback: nil).evaluate(environment, options)
+            QueryExpressionNode.new(q, [args1] + intermediate, fallback: nil).evaluate(environment, options)
           else
             q = "SELECT hosts_tags.host_id FROM hosts_tags " \
                   "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
