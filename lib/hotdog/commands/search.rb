@@ -2,6 +2,7 @@
 
 require "json"
 require "parslet"
+require "shellwords"
 require "hotdog/expression"
 
 module Hotdog
@@ -15,7 +16,14 @@ module Hotdog
 
       def parse_options(optparse, args=[])
         if args.index("--")
-          @remote_command = args.slice(args.index("--") + 1, args.length).join(" ")
+          command_args = args.slice(args.index("--") + 1, args.length)
+          if command_args.length <= 1
+            # Use given argument as is if the remote command is specified as a quoted string
+            # e.g. 'for f in /tmp/foo*; do echo $f; done'
+            @remote_command = command_args.first
+          else
+            @remote_command = Shellwords.shelljoin(command_args)
+          end
           optparse.parse(args.slice(0, args.index("--")))
         else
           @remote_command = nil
