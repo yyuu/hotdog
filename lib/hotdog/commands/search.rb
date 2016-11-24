@@ -2,7 +2,6 @@
 
 require "json"
 require "parslet"
-require "shellwords"
 require "hotdog/expression"
 
 module Hotdog
@@ -16,7 +15,7 @@ module Hotdog
 
       def parse_options(optparse, args=[])
         if args.index("--")
-          @remote_command = Shellwords.shelljoin(args.slice(args.index("--") + 1, args.length))
+          @remote_command = args.slice(args.index("--") + 1, args.length).join(" ")
           optparse.parse(args.slice(0, args.index("--")))
         else
           @remote_command = nil
