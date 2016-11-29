@@ -17,7 +17,7 @@ module Hotdog
       end
 
       def build_command_options(options={})
-        arguments = []
+        cmdline = []
         if options[:forward_agent]
           # nop
         end
@@ -25,21 +25,21 @@ module Hotdog
           cmdline << "-F" << File.expand_path(options[:ssh_config])
         end
         if options[:identity_file]
-          arguments << "-i" << options[:identity_file]
+          cmdline << "-i" << options[:identity_file]
         end
         if options[:user]
-          arguments << "-o" << "User=#{options[:user]}"
+          cmdline << "-o" << "User=#{options[:user]}"
         end
         if options[:options]
-          arguments += options[:options].flat_map { |option| ["-o", option] }
+          cmdline += options[:options].flat_map { |option| ["-o", option] }
         end
         if options[:port]
-          arguments << "-P" << options[:port]
+          cmdline << "-P" << options[:port]
         end
         if options[:verbose]
-          arguments << "-v"
+          cmdline << "-v"
         end
-        arguments
+        cmdline
       end
     end
   end
