@@ -19,6 +19,9 @@ module Hotdog
         if options[:forward_agent]
           cmdline << "-o" << "ForwardAgent=yes"
         end
+        if options[:compression]
+          cmdline << "-C"
+        end
         if options[:ssh_config]
           cmdline << "-F" << File.expand_path(options[:ssh_config])
         end
