@@ -18,6 +18,9 @@ module Hotdog
         default_option(options, :max_parallelism, Parallel.processor_count)
         default_option(options, :shuffle, false)
         default_option(options, :ssh_config, nil)
+        optparse.on("-C", "Enable compression.") do |v|
+          options[:compression] = v
+        end
         optparse.on("-F SSH_CONFIG", "Specifies an alternative per-user SSH configuration file.") do |configfile|
           options[:ssh_config] = configfile
         end
@@ -118,6 +121,9 @@ module Hotdog
         cmdline = []
         if options[:forward_agent]
           cmdline << "-A"
+        end
+        if options[:compression]
+          cmdline << "-C"
         end
         if options[:ssh_config]
           cmdline << "-F" << File.expand_path(options[:ssh_config])
