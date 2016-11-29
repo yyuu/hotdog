@@ -19,7 +19,7 @@ module Hotdog
       def build_command_options(options={})
         cmdline = []
         if options[:forward_agent]
-          # nop
+          cmdline << "-o" << "ForwardAgent=yes"
         end
         if options[:ssh_config]
           cmdline << "-F" << File.expand_path(options[:ssh_config])
