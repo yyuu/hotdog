@@ -57,11 +57,7 @@ module Hotdog
       end
 
       def run(args=[], options={})
-        expression = args.join(" ").strip
-        if expression.empty?
-          # return everything if given expression is empty
-          expression = "*"
-        end
+        expression = rewrite_expression(args.join(" ").strip)
 
         begin
           node = parse(expression)
@@ -72,15 +68,20 @@ module Hotdog
 
         result0 = evaluate(node, self)
         tuples, fields = get_hosts_with_search_tags(result0, node)
-        if options[:shuffle]
-          tuples = tuples.shuffle()
-        end
         tuples = filter_hosts(tuples)
         validate_hosts!(tuples, fields)
         run_main(tuples.map {|tuple| tuple.first }, options)
       end
 
       private
+      def rewrite_expression(expression)
+        expression = super(expression)
+        if options[:shuffle]
+          expression = "SHUFFLE((#{expression}))"
+        end
+        expression
+      end
+
       def parallelism(hosts)
         options[:max_parallelism] || hosts.size
       end
@@ -199,6 +200,14 @@ module Hotdog
       end
 
       private
+      def rewrite_expression(expression)
+        expression = super(expression)
+        if options[:index]
+          expression = "SLICE((#{expression}), #{options[:index]}, 1)"
+        end
+        expression
+      end
+
       def filter_hosts(tuples)
         tuples = super
         if options[:index] and options[:index] < tuples.length
