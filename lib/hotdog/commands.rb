@@ -178,9 +178,11 @@ module Hotdog
         db.close()
       end
 
-      def update_db(options={})
+      def open_db(options={})
         options = @options.merge(options)
-        if @db.nil?
+        if @db
+          @db
+        else
           FileUtils.mkdir_p(options[:confdir])
           persistent = File.join(options[:confdir], PERSISTENT_DB)
 
@@ -194,7 +196,6 @@ module Hotdog
                     LIMIT 1;
               EOS
               @db = persistent_db
-              return
             rescue SQLite3::SQLException
               if options[:offline]
                 raise(RuntimeError.new("no database available on offline mode"))
@@ -203,7 +204,15 @@ module Hotdog
               end
             end
           end
+          @db
+        end
+      end
 
+      def update_db(options={})
+        options = @options.merge(options)
+        if open_db(options)
+          @db
+        else
           memory_db = SQLite3::Database.new(":memory:")
           execute_db(memory_db, <<-EOS)
             CREATE TABLE IF NOT EXISTS hosts (
@@ -268,13 +277,13 @@ module Hotdog
           end
 
           # backup in-memory db to file
+          FileUtils.mkdir_p(options[:confdir])
+          persistent = File.join(options[:confdir], PERSISTENT_DB)
           FileUtils.rm_f(persistent)
           persistent_db = SQLite3::Database.new(persistent)
           copy_db(memory_db, persistent_db)
-          close_db(persistent_db)
-          @db = memory_db
-        else
-          @db
+          close_db(memory_db)
+          @db = persistent_db
         end
       end
 

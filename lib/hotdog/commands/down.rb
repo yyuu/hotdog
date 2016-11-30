@@ -24,22 +24,28 @@ module Hotdog
       end
 
       def run(args=[], options={})
-        args.each do |arg|
+        scopes = args.map { |arg|
           if arg.index(":").nil?
-            scope = "host:#{arg}"
+            "host:#{arg}"
           else
-            scope = arg
+            arg
           end
+        }
+        scopes.each do |scope|
           with_retry(options) do
             schedule_downtime(scope, options)
           end
         end
-
-        # Remove persistent.db to schedule update on next invocation
-        if @db
-          close_db(@db)
+        hosts = scopes.select { |scope| scope.start_with?("host:") }.map { |scope|
+          scope.slice("host:".length, scope.length)
+        }
+        if 0 < hosts.length
+          if open_db
+            host_ids = execute_db(@db, "SELECT id FROM hosts WHERE name IN (%s)" % hosts.map { "?" }.join(", "), hosts)
+            execute_db(@db, "DELETE FROM hosts WHERE id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids)
+            execute_db(@db, "DELETE FROM hosts_tags WHERE host_id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids)
+          end
         end
-        FileUtils.rm_f(File.join(options[:confdir], PERSISTENT_DB))
       end
 
       private
