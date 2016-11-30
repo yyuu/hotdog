@@ -36,11 +36,7 @@ module Hotdog
         if @remote_command
           logger.warn("ignore remote command: #{@remote_command}")
         end
-        expression = args.join(" ").strip
-        if expression.empty?
-          # return everything if given expression is empty
-          expression = "*"
-        end
+        expression = rewrite_expression(args.join(" ").strip)
 
         begin
           node = parse(expression)
@@ -113,6 +109,15 @@ module Hotdog
         else
           raise("parser error: unknown expression: #{node.inspect}")
         end
+      end
+
+      private
+      def rewrite_expression(expression)
+        if expression.empty?
+          # return everything if given expression is empty
+          expression = "*"
+        end
+        expression
       end
     end
   end

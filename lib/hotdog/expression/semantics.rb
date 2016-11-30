@@ -430,6 +430,8 @@ module Hotdog
           args[0] = FuncallNode.new("SHUFFLE", [args[0]])
         when "SHUFFLE", "shuffle"
           @function = :SHUFFLE
+        when "SLICE", "slice"
+          @function = :SLICE
         when "SORT", "sort"
           @function = :ORDER_BY
         when "TAIL", "tail"
@@ -477,6 +479,8 @@ module Hotdog
           @args[0] = @args[0].optimize(options)
         when :SHUFFLE
           @args[0] = @args[0].optimize(options)
+        when :SLICE
+          @args[0] = @args[0].optimize(options)
         when :TAIL
           @args[0] = @args[0].optimize(options)
         end
@@ -513,6 +517,8 @@ module Hotdog
           args[0].evaluate(environment, options).reverse()
         when :SHUFFLE
           args[0].evaluate(environment, options).shuffle()
+        when :SLICE
+          args[0].evaluate(environment, options).slice(args[1], args[2] || 1)
         when :TAIL
           args[0].evaluate(environment, options).last(args[1] || 1)
         else
