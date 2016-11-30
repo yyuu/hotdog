@@ -20,6 +20,9 @@ module Hotdog
         optparse.on("-F SSH_CONFIG", "Specifies an alternative per-user SSH configuration file.") do |configfile|
           options[:ssh_config] = configfile
         end
+        optparse.on("--dry-run", "Dry run.") do |v|
+          options[:dry_run] = v
+        end
         optparse.on("-o SSH_OPTION", "Passes this string to ssh command through shell. This option may be given multiple times") do |ssh_option|
           ssh_option_key, ssh_option_value = ssh_option.split("=", 2)
           options[:ssh_options][ssh_option_key] = ssh_option_value
@@ -218,7 +221,12 @@ module Hotdog
       def run_main(hosts, options={})
         cmdline = build_command_string(hosts.first, @remote_command, options)
         logger.debug("execute: #{cmdline}")
-        exec(cmdline)
+        if options[:dry_run]
+          STDOUT.puts(cmdline)
+          exit(0)
+        else
+          exec(cmdline)
+        end
         exit(127)
       end
     end
