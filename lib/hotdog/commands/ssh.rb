@@ -9,35 +9,32 @@ module Hotdog
   module Commands
     class SshAlike < Search
       def define_options(optparse, options={})
-        default_option(options, :options, [])
-        default_option(options, :user, nil)
-        default_option(options, :port, nil)
-        default_option(options, :identity_file, nil)
-        default_option(options, :forward_agent, false)
+        default_option(options, :ssh_options, {})
         default_option(options, :color, :auto)
         default_option(options, :max_parallelism, Parallel.processor_count)
         default_option(options, :shuffle, false)
         default_option(options, :ssh_config, nil)
         optparse.on("-C", "Enable compression.") do |v|
-          options[:compression] = v
+          options[:ssh_options]["Compression"] = "yes"
         end
         optparse.on("-F SSH_CONFIG", "Specifies an alternative per-user SSH configuration file.") do |configfile|
           options[:ssh_config] = configfile
         end
-        optparse.on("-o SSH_OPTION", "Passes this string to ssh command through shell. This option may be given multiple times") do |option|
-          options[:options] += [option]
+        optparse.on("-o SSH_OPTION", "Passes this string to ssh command through shell. This option may be given multiple times") do |ssh_option|
+          ssh_option_key, ssh_option_value = ssh_option.split("=", 2)
+          options[:ssh_options][ssh_option_key] = ssh_option_value
         end
         optparse.on("-i SSH_IDENTITY_FILE", "SSH identity file path") do |path|
-          options[:identity_file] = path
+          options[:ssh_options]["IdentityFile"] = path
         end
         optparse.on("-A", "Enable agent forwarding", TrueClass) do |b|
-          options[:forward_agent] = b
+          options[:ssh_options]["ForwardAgent"] = "yes"
         end
         optparse.on("-p PORT", "Port of the remote host", Integer) do |port|
-          options[:port] = port
+          options[:ssh_options]["Port"] = port
         end
         optparse.on("-u SSH_USER", "SSH login user name") do |user|
-          options[:user] = user
+          options[:ssh_options]["User"] = user
         end
         optparse.on("-v", "--verbose", "Enable verbose ode") do |v|
           options[:verbose] = v
@@ -119,27 +116,10 @@ module Hotdog
 
       def build_command_options(options={})
         cmdline = []
-        if options[:forward_agent]
-          cmdline << "-A"
-        end
-        if options[:compression]
-          cmdline << "-C"
-        end
         if options[:ssh_config]
           cmdline << "-F" << File.expand_path(options[:ssh_config])
         end
-        if options[:identity_file]
-          cmdline << "-i" << options[:identity_file]
-        end
-        if options[:user]
-          cmdline << "-l" << options[:user]
-        end
-        if options[:options]
-          cmdline += options[:options].flat_map { |option| ["-o", option] }
-        end
-        if options[:port]
-          cmdline << "-p" << options[:port].to_s
-        end
+        cmdline += options[:ssh_options].flat_map { |k, v| ["-o", "#{k}=#{v}"] }
         if options[:verbose]
           cmdline << "-v"
         end
