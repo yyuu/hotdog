@@ -87,7 +87,7 @@ module Hotdog
         )
       }
       rule(:integer) {
-        ( match('[1-9]').repeat(1) >> match('[0-9]').repeat(0) \
+        ( match('[0-9]').repeat(1) \
         )
       }
       rule(:string) {
