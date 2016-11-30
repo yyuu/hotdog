@@ -34,15 +34,24 @@ module Hotdog
           infile.seek(0)
         end
         begin
-          stats = Parallel.map(hosts.each_with_index.to_a, in_threads: parallelism(hosts)) { |host, i|
-            cmdline = build_command_string(host, @remote_command, options)
-            identifier = options[:show_identifier] ? host : nil
-            success = exec_command(identifier, cmdline, index: i, output: true, infile: (infile ? infile.path : nil))
-            if !success && options[:stop_on_error]
-              raise StopException.new
-            end
-            success
+          hosts_cmdlines = hosts.map { |host|
+            [host, build_command_string(host, @remote_command, options)]
           }
+          if options[:dry_run]
+            stats = hosts_cmdlines.map { |host, cmdline|
+              STDOUT.puts(cmdline)
+              true
+            }
+          else
+            stats = Parallel.map(hosts_cmdlines.each_with_index.to_a, in_threads: parallelism(hosts)) { |(host, cmdline), i|
+              identifier = options[:show_identifier] ? host : nil
+              success = exec_command(identifier, cmdline, index: i, output: true, infile: (infile ? infile.path : nil))
+              if !success && options[:stop_on_error]
+                raise StopException.new
+              end
+              success
+            }
+          end
           if stats.all?
             exit(0)
           else
