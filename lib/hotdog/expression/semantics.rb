@@ -425,6 +425,9 @@ module Hotdog
           @function = :ORDER_BY
         when "REVERSE", "reverse"
           @function = :REVERSE
+        when "SAMPLE", "sample"
+          @function = :HEAD
+          args[0] = FuncallNode.new("SHUFFLE", [args[0]])
         when "SHUFFLE", "shuffle"
           @function = :SHUFFLE
         when "SORT", "sort"
