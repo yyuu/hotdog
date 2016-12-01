@@ -42,8 +42,8 @@ module Hotdog
         if 0 < hosts.length
           if open_db
             host_ids = execute_db(@db, "SELECT id FROM hosts WHERE name IN (%s)" % hosts.map { "?" }.join(", "), hosts)
-            execute_db(@db, "DELETE FROM hosts WHERE id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids)
             execute_db(@db, "DELETE FROM hosts_tags WHERE host_id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids)
+            execute_db(@db, "DELETE FROM hosts WHERE id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids)
           end
         end
       end

@@ -48,11 +48,22 @@ module Hotdog
           end
         end
 
-        # Remove persistent.db to schedule update on next invocation
-        if @db
-          close_db(@db)
+        if options[:tags].empty?
+          # refresh all persistent.db since there is no way to identify user tags
+          if @db
+            close_db(@db)
+          end
+          FileUtils.rm_f(File.join(options[:confdir], PERSISTENT_DB))
+        else
+          if open_db
+            options[:tags].each do |tag|
+              q = "DELETE FROM hosts_tags " \
+                    "WHERE host_id IN ( SELECT id FROM hosts WHERE name IN (%s) ) " \
+                    "AND tag_id IN ( SELECT id FROM tags WHERE name = ? AND value = ? LIMIT 1 );" % hosts.map { "?" }.join(", ")
+              execute_db(@db, q, hosts + split_tag(tag))
+            end
+          end
         end
-        FileUtils.rm_f(File.join(options[:confdir], PERSISTENT_DB))
       end
 
       private
