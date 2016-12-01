@@ -24,24 +24,29 @@ module Hotdog
       end
 
       def run(args=[], options={})
-        args.each do |host_name|
-          host_name = host_name.sub(/\Ahost:/, "")
-
+        hosts = args.map { |arg|
+          arg.sub(/\Ahost:/, "")
+        }
+        hosts.each do |host|
           if options[:tags].empty?
             # nop
           else
             # add all as user tags
             with_retry(options) do
-              add_tags(host_name, options[:tags], source=options[:tag_source])
+              add_tags(host, options[:tags], source=options[:tag_source])
             end
           end
         end
-
-        # Remove persistent.db to schedule update on next invocation
-        if @db
-          close_db(@db)
+        if open_db
+          options[:tags].each do |tag|
+            execute_db(@db, "INSERT OR IGNORE INTO tags (name, value) VALUES (?, ?)", split_tag(tag))
+            q = "INSERT OR REPLACE INTO hosts_tags (host_id, tag_id) " \
+                  "SELECT host.id, tag.id FROM " \
+                    "( SELECT id FROM hosts WHERE name IN (%s) ) AS host, " \
+                    "( SELECT id FROM tags WHERE name = ? AND value = ? LIMIT 1 ) AS tag;" % hosts.map { "?" }.join(", ")
+            execute_db(@db, q, (hosts + split_tag(tag)))
+          end
         end
-        FileUtils.rm_f(File.join(options[:confdir], PERSISTENT_DB))
       end
 
       private
