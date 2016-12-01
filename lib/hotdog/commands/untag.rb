@@ -24,33 +24,46 @@ module Hotdog
       end
 
       def run(args=[], options={})
-        args.each do |host_name|
-          host_name = host_name.sub(/\Ahost:/, "")
+        hosts = args.map { |arg|
+          arg.sub(/\Ahost:/, "")
+        }
 
+        hosts.each do |host|
           if options[:tags].empty?
             # delete all user tags
             with_retry do
-              detach_tags(host_name, source=options[:tag_source])
+              detach_tags(host, source=options[:tag_source])
             end
           else
-            host_tags = with_retry { host_tags(host_name, source=options[:tag_source]) }
+            host_tags = with_retry { host_tags(host, source=options[:tag_source]) }
             old_tags = host_tags["tags"]
             new_tags = old_tags - options[:tags]
             if old_tags == new_tags
               # nop
             else
               with_retry do
-                update_tags(host_name, new_tags, source=options[:tag_source])
+                update_tags(host, new_tags, source=options[:tag_source])
               end
             end
           end
         end
 
-        # Remove persistent.db to schedule update on next invocation
-        if @db
-          close_db(@db)
+        if options[:tags].empty?
+          # refresh all persistent.db since there is no way to identify user tags
+          if @db
+            close_db(@db)
+          end
+          FileUtils.rm_f(File.join(options[:confdir], PERSISTENT_DB))
+        else
+          if open_db
+            options[:tags].each do |tag|
+              q = "DELETE FROM hosts_tags " \
+                    "WHERE host_id IN ( SELECT id FROM hosts WHERE name IN (%s) ) " \
+                    "AND tag_id IN ( SELECT id FROM tags WHERE name = ? AND value = ? LIMIT 1 );" % hosts.map { "?" }.join(", ")
+              execute_db(@db, q, hosts + split_tag(tag))
+            end
+          end
         end
-        FileUtils.rm_f(File.join(options[:confdir], PERSISTENT_DB))
       end
 
       private
