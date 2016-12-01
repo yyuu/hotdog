@@ -41,10 +41,11 @@ module Hotdog
         }
         if 0 < hosts.length
           if open_db
-            host_ids = execute_db(@db, "SELECT id FROM hosts WHERE name IN (%s)" % hosts.map { "?" }.join(", "), hosts).to_a
-            if 0 < host_ids.length
-              execute_db(@db, "DELETE FROM hosts_tags WHERE host_id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids)
-              execute_db(@db, "DELETE FROM hosts WHERE id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids)
+            if 0 < hosts.length
+              hosts.each_slice(SQLITE_LIMIT_COMPOUNT_SELECT - 2) do |hosts|
+                execute_db(@db, "DELETE FROM hosts_tags WHERE host_id IN ( SELECT id FROM hosts WHERE name IN (%s) )" % hosts.map { "?" }.join(", "), hosts)
+                execute_db(@db, "DELETE FROM hosts WHERE name IN (%s)" % hosts.map { "?" }.join(", "), hosts)
+              end
             end
           end
         end

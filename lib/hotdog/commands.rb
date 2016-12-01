@@ -241,10 +241,7 @@ module Hotdog
 
           memory_db.transaction do
             known_tags = all_tags.keys.map { |tag| split_tag(tag) }.uniq
-            known_tags.each_slice(SQLITE_LIMIT_COMPOUND_SELECT / 2) do |known_tags|
-              q = "INSERT OR IGNORE INTO tags (name, value) VALUES %s" % known_tags.map { "(?, ?)" }.join(", ")
-              execute_db(memory_db, q, known_tags)
-            end
+            create_tags(memory_db, known_tags)
 
             known_hosts = all_tags.values.reduce(:+).uniq
             known_hosts.each_slice(SQLITE_LIMIT_COMPOUND_SELECT) do |known_hosts|
@@ -253,26 +250,7 @@ module Hotdog
             end
 
             all_tags.each do |tag, hosts|
-              hosts.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 2) do |hosts|
-                q = "INSERT OR REPLACE INTO hosts_tags (host_id, tag_id) " \
-                      "SELECT host.id, tag.id FROM " \
-                        "( SELECT id FROM hosts WHERE name IN (%s) ) AS host, " \
-                        "( SELECT id FROM tags WHERE name = ? AND value = ? LIMIT 1 ) AS tag;" % hosts.map { "?" }.join(", ")
-                begin
-                  execute_db(memory_db, q, (hosts + split_tag(tag)))
-                rescue SQLite3::RangeException => error
-                  # FIXME: bulk insert occationally fails even if there are no errors in bind parameters
-                  #        `bind_param': bind or column index out of range (SQLite3::RangeException)
-                  logger.warn("bulk insert failed due to #{error.message}. fallback to normal insert.")
-                  hosts.each do |host|
-                    q = "INSERT OR REPLACE INTO hosts_tags (host_id, tag_id) " \
-                          "SELECT host.id, tag.id FROM " \
-                            "( SELECT id FROM hosts WHERE name = ? ) AS host, " \
-                            "( SELECT id FROM tags WHERE name = ? AND value = ? LIMIT 1 ) AS tag;"
-                    execute_db(memory_db, q, [host] + split_tag(tag))
-                  end
-                end
-              end
+              associate_tag_hosts(memory_db, tag, hosts)
             end
           end
 
@@ -329,6 +307,51 @@ module Hotdog
           logger.info("ignore host(s) with scheduled downtimes: #{downtimes.inspect}")
         end
         Hash[responses.fetch(:all_tags, {}).fetch("tags", []).map { |tag, hosts| [tag, hosts.reject { |host| downtimes.include?(host) }] }]
+      end
+
+      def create_tags(db, tags)
+        if 0 < tags.length
+          tags.each_slice(SQLITE_LIMIT_COMPOUND_SELECT / 2) do |tags|
+            q = "INSERT OR IGNORE INTO tags (name, value) VALUES %s" % tags.map { "(?, ?)" }.join(", ")
+            execute_db(db, q, tags)
+          end
+        end
+      end
+
+      def associate_tag_hosts(db, tag, hosts)
+        if 0 < hosts.length
+          hosts.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 2) do |hosts|
+            q = "INSERT OR REPLACE INTO hosts_tags (host_id, tag_id) " \
+                  "SELECT host.id, tag.id FROM " \
+                    "( SELECT id FROM hosts WHERE name IN (%s) ) AS host, " \
+                    "( SELECT id FROM tags WHERE name = ? AND value = ? LIMIT 1 ) AS tag;" % hosts.map { "?" }.join(", ")
+            begin
+              execute_db(db, q, (hosts + split_tag(tag)))
+            rescue SQLite3::RangeException => error
+              # FIXME: bulk insert occationally fails even if there are no errors in bind parameters
+              #        `bind_param': bind or column index out of range (SQLite3::RangeException)
+              logger.warn("bulk insert failed due to #{error.message}. fallback to normal insert.")
+              hosts.each do |host|
+                q = "INSERT OR REPLACE INTO hosts_tags (host_id, tag_id) " \
+                      "SELECT host.id, tag.id FROM " \
+                        "( SELECT id FROM hosts WHERE name = ? ) AS host, " \
+                        "( SELECT id FROM tags WHERE name = ? AND value = ? LIMIT 1 ) AS tag;"
+                execute_db(db, q, [host] + split_tag(tag))
+              end
+            end
+          end
+        end
+      end
+
+      def disassociate_tag_hosts(db, tag, hosts)
+        if 0 < hosts.length
+          hosts.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 2) do |hosts|
+            q = "DELETE FROM hosts_tags " \
+                  "WHERE tag_id IN ( SELECT id FROM tags WHERE name = ? AND value = ? LIMIT 1 );" \
+                    "AND host_id IN ( SELECT id FROM hosts WHERE name IN (%s) ) " % hosts.map { "?" }.join(", ")
+            execute_db(db, q, split_tag(tag) + hosts)
+          end
+        end
       end
 
       def dog()

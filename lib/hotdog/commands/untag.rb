@@ -57,10 +57,7 @@ module Hotdog
         else
           if open_db
             options[:tags].each do |tag|
-              q = "DELETE FROM hosts_tags " \
-                    "WHERE host_id IN ( SELECT id FROM hosts WHERE name IN (%s) ) " \
-                    "AND tag_id IN ( SELECT id FROM tags WHERE name = ? AND value = ? LIMIT 1 );" % hosts.map { "?" }.join(", ")
-              execute_db(@db, q, hosts + split_tag(tag))
+              disassociate_tag_hosts(tag, hosts)
             end
           end
         end

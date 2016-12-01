@@ -38,13 +38,9 @@ module Hotdog
           end
         end
         if open_db
+          create_tags(@db, options[:tags])
           options[:tags].each do |tag|
-            execute_db(@db, "INSERT OR IGNORE INTO tags (name, value) VALUES (?, ?)", split_tag(tag))
-            q = "INSERT OR REPLACE INTO hosts_tags (host_id, tag_id) " \
-                  "SELECT host.id, tag.id FROM " \
-                    "( SELECT id FROM hosts WHERE name IN (%s) ) AS host, " \
-                    "( SELECT id FROM tags WHERE name = ? AND value = ? LIMIT 1 ) AS tag;" % hosts.map { "?" }.join(", ")
-            execute_db(@db, q, (hosts + split_tag(tag)))
+            associae_tag_hosts(@db, tag, hosts)
           end
         end
       end
