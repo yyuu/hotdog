@@ -37,12 +37,16 @@ module Hotdog
             cancel_downtime(downtime["id"], options)
           end
         end
-
-        # Remove persistent.db to schedule update on next invocation
-        if @db
-          close_db(@db)
+        hosts = scopes.select { |scope| scope.start_with?("host:") }.map { |scope|
+          scope.slice("host:".length, scope.length)
+        }
+        if 0 < hosts.length
+          # refresh all persistent.db to retrieve information about up'd host
+          if @db
+            close_db(@db)
+          end
+          FileUtils.rm_f(File.join(options[:confdir], PERSISTENT_DB))
         end
-        FileUtils.rm_f(File.join(options[:confdir], PERSISTENT_DB))
       end
 
       private
