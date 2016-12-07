@@ -131,41 +131,33 @@ module Hotdog
         when 1
           get_hosts_field(host_ids, fields.first)
         else
-          fields_without_host = fields.reject { |tag_name| tag_name == "host" }
-          if fields == fields_without_host
-            host_names = {}
+          field_values = {}
+          if fields.find { |field| /\Ahost\z/i =~ field }
+            field_values = Hash[host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |host_ids|
+              execute("SELECT id, name FROM hosts WHERE id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids).map { |row| 
+                [row[0], {"host" => row[1]}]
+              }
+            }]
           else
-            host_names = Hash[
-              host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |host_ids|
-                execute("SELECT id, name FROM hosts WHERE id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.to_a }
-              }
-            ]
+            field_values = host_ids.map { Hash.new }
           end
-          q1 = "SELECT LOWER(tags.name), GROUP_CONCAT(tags.value, ',') FROM hosts_tags " \
-                 "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                   "WHERE hosts_tags.host_id = ? AND tags.name IN (%s) " \
-                     "GROUP BY tags.name;"
-          result = host_ids.map { |host_id|
-            tag_values = Hash[
-              fields_without_host.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 1).flat_map { |fields_without_host|
-                execute(q1 % fields_without_host.map { "?" }.join(", "), [host_id] + fields_without_host).map { |row| row.to_a }
-              }
-            ]
-            fields.map { |tag_name|
-              if tag_name == "host"
-                host_names.fetch(host_id, nil)
-              else
-                tag_value = tag_values.fetch(tag_name.downcase, nil)
-                if tag_value
-                  if tag_value.empty?
-                    tag_name # use `tag_name` as `tag_value` for the tags without any values
-                  else
-                    tag_value
-                  end
-                else
-                  nil
-                end
+
+          host_ids.each do |host_id|
+            fields.reject { |field| /\Ahost\z/i =~ field }.uniq.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 1).each do |fields|
+              q = "SELECT LOWER(tags.name), GROUP_CONCAT(tags.value, ',') FROM hosts_tags " \
+                    "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                      "WHERE hosts_tags.host_id = ? AND tags.name IN (%s) " \
+                        "GROUP BY tags.name;" % fields.map { "?" }.join(", ")
+              execute(q, [host_id] + fields).each do |row|
+                (field_values[host_id] ||= {})[row[0]] = row[1]
               end
+            end
+          end
+
+          result = host_ids.map { |host_id|
+            fields.map { |tag_name|
+              tag_value = field_values.fetch(host_id, {}).fetch(tag_name.downcase, nil)
+              display_tag(tag_name, tag_value)
             }
           }
           [result, fields]
@@ -173,7 +165,7 @@ module Hotdog
       end
 
       def get_hosts_field(host_ids, field)
-        if field == "host"
+        if /\Ahost\z/i =~ field
           result = host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |host_ids|
             execute("SELECT name FROM hosts WHERE id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.to_a }
           }
@@ -184,15 +176,7 @@ module Hotdog
                     "WHERE hosts_tags.host_id IN (%s) AND tags.name = ? " \
                       "GROUP BY hosts_tags.host_id, tags.name;" % host_ids.map { "?" }.join(", ")
             r = execute(q, host_ids + [field]).map { |tag_name, tag_value|
-              if tag_value
-                if tag_value.empty?
-                  [tag_name] # use `tag_name` as `tag_value` for the tags without any values
-                else
-                  [tag_value]
-                end
-              else
-                [nil]
-              end
+              [display_tag(tag_name, tag_value)]
             }
             if r.empty?
               host_ids.map { [nil] }
@@ -202,6 +186,18 @@ module Hotdog
           }
         end
         [result, [field]]
+      end
+
+      def display_tag(tag_name, tag_value)
+        if tag_value
+          if tag_value.empty?
+            tag_name # use `tag_name` as `tag_value` for the tags without any values
+          else
+            tag_value
+          end
+        else
+          nil
+        end
       end
 
       def close_db(db, options={})
