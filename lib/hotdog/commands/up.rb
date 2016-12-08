@@ -42,10 +42,7 @@ module Hotdog
         }
         if 0 < hosts.length
           # refresh all persistent.db to retrieve information about up'd host
-          if @db
-            close_db(@db)
-          end
-          FileUtils.rm_f(File.join(options[:confdir], PERSISTENT_DB))
+          remove_db
         end
       end
 

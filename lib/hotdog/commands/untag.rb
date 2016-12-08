@@ -50,10 +50,7 @@ module Hotdog
 
         if options[:tags].empty?
           # refresh all persistent.db since there is no way to identify user tags
-          if @db
-            close_db(@db)
-          end
-          FileUtils.rm_f(File.join(options[:confdir], PERSISTENT_DB))
+          remove_db
         else
           if open_db
             options[:tags].each do |tag|

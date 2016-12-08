@@ -272,6 +272,14 @@ module Hotdog
         end
       end
 
+      def remove_db(options={})
+        options = @options.merge(options)
+        if @db
+          close_db(@db)
+        end
+        FileUtils.rm_f(File.join(options[:confdir], PERSISTENT_DB))
+      end
+
       def execute_db(db, q, args=[])
         begin
           logger.debug("execute: #{q} -- #{args.inspect}")
