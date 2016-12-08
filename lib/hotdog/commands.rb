@@ -127,47 +127,44 @@ module Hotdog
         end
       end
 
-      def get_hosts_fields(host_ids, fields)
+      def get_hosts_fields(host_ids, fields, options={})
         case fields.length
         when 0
           [[], fields]
         when 1
-          get_hosts_field(host_ids, fields.first)
+          get_hosts_field(host_ids, fields.first, options)
         else
-          field_values = {}
           if fields.find { |field| /\Ahost\z/i =~ field }
-            field_values = Hash[host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |host_ids|
-              execute("SELECT id, name FROM hosts WHERE id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids).map { |row| 
-                [row[0], {"host" => row[1]}]
-              }
-            }]
+            host_names = Hash[execute("SELECT id, name FROM hosts WHERE id IN (%s);" % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.to_a }]
           else
-            field_values = host_ids.map { Hash.new }
+            host_names = {}
           end
 
-          host_ids.each do |host_id|
-            fields.reject { |field| /\Ahost\z/i =~ field }.uniq.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 1).each do |fields|
-              q = "SELECT LOWER(tags.name), GROUP_CONCAT(tags.value, ',') FROM hosts_tags " \
-                    "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                      "WHERE hosts_tags.host_id = ? AND tags.name IN (%s) " \
-                        "GROUP BY tags.name;" % fields.map { "?" }.join(", ")
-              execute(q, [host_id] + fields).each do |row|
-                (field_values[host_id] ||= {})[row[0]] = row[1]
-              end
-            end
-          end
-
-          result = host_ids.map { |host_id|
-            fields.map { |tag_name|
-              tag_value = field_values.fetch(host_id, {}).fetch(tag_name.downcase, nil)
-              display_tag(tag_name, tag_value)
-            }
-          }
-          [result, fields]
+          [host_ids.map { |host_id| get_host_fields(host_id, fields, options.merge(host_names: host_names)) }.map { |result, fields| result }, fields]
         end
       end
 
-      def get_hosts_field(host_ids, field)
+      def get_host_fields(host_id, fields, options={})
+        field_values = {"host" => options.fetch(:host_names, {}).fetch(host_id, nil)}
+
+        fields.reject { |field| /\Ahost\z/i =~ field }.uniq.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 1).each do |fields|
+          q = "SELECT LOWER(tags.name), GROUP_CONCAT(tags.value, ',') FROM hosts_tags " \
+                "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                  "WHERE hosts_tags.host_id = ? AND tags.name IN (%s) " \
+                    "GROUP BY tags.name;" % fields.map { "?" }.join(", ")
+          execute(q, [host_id] + fields).each do |row|
+            field_values[row[0]] = row[1]
+          end
+        end
+
+        result = fields.map { |tag_name|
+          tag_value = field_values.fetch(tag_name.downcase, nil)
+          display_tag(tag_name, tag_value)
+        }
+        [result, fields]
+      end
+
+      def get_hosts_field(host_ids, field, options={})
         if /\Ahost\z/i =~ field
           result = host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |host_ids|
             execute("SELECT name FROM hosts WHERE id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.to_a }

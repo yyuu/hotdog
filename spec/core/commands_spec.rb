@@ -1,6 +1,7 @@
 require "spec_helper"
 require "hotdog/application"
 require "hotdog/commands"
+require "hotdog/commands/search"
 
 describe "commands" do
   let(:cmd) {
@@ -99,7 +100,7 @@ describe "commands" do
   end
 
   it "get host fields with host" do
-    allow(cmd).to receive(:execute).with("SELECT id, name FROM hosts WHERE id IN (?, ?, ?)", [1, 2, 3]) {
+    allow(cmd).to receive(:execute).with("SELECT id, name FROM hosts WHERE id IN (?, ?, ?);", [1, 2, 3]) {
       [[1, "host1"], [2, "host2"], [3, "host3"]]
     }
     q1 = [
