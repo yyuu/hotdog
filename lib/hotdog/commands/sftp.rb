@@ -9,7 +9,7 @@ module Hotdog
     class Sftp < SingularSshAlike
       private
       def build_command_string(host, command=nil, options={})
-        cmdline = ["sftp"] + build_command_options(options) + [host]
+        cmdline = Shellwords.shellsplit(options.fetch(:sftp_command, "sftp")) + build_command_options(options) + [host]
         if command
           logger.warn("ignore remote command: #{command}")
         end

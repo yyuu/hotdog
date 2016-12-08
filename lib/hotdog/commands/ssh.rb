@@ -132,7 +132,7 @@ module Hotdog
 
       def build_command_string(host, command=nil, options={})
         # build ssh command
-        cmdline = ["ssh"] + build_command_options(options) + [host]
+        cmdline = Shellwords.shellsplit(options.fetch(:ssh_command, "ssh")) + build_command_options(options) + [host]
         if command
           cmdline << "--" << command
         end

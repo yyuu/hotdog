@@ -10,7 +10,7 @@ module Hotdog
       private
       def build_command_string(host, command=nil, options={})
         # replace "@:" by actual hostname
-        cmdline = ["scp"] + build_command_options(options) + Shellwords.split(command).map { |token| token.gsub(/@(?=:)/, host) }
+        cmdline = Shellwords.shellsplit(options.fetch(:scp_command, "scp")) + build_command_options(options) + Shellwords.split(command).map { |token| token.gsub(/@(?=:)/, host) }
         Shellwords.join(cmdline)
       end
     end
