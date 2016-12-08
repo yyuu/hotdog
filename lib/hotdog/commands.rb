@@ -99,7 +99,7 @@ module Hotdog
                 ] + host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |host_ids|
                   q = "SELECT DISTINCT tags.name FROM hosts_tags " \
                         "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                          "WHERE hosts_tags.host_id IN (%s)" % host_ids.map { "?" }.join(", ")
+                          "WHERE hosts_tags.host_id IN (%s);" % host_ids.map { "?" }.join(", ")
                   execute(q, host_ids).map { |row| row.first }.reject { |tag_name|
                     tag_name == @options[:primary_tag]
                   }
@@ -111,7 +111,7 @@ module Hotdog
                 ] + host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |host_ids|
                   q = "SELECT DISTINCT tags.name FROM hosts_tags " \
                         "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                          "WHERE hosts_tags.host_id IN (%s)" % host_ids.map { "?" }.join(", ")
+                          "WHERE hosts_tags.host_id IN (%s);" % host_ids.map { "?" }.join(", ")
                   execute(q, host_ids).map { |row| row.first }
                 }
                 get_hosts_fields(host_ids, fields)
