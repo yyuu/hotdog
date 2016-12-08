@@ -96,24 +96,12 @@ module Hotdog
                 fields = [
                   @options[:primary_tag],
                   "host",
-                ] + host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |host_ids|
-                  q = "SELECT DISTINCT tags.name FROM hosts_tags " \
-                        "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                          "WHERE hosts_tags.host_id IN (%s);" % host_ids.map { "?" }.join(", ")
-                  execute(q, host_ids).map { |row| row.first }.reject { |tag_name|
-                    tag_name == @options[:primary_tag]
-                  }
-                }
+                ] + get_fields(host_ids).reject { |tag_name| tag_name == @options[:primary_tag] }
                 get_hosts_fields(host_ids, fields)
               else
                 fields = [
                   "host",
-                ] + host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |host_ids|
-                  q = "SELECT DISTINCT tags.name FROM hosts_tags " \
-                        "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                          "WHERE hosts_tags.host_id IN (%s);" % host_ids.map { "?" }.join(", ")
-                  execute(q, host_ids).map { |row| row.first }
-                }
+                ] + get_fields(host_ids)
                 get_hosts_fields(host_ids, fields)
               end
             else
@@ -125,6 +113,15 @@ module Hotdog
             end
           end
         end
+      end
+
+      def get_fields(host_ids)
+        host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |host_ids|
+          q = "SELECT DISTINCT tags.name FROM hosts_tags " \
+                "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
+                  "WHERE hosts_tags.host_id IN (%s);" % host_ids.map { "?" }.join(", ")
+          execute(q, host_ids).map { |row| row.first }
+        }.uniq
       end
 
       def get_hosts_fields(host_ids, fields, options={})
