@@ -54,7 +54,7 @@ module Hotdog
         else
           if open_db
             options[:tags].each do |tag|
-              disassociate_tag_hosts(tag, hosts)
+              disassociate_tag_hosts(@db, tag, hosts)
             end
           end
         end
