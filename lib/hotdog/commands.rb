@@ -236,28 +236,7 @@ module Hotdog
         if open_db(options)
           @db
         else
-          memory_db = SQLite3::Database.new(":memory:")
-          execute_db(memory_db, "CREATE TABLE IF NOT EXISTS hosts (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(255) NOT NULL COLLATE NOCASE);")
-          execute_db(memory_db, "CREATE UNIQUE INDEX IF NOT EXISTS hosts_name ON hosts (name);")
-          execute_db(memory_db, "CREATE TABLE IF NOT EXISTS tags (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(200) NOT NULL COLLATE NOCASE, value VARCHAR(200) NOT NULL COLLATE NOCASE);")
-          execute_db(memory_db, "CREATE UNIQUE INDEX IF NOT EXISTS tags_name_value ON tags (name, value);")
-          execute_db(memory_db, "CREATE TABLE IF NOT EXISTS hosts_tags (host_id INTEGER NOT NULL, tag_id INTEGER NOT NULL);")
-          execute_db(memory_db, "CREATE UNIQUE INDEX IF NOT EXISTS hosts_tags_host_id_tag_id ON hosts_tags (host_id, tag_id);")
-
-          all_tags = get_all_tags()
-
-          memory_db.transaction do
-            known_tags = all_tags.keys.map { |tag| split_tag(tag) }.uniq
-            create_tags(memory_db, known_tags)
-
-            known_hosts = all_tags.values.reduce(:+).uniq
-            create_hosts(memory_db, known_hosts)
-
-            all_tags.each do |tag, hosts|
-              associate_tag_hosts(memory_db, tag, hosts)
-            end
-          end
-
+          memory_db = create_db(SQLite3::Database.new(":memory:"))
           # backup in-memory db to file
           FileUtils.mkdir_p(options[:confdir])
           persistent = File.join(options[:confdir], PERSISTENT_DB)
@@ -267,6 +246,31 @@ module Hotdog
           close_db(memory_db)
           @db = persistent_db
         end
+      end
+
+      def create_db(db, options={})
+        execute_db(db, "CREATE TABLE IF NOT EXISTS hosts (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(255) NOT NULL COLLATE NOCASE);")
+        execute_db(db, "CREATE UNIQUE INDEX IF NOT EXISTS hosts_name ON hosts (name);")
+        execute_db(db, "CREATE TABLE IF NOT EXISTS tags (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(200) NOT NULL COLLATE NOCASE, value VARCHAR(200) NOT NULL COLLATE NOCASE);")
+        execute_db(db, "CREATE UNIQUE INDEX IF NOT EXISTS tags_name_value ON tags (name, value);")
+        execute_db(db, "CREATE TABLE IF NOT EXISTS hosts_tags (host_id INTEGER NOT NULL, tag_id INTEGER NOT NULL);")
+        execute_db(db, "CREATE UNIQUE INDEX IF NOT EXISTS hosts_tags_host_id_tag_id ON hosts_tags (host_id, tag_id);")
+
+        all_tags = get_all_tags()
+
+        db.transaction do
+          known_tags = all_tags.keys.map { |tag| split_tag(tag) }.uniq
+          create_tags(db, known_tags)
+
+          known_hosts = all_tags.values.reduce(:+).uniq
+          create_hosts(db, known_hosts)
+
+          all_tags.each do |tag, hosts|
+            associate_tag_hosts(db, tag, hosts)
+          end
+        end
+
+        db
       end
 
       def remove_db(options={})
