@@ -27,16 +27,6 @@ module Hotdog
         hosts = args.map { |arg|
           arg.sub(/\Ahost:/, "")
         }
-        hosts.each do |host|
-          if options[:tags].empty?
-            # nop
-          else
-            # add all as user tags
-            with_retry(options) do
-              add_tags(host, options[:tags], source=options[:tag_source])
-            end
-          end
-        end
         if open_db
           with_retry do
             @db.transaction do
@@ -44,6 +34,16 @@ module Hotdog
               options[:tags].each do |tag|
                 associae_tag_hosts(@db, tag, hosts)
               end
+            end
+          end
+        end
+        hosts.each do |host|
+          if options[:tags].empty?
+            # nop
+          else
+            # add all as user tags
+            with_retry(options) do
+              add_tags(host, options[:tags], source=options[:tag_source])
             end
           end
         end

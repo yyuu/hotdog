@@ -219,6 +219,9 @@ module Hotdog
               persistent_db = SQLite3::Database.new(persistent)
               persistent_db.execute("SELECT hosts_tags.host_id FROM hosts_tags INNER JOIN hosts ON hosts_tags.host_id = hosts.id INNER JOIN tags ON hosts_tags.tag_id = tags.id LIMIT 1;")
               @db = persistent_db
+            rescue SQLite3::BusyException
+              sleep(rand) # FIXME: configurable retry interval
+              retry
             rescue SQLite3::SQLException
               if options[:offline]
                 raise(RuntimeError.new("no database available on offline mode"))
@@ -391,7 +394,7 @@ module Hotdog
       end
 
       def with_retry(options={}, &block)
-        (options[:retry] || 1).times do |i|
+        (options[:retry] || 3).times do |i|
           begin
             return yield
           rescue => error

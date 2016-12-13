@@ -28,6 +28,21 @@ module Hotdog
           arg.sub(/\Ahost:/, "")
         }
 
+        if options[:tags].empty?
+          # refresh all persistent.db since there is no way to identify user tags
+          remove_db
+        else
+          if open_db
+            with_retry do
+              @db.transaction do
+                options[:tags].each do |tag|
+                  disassociate_tag_hosts(@db, tag, hosts)
+                end
+              end
+            end
+          end
+        end
+
         hosts.each do |host|
           if options[:tags].empty?
             # delete all user tags
@@ -43,21 +58,6 @@ module Hotdog
             else
               with_retry do
                 update_tags(host, new_tags, source=options[:tag_source])
-              end
-            end
-          end
-        end
-
-        if options[:tags].empty?
-          # refresh all persistent.db since there is no way to identify user tags
-          remove_db
-        else
-          if open_db
-            with_retry do
-              @db.transaction do
-                options[:tags].each do |tag|
-                  disassociate_tag_hosts(@db, tag, hosts)
-                end
               end
             end
           end
