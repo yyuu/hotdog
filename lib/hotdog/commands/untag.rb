@@ -53,8 +53,12 @@ module Hotdog
           remove_db
         else
           if open_db
-            options[:tags].each do |tag|
-              disassociate_tag_hosts(@db, tag, hosts)
+            with_retry do
+              @db.transaction do
+                options[:tags].each do |tag|
+                  disassociate_tag_hosts(@db, tag, hosts)
+                end
+              end
             end
           end
         end

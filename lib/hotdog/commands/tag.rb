@@ -38,9 +38,13 @@ module Hotdog
           end
         end
         if open_db
-          create_tags(@db, options[:tags])
-          options[:tags].each do |tag|
-            associae_tag_hosts(@db, tag, hosts)
+          with_retry do
+            @db.transaction do
+              create_tags(@db, options[:tags])
+              options[:tags].each do |tag|
+                associae_tag_hosts(@db, tag, hosts)
+              end
+            end
           end
         end
       end
