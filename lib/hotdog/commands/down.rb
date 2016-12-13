@@ -31,11 +31,6 @@ module Hotdog
             arg
           end
         }
-        scopes.each do |scope|
-          with_retry(options) do
-            schedule_downtime(scope, options)
-          end
-        end
         hosts = scopes.select { |scope| scope.start_with?("host:") }.map { |scope|
           scope.slice("host:".length, scope.length)
         }
@@ -49,6 +44,11 @@ module Hotdog
                 end
               end
             end
+          end
+        end
+        scopes.each do |scope|
+          with_retry(options) do
+            schedule_downtime(scope, options)
           end
         end
       end

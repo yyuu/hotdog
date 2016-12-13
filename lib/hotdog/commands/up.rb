@@ -37,6 +37,7 @@ module Hotdog
             cancel_downtime(downtime["id"], options)
           end
         end
+
         hosts = scopes.select { |scope| scope.start_with?("host:") }.map { |scope|
           scope.slice("host:".length, scope.length)
         }
