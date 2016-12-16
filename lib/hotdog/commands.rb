@@ -334,6 +334,13 @@ module Hotdog
           q = "INSERT OR IGNORE INTO hosts (name) VALUES %s" % hosts.map { "(?)" }.join(", ")
           execute_db(db, q, hosts)
         end
+        # create virtual `host` tag
+        execute_db(db, "INSERT OR IGNORE INTO tags (name, value) SELECT 'host', hosts.name FROM hosts;")
+        q = "INSERT OR REPLACE INTO hosts_tags (host_id, tag_id) " \
+              "SELECT hosts.id, tags.id FROM hosts " \
+                "INNER JOIN ( SELECT * FROM tags WHERE name = 'host' ) AS tags " \
+                  "ON hosts.name = tags.value;"
+        execute_db(db, q)
       end
 
       def create_tags(db, tags)
