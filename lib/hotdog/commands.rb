@@ -131,20 +131,13 @@ module Hotdog
         when 1
           get_hosts_field(host_ids, fields.first, options)
         else
-          if fields.find { |field| /\Ahost\z/i =~ field }
-            host_names = Hash[execute("SELECT id, name FROM hosts WHERE id IN (%s);" % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.to_a }]
-          else
-            host_names = {}
-          end
-
-          [host_ids.map { |host_id| get_host_fields(host_id, fields, options.merge(host_names: host_names)) }.map { |result, fields| result }, fields]
+          [host_ids.map { |host_id| get_host_fields(host_id, fields, options) }.map { |result, fields| result }, fields]
         end
       end
 
       def get_host_fields(host_id, fields, options={})
-        field_values = {"host" => options.fetch(:host_names, {}).fetch(host_id, nil)}
-
-        fields.reject { |field| /\Ahost\z/i =~ field }.uniq.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 1).each do |fields|
+        field_values = {}
+        fields.uniq.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 1).each do |fields|
           q = "SELECT LOWER(tags.name), GROUP_CONCAT(tags.value, ',') FROM hosts_tags " \
                 "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
                   "WHERE hosts_tags.host_id = ? AND tags.name IN (%s) " \
