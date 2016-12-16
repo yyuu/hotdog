@@ -239,7 +239,7 @@ module Hotdog
         if open_db(options)
           @db
         else
-          memory_db = create_db(SQLite3::Database.new(":memory:"))
+          memory_db = create_db(SQLite3::Database.new(":memory:"), options)
           # backup in-memory db to file
           FileUtils.mkdir_p(options[:confdir])
           persistent = File.join(options[:confdir], PERSISTENT_DB)
@@ -252,6 +252,7 @@ module Hotdog
       end
 
       def create_db(db, options={})
+        options = @options.merge(options)
         execute_db(db, "CREATE TABLE IF NOT EXISTS hosts (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(255) NOT NULL COLLATE NOCASE);")
         execute_db(db, "CREATE UNIQUE INDEX IF NOT EXISTS hosts_name ON hosts (name);")
         execute_db(db, "CREATE TABLE IF NOT EXISTS tags (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(200) NOT NULL COLLATE NOCASE, value VARCHAR(200) NOT NULL COLLATE NOCASE);")
@@ -276,10 +277,10 @@ module Hotdog
         db
       end
 
-      def remove_db(options={})
+      def remove_db(db, options={})
         options = @options.merge(options)
-        if @db
-          close_db(@db)
+        if db
+          close_db(db)
         end
         FileUtils.rm_f(File.join(options[:confdir], PERSISTENT_DB))
       end

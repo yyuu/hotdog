@@ -30,7 +30,7 @@ module Hotdog
 
         if options[:tags].empty?
           # refresh all persistent.db since there is no way to identify user tags
-          remove_db
+          remove_db(@db)
         else
           if open_db
             with_retry do

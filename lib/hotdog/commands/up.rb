@@ -43,7 +43,7 @@ module Hotdog
         }
         if 0 < hosts.length
           # refresh all persistent.db to retrieve information about up'd host
-          remove_db
+          remove_db(@db)
         end
       end
 
