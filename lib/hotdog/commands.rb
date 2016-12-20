@@ -345,11 +345,11 @@ module Hotdog
 
       def associate_tag_hosts(db, tag, hosts)
         hosts.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 2) do |hosts|
-          q = "INSERT OR REPLACE INTO hosts_tags (host_id, tag_id) " \
-                "SELECT host.id, tag.id FROM " \
-                  "( SELECT id FROM hosts WHERE name IN (%s) ) AS host, " \
-                  "( SELECT id FROM tags WHERE name = ? AND value = ? LIMIT 1 ) AS tag;" % hosts.map { "?" }.join(", ")
           begin
+            q = "INSERT OR REPLACE INTO hosts_tags (host_id, tag_id) " \
+                  "SELECT host.id, tag.id FROM " \
+                    "( SELECT id FROM hosts WHERE name IN (%s) ) AS host, " \
+                    "( SELECT id FROM tags WHERE name = ? AND value = ? LIMIT 1 ) AS tag;" % hosts.map { "?" }.join(", ")
             execute_db(db, q, (hosts + split_tag(tag)))
           rescue SQLite3::RangeException => error
             # FIXME: bulk insert occationally fails even if there are no errors in bind parameters
