@@ -275,7 +275,11 @@ module Hotdog
         if db
           close_db(db)
         end
-        FileUtils.rm_f(File.join(options[:confdir], PERSISTENT_DB))
+        persistent = File.join(options[:confdir], PERSISTENT_DB)
+
+        if File.exist?(persistent)
+          FileUtils.touch(persistent, mtime: Time.new - options[:expiry])
+        end
       end
 
       def execute_db(db, q, args=[])
