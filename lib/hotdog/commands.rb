@@ -157,7 +157,7 @@ module Hotdog
       def get_hosts_field(host_ids, field, options={})
         if /\Ahost\z/i =~ field
           result = host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |host_ids|
-            execute("SELECT name FROM hosts WHERE id IN (%s)" % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.to_a }
+            execute("SELECT name FROM hosts WHERE id IN (%s);" % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.to_a }
           }
         else
           result = host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 1).flat_map { |host_ids|
@@ -336,7 +336,7 @@ module Hotdog
 
       def create_tags(db, tags)
         tags.each_slice(SQLITE_LIMIT_COMPOUND_SELECT / 2) do |tags|
-          q = "INSERT OR IGNORE INTO tags (name, value) VALUES %s" % tags.map { "(?, ?)" }.join(", ")
+          q = "INSERT OR IGNORE INTO tags (name, value) VALUES %s;" % tags.map { "(?, ?)" }.join(", ")
           execute_db(db, q, tags)
         end
       end
@@ -367,8 +367,7 @@ module Hotdog
       def disassociate_tag_hosts(db, tag, hosts)
         hosts.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 2) do |hosts|
           q = "DELETE FROM hosts_tags " \
-                "WHERE tag_id IN ( SELECT id FROM tags WHERE name = ? AND value = ? LIMIT 1 );" \
-                  "AND host_id IN ( SELECT id FROM hosts WHERE name IN (%s) ) " % hosts.map { "?" }.join(", ")
+                "WHERE tag_id IN ( SELECT id FROM tags WHERE name = ? AND value = ? LIMIT 1 ) AND host_id IN ( SELECT id FROM hosts WHERE name IN (%s) );" % hosts.map { "?" }.join(", ")
           execute_db(db, q, split_tag(tag) + hosts)
         end
       end

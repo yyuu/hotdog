@@ -39,8 +39,8 @@ module Hotdog
             with_retry do
               @db.transaction do
                 hosts.each_slice(SQLITE_LIMIT_COMPOUND_SELECT) do |hosts|
-                  execute_db(@db, "DELETE FROM hosts_tags WHERE host_id IN ( SELECT id FROM hosts WHERE name IN (%s) )" % hosts.map { "?" }.join(", "), hosts)
-                  execute_db(@db, "DELETE FROM hosts WHERE name IN (%s)" % hosts.map { "?" }.join(", "), hosts)
+                  execute_db(@db, "DELETE FROM hosts_tags WHERE host_id IN ( SELECT id FROM hosts WHERE name IN (%s) );" % hosts.map { "?" }.join(", "), hosts)
+                  execute_db(@db, "DELETE FROM hosts WHERE name IN (%s);" % hosts.map { "?" }.join(", "), hosts)
                 end
               end
             end
