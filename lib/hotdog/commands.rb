@@ -204,12 +204,10 @@ module Hotdog
         if @db
           @db
         else
-          FileUtils.mkdir_p(options[:confdir])
-          persistent = File.join(options[:confdir], PERSISTENT_DB)
-
-          if (not options[:force] and File.exist?(persistent) and Time.new < File.mtime(persistent) + options[:expiry]) or options[:offline]
+          FileUtils.mkdir_p(File.dirname(persistent_db_path))
+          if not options[:force] or options[:offline] or (File.exist?(persistent_db_path) and Time.new < (File.mtime(persistent_db_path) + options[:expiry]))
             begin
-              persistent_db = SQLite3::Database.new(persistent)
+              persistent_db = SQLite3::Database.new(persistent_db_path)
               persistent_db.execute("SELECT hosts_tags.host_id FROM hosts_tags INNER JOIN hosts ON hosts_tags.host_id = hosts.id INNER JOIN tags ON hosts_tags.tag_id = tags.id LIMIT 1;")
               @db = persistent_db
             rescue SQLite3::BusyException
@@ -234,10 +232,8 @@ module Hotdog
         else
           memory_db = create_db(SQLite3::Database.new(":memory:"), options)
           # backup in-memory db to file
-          FileUtils.mkdir_p(options[:confdir])
-          persistent = File.join(options[:confdir], PERSISTENT_DB)
-          FileUtils.rm_f(persistent)
-          persistent_db = SQLite3::Database.new(persistent)
+          FileUtils.mkdir_p(File.dirname(persistent_db_path))
+          persistent_db = SQLite3::Database.new(persistent_db_path)
           copy_db(memory_db, persistent_db)
           close_db(memory_db)
           @db = persistent_db
@@ -275,10 +271,8 @@ module Hotdog
         if db
           close_db(db)
         end
-        persistent = File.join(options[:confdir], PERSISTENT_DB)
-
-        if File.exist?(persistent)
-          FileUtils.touch(persistent, mtime: Time.new - options[:expiry])
+        if File.exist?(persistent_db_path)
+          FileUtils.touch(persistent_db_path, mtime: Time.new - options[:expiry])
         end
       end
 
@@ -412,6 +406,10 @@ module Hotdog
           end
         end
         raise("retry count exceeded")
+      end
+
+      def persistent_db_path()
+        File.join(options[:confdir], PERSISTENT_DB)
       end
     end
   end
