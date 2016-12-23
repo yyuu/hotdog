@@ -96,7 +96,7 @@ module Hotdog
       rescue Errno::EPIPE => error
         STDERR.puts(error)
       rescue => error
-        STDERR.puts(error)
+        STDERR.puts("#{error.class}: #{error} at #{caller.first}")
         if @options[:debug]
           raise # to show error stacktrace
         else
