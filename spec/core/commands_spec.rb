@@ -51,7 +51,7 @@ describe "commands" do
     q1 = [
       "SELECT DISTINCT tags.name FROM hosts_tags",
         "INNER JOIN tags ON hosts_tags.tag_id = tags.id",
-          "WHERE hosts_tags.host_id IN (?, ?, ?);",
+          "WHERE hosts_tags.host_id IN (?, ?, ?) ORDER BY hosts_tags.host_id;",
     ]
     allow(cmd).to receive(:execute).with(q1.join(" "), [1, 2, 3]) {
       [["foo"], ["bar"], ["baz"]]
@@ -67,7 +67,7 @@ describe "commands" do
     q1 = [
       "SELECT DISTINCT tags.name FROM hosts_tags",
         "INNER JOIN tags ON hosts_tags.tag_id = tags.id",
-          "WHERE hosts_tags.host_id IN (?, ?, ?);",
+          "WHERE hosts_tags.host_id IN (?, ?, ?) ORDER BY hosts_tags.host_id;",
     ]
     allow(cmd).to receive(:execute).with(q1.join(" "), [1, 2, 3]) {
       [["foo"], ["bar"], ["baz"]]
