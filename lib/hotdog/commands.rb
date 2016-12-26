@@ -396,12 +396,12 @@ module Hotdog
       end
 
       def with_retry(options={}, &block)
-        (options[:retry] || 3).times do |i|
+        (options[:retry] || 5).times do |i|
           begin
             return yield
           rescue => error
             logger.warn(error.to_s)
-            sleep(options[:retry_delay] || (1<<i))
+            sleep([options[:retry_delay] || (2<<i), options[:retry_max_delay] || 60].min)
           end
         end
         raise("retry count exceeded")
