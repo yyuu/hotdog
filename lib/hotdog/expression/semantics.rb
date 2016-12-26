@@ -41,7 +41,7 @@ module Hotdog
             end
           else
             # workaround for "too many terms in compound SELECT"
-            min, max = environment.execute("SELECT MIN(id), MAX(id) FROM hosts ORDER BY id LIMIT 1").first.to_a
+            min, max = environment.execute("SELECT MIN(id), MAX(id) FROM hosts LIMIT 1;").first.to_a
             (min / (SQLITE_LIMIT_COMPOUND_SELECT - 2)).upto(max / (SQLITE_LIMIT_COMPOUND_SELECT - 2)).flat_map { |i|
               range = ((SQLITE_LIMIT_COMPOUND_SELECT - 2) * i)...((SQLITE_LIMIT_COMPOUND_SELECT - 2) * (i + 1))
               selected = values.select { |n| range === n }
@@ -150,7 +150,7 @@ module Hotdog
               []
             else
               # workaround for "too many terms in compound SELECT"
-              min, max = environment.execute("SELECT MIN(id), MAX(id) FROM hosts ORDER BY id LIMIT 1").first.to_a
+              min, max = environment.execute("SELECT MIN(id), MAX(id) FROM hosts LIMIT 1;").first.to_a
               (min / ((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 2)).upto(max / ((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 2)).flat_map { |i|
                 range = (((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 2) * i)...(((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 2) * (i + 1))
                 left_selected = left_values.select { |n| range === n }
@@ -177,7 +177,7 @@ module Hotdog
               []
             else
               # workaround for "too many terms in compound SELECT"
-              min, max = environment.execute("SELECT MIN(id), MAX(id) FROM hosts ORDER BY id LIMIT 1").first.to_a
+              min, max = environment.execute("SELECT MIN(id), MAX(id) FROM hosts LIMIT 1;").first.to_a
               (min / ((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 2)).upto(max / ((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 2)).flat_map { |i|
                 range = (((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 2) * i)...(((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 2) * (i + 1))
                 left_selected = left_values.select { |n| range === n }
@@ -204,7 +204,7 @@ module Hotdog
               []
             else
               # workaround for "too many terms in compound SELECT"
-              min, max = environment.execute("SELECT MIN(id), MAX(id) FROM hosts ORDER BY id LIMIT 1").first.to_a
+              min, max = environment.execute("SELECT MIN(id), MAX(id) FROM hosts LIMIT 1;").first.to_a
               (min / ((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 4)).upto(max / ((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 4)).flat_map { |i|
                 range = (((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 4) * i)...(((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 4) * (i + 1))
                 left_selected = left_values.select { |n| range === n }
@@ -529,7 +529,7 @@ module Hotdog
 
     class EverythingNode < QueryExpressionNode
       def initialize(options={})
-        super("SELECT id AS host_id FROM hosts", [], options)
+        super("SELECT id AS host_id FROM hosts;", [], options)
       end
     end
 

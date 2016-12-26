@@ -119,7 +119,7 @@ module Hotdog
         host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |host_ids|
           q = "SELECT DISTINCT tags.name FROM hosts_tags " \
                 "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                  "WHERE hosts_tags.host_id IN (%s);" % host_ids.map { "?" }.join(", ")
+                  "WHERE hosts_tags.host_id IN (%s) ORDER BY hosts_tags.host_id;" % host_ids.map { "?" }.join(", ")
           execute(q, host_ids).map { |row| row.first }
         }.uniq
       end
@@ -157,14 +157,14 @@ module Hotdog
       def get_hosts_field(host_ids, field, options={})
         if /\Ahost\z/i =~ field
           result = host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |host_ids|
-            execute("SELECT name FROM hosts WHERE id IN (%s);" % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.to_a }
+            execute("SELECT name FROM hosts WHERE id IN (%s) ORDER BY id;" % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.to_a }
           }
         else
           result = host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 1).flat_map { |host_ids|
             q = "SELECT LOWER(tags.name), GROUP_CONCAT(tags.value, ',') FROM hosts_tags " \
                   "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
                     "WHERE hosts_tags.host_id IN (%s) AND tags.name = ? " \
-                      "GROUP BY hosts_tags.host_id, tags.name;" % host_ids.map { "?" }.join(", ")
+                      "GROUP BY hosts_tags.host_id, tags.name ORDER BY hosts_tags.host_id;" % host_ids.map { "?" }.join(", ")
             r = execute(q, host_ids + [field]).map { |tag_name, tag_value|
               [display_tag(tag_name, tag_value)]
             }
