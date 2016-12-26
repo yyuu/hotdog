@@ -41,12 +41,12 @@ module Hotdog
             end
           else
             # workaround for "too many terms in compound SELECT"
-            min, max = environment.execute("SELECT MIN(id), MAX(id) FROM hosts LIMIT 1;").first.to_a
+            min, max = environment.execute("SELECT MIN(id), MAX(id) FROM hosts ORDER BY id LIMIT 1").first.to_a
             (min / (SQLITE_LIMIT_COMPOUND_SELECT - 2)).upto(max / (SQLITE_LIMIT_COMPOUND_SELECT - 2)).flat_map { |i|
               range = ((SQLITE_LIMIT_COMPOUND_SELECT - 2) * i)...((SQLITE_LIMIT_COMPOUND_SELECT - 2) * (i + 1))
               selected = values.select { |n| range === n }
               q = "SELECT id FROM hosts " \
-                    "WHERE ? <= id AND id < ? AND id NOT IN (%s) ORDER BY id;"
+                    "WHERE ? <= id AND id < ? AND id NOT IN (%s);"
               environment.execute(q % selected.map { "?" }.join(", "), [range.first, range.last] + selected).map { |row| row.first }
             }.tap do |values|
               environment.logger.debug("NOT expr: #{values.length} value(s)")
@@ -94,7 +94,7 @@ module Hotdog
               q = expression.query
               v = expression.values
               if q and v.length <= SQLITE_LIMIT_COMPOUND_SELECT
-                QueryExpressionNode.new("SELECT id AS host_id FROM hosts EXCEPT #{q.sub(/\s*;\s*\z/, "")} ORDER BY id;", v)
+                QueryExpressionNode.new("SELECT id AS host_id FROM hosts EXCEPT #{q.sub(/\s*;\s*\z/, "")};", v)
               else
                 self
               end
@@ -102,7 +102,7 @@ module Hotdog
               q = expression.maybe_query(options)
               v = expression.condition_values(options)
               if q and v.length <= SQLITE_LIMIT_COMPOUND_SELECT
-                QueryExpressionNode.new("SELECT id AS host_id FROM hosts EXCEPT #{q.sub(/\s*;\s*\z/, "")} ORDER BY id;", v)
+                QueryExpressionNode.new("SELECT id AS host_id FROM hosts EXCEPT #{q.sub(/\s*;\s*\z/, "")};", v)
               else
                 self
               end
@@ -150,13 +150,13 @@ module Hotdog
               []
             else
               # workaround for "too many terms in compound SELECT"
-              min, max = environment.execute("SELECT MIN(id), MAX(id) FROM hosts LIMIT 1;").first.to_a
+              min, max = environment.execute("SELECT MIN(id), MAX(id) FROM hosts ORDER BY id LIMIT 1").first.to_a
               (min / ((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 2)).upto(max / ((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 2)).flat_map { |i|
                 range = (((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 2) * i)...(((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 2) * (i + 1))
                 left_selected = left_values.select { |n| range === n }
                 right_selected = right_values.select { |n| range === n }
                 q = "SELECT id FROM hosts " \
-                      "WHERE ? <= id AND id < ? AND ( id IN (%s) AND id IN (%s) ) ORDER BY id;"
+                      "WHERE ? <= id AND id < ? AND ( id IN (%s) AND id IN (%s) );"
                 environment.execute(q % [left_selected.map { "?" }.join(", "), right_selected.map { "?" }.join(", ")], [range.first, range.last] + left_selected + right_selected).map { |row| row.first }
               }.tap do |values|
                 environment.logger.debug("lhs AND rhs: #{values.length} value(s)")
@@ -177,13 +177,13 @@ module Hotdog
               []
             else
               # workaround for "too many terms in compound SELECT"
-              min, max = environment.execute("SELECT MIN(id), MAX(id) FROM hosts LIMIT 1;").first.to_a
+              min, max = environment.execute("SELECT MIN(id), MAX(id) FROM hosts ORDER BY id LIMIT 1").first.to_a
               (min / ((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 2)).upto(max / ((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 2)).flat_map { |i|
                 range = (((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 2) * i)...(((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 2) * (i + 1))
                 left_selected = left_values.select { |n| range === n }
                 right_selected = right_values.select { |n| range === n }
                 q = "SELECT id FROM hosts " \
-                      "WHERE ? <= id AND id < ? AND ( id IN (%s) OR id IN (%s) ) ORDER BY id;"
+                      "WHERE ? <= id AND id < ? AND ( id IN (%s) OR id IN (%s) );"
                 environment.execute(q % [left_selected.map { "?" }.join(", "), right_selected.map { "?" }.join(", ")], [range.first, range.last] + left_selected + right_selected).map { |row| row.first }
               }.tap do |values|
                 environment.logger.debug("lhs OR rhs: #{values.length} value(s)")
@@ -204,13 +204,13 @@ module Hotdog
               []
             else
               # workaround for "too many terms in compound SELECT"
-              min, max = environment.execute("SELECT MIN(id), MAX(id) FROM hosts LIMIT 1;").first.to_a
+              min, max = environment.execute("SELECT MIN(id), MAX(id) FROM hosts ORDER BY id LIMIT 1").first.to_a
               (min / ((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 4)).upto(max / ((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 4)).flat_map { |i|
                 range = (((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 4) * i)...(((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 4) * (i + 1))
                 left_selected = left_values.select { |n| range === n }
                 right_selected = right_values.select { |n| range === n }
                 q = "SELECT id FROM hosts " \
-                      "WHERE ? <= id AND id < ? AND NOT (id IN (%s) AND id IN (%s)) AND ( id IN (%s) OR id IN (%s) ) ORDER BY id;"
+                      "WHERE ? <= id AND id < ? AND NOT (id IN (%s) AND id IN (%s)) AND ( id IN (%s) OR id IN (%s) );"
                 lq = left_selected.map { "?" }.join(", ")
                 rq = right_selected.map { "?" }.join(", ")
                 environment.execute(q % [lq, rq, lq, rq], [range.first, range.last] + left_selected + right_selected + left_selected + right_selected).map { |row| row.first }
@@ -496,7 +496,7 @@ module Hotdog
           q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
                 "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
                 "WHERE tags.name = ? AND hosts_tags.host_id IN (%s) " \
-                "GROUP BY tags.value ORDER BY hosts_tags.host_id;" % intermediate.map { "?" }.join(", ")
+                "GROUP BY tags.value;" % intermediate.map { "?" }.join(", ")
           QueryExpressionNode.new(q, [args[1]] + intermediate, fallback: nil).evaluate(environment, options)
         when :ORDER_BY
           intermediate = args[0].evaluate(environment, options)
@@ -529,7 +529,7 @@ module Hotdog
 
     class EverythingNode < QueryExpressionNode
       def initialize(options={})
-        super("SELECT id AS host_id FROM hosts ORDER BY id;", [], options)
+        super("SELECT id AS host_id FROM hosts", [], options)
       end
     end
 
