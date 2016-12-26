@@ -131,7 +131,7 @@ module Hotdog
         when 1
           get_hosts_field(host_ids, fields.first, options)
         else
-          [host_ids.map { |host_id| get_host_fields(host_id, fields, options) }.map { |result, fields| result }, fields]
+          [host_ids.sort.map { |host_id| get_host_fields(host_id, fields, options) }.map { |result, fields| result }, fields]
         end
       end
 
