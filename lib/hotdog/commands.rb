@@ -204,24 +204,38 @@ module Hotdog
         if @db
           @db
         else
-          FileUtils.mkdir_p(File.dirname(persistent_db_path))
-          if not options[:force] or options[:offline] or (File.exist?(persistent_db_path) and Time.new < (File.mtime(persistent_db_path) + options[:expiry]))
-            begin
-              persistent_db = SQLite3::Database.new(persistent_db_path)
-              persistent_db.execute("SELECT hosts_tags.host_id FROM hosts_tags INNER JOIN hosts ON hosts_tags.host_id = hosts.id INNER JOIN tags ON hosts_tags.tag_id = tags.id LIMIT 1;")
-              @db = persistent_db
-            rescue SQLite3::BusyException
-              sleep(rand) # FIXME: configurable retry interval
-              retry
-            rescue SQLite3::SQLException
-              if options[:offline]
-                raise(RuntimeError.new("no database available on offline mode"))
+          if options[:force]
+            @db = nil
+          else
+            if options[:offline]
+              @db = __open_db(options)
+            else
+              FileUtils.mkdir_p(File.dirname(persistent_db_path))
+              if File.exist?(persistent_db_path) and Time.new <= (File.mtime(persistent_db_path) + options[:expiry])
+                @db = __open_db(options)
               else
-                persistent_db.close()
+                @db = nil
               end
             end
           end
-          @db
+        end
+      end
+
+      def __open_db(options={})
+        begin
+          persistent_db = SQLite3::Database.new(persistent_db_path)
+          persistent_db.execute("SELECT hosts_tags.host_id FROM hosts_tags INNER JOIN hosts ON hosts_tags.host_id = hosts.id INNER JOIN tags ON hosts_tags.tag_id = tags.id LIMIT 1;")
+          persistent_db
+        rescue SQLite3::BusyException
+          sleep(rand) # FIXME: configurable retry interval
+          retry
+        rescue SQLite3::SQLException
+          if options[:offline]
+            raise(RuntimeError.new("no database available on offline mode"))
+          else
+            persistent_db.close()
+            nil
+          end
         end
       end
 
