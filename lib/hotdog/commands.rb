@@ -12,7 +12,6 @@ require "uri"
 module Hotdog
   module Commands
     class BaseCommand
-      PERSISTENT_DB = "persistent.db"
       MASK_DATABASE = 0xffff0000
       MASK_QUERY = 0x0000ffff
 
@@ -22,10 +21,12 @@ module Hotdog
         @options = application.options
         @dog = nil # lazy initialization
         @prepared_statements = {}
+        @persistent_db_path = File.join(@options.fetch(:confdir, "."), "persistent.db")
       end
       attr_reader :application
       attr_reader :logger
       attr_reader :options
+      attr_reader :persistent_db_path
 
       def run(args=[], options={})
         raise(NotImplementedError)
@@ -223,14 +224,14 @@ module Hotdog
 
       def __open_db(options={})
         begin
-          persistent_db = SQLite3::Database.new(persistent_db_path)
-          persistent_db.execute("SELECT hosts_tags.host_id FROM hosts_tags INNER JOIN hosts ON hosts_tags.host_id = hosts.id INNER JOIN tags ON hosts_tags.tag_id = tags.id LIMIT 1;")
-          persistent_db
+          db = SQLite3::Database.new(persistent_db_path)
+          db.execute("SELECT hosts_tags.host_id FROM hosts_tags INNER JOIN hosts ON hosts_tags.host_id = hosts.id INNER JOIN tags ON hosts_tags.tag_id = tags.id LIMIT 1;")
+          db
         rescue SQLite3::BusyException
           sleep(rand) # FIXME: configurable retry interval
           retry
         rescue SQLite3::SQLException
-          persistent_db.close()
+          db.close()
           nil
         end
       end
@@ -246,10 +247,10 @@ module Hotdog
             memory_db = create_db(SQLite3::Database.new(":memory:"), options)
             # backup in-memory db to file
             FileUtils.mkdir_p(File.dirname(persistent_db_path))
-            persistent_db = SQLite3::Database.new(persistent_db_path)
-            copy_db(memory_db, persistent_db)
+            db = SQLite3::Database.new(persistent_db_path)
+            copy_db(memory_db, db)
             close_db(memory_db)
-            @db = persistent_db
+            @db = db
           end
         end
       end
@@ -419,10 +420,6 @@ module Hotdog
           end
         end
         raise("retry count exceeded")
-      end
-
-      def persistent_db_path()
-        File.join(options[:confdir], PERSISTENT_DB)
       end
     end
   end
