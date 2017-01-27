@@ -230,12 +230,8 @@ module Hotdog
           sleep(rand) # FIXME: configurable retry interval
           retry
         rescue SQLite3::SQLException
-          if options[:offline]
-            raise(RuntimeError.new("no database available on offline mode"))
-          else
-            persistent_db.close()
-            nil
-          end
+          persistent_db.close()
+          nil
         end
       end
 
@@ -244,13 +240,17 @@ module Hotdog
         if open_db(options)
           @db
         else
-          memory_db = create_db(SQLite3::Database.new(":memory:"), options)
-          # backup in-memory db to file
-          FileUtils.mkdir_p(File.dirname(persistent_db_path))
-          persistent_db = SQLite3::Database.new(persistent_db_path)
-          copy_db(memory_db, persistent_db)
-          close_db(memory_db)
-          @db = persistent_db
+          if options[:offline]
+            abort("could not update database on offline mode")
+          else
+            memory_db = create_db(SQLite3::Database.new(":memory:"), options)
+            # backup in-memory db to file
+            FileUtils.mkdir_p(File.dirname(persistent_db_path))
+            persistent_db = SQLite3::Database.new(persistent_db_path)
+            copy_db(memory_db, persistent_db)
+            close_db(memory_db)
+            @db = persistent_db
+          end
         end
       end
 
