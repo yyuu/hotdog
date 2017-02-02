@@ -416,6 +416,9 @@ module Hotdog
             return yield
           rescue => error
             logger.warn(error.to_s)
+            error.backtrace.each do |frame|
+              logger.debug(frame)
+            end
             sleep([options[:retry_delay] || (2<<i), options[:retry_max_delay] || 60].min)
           end
         end
