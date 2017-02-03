@@ -227,8 +227,8 @@ module Hotdog
           db = SQLite3::Database.new(persistent_db_path)
           db.execute("SELECT hosts_tags.host_id FROM hosts_tags INNER JOIN hosts ON hosts_tags.host_id = hosts.id INNER JOIN tags ON hosts_tags.tag_id = tags.id LIMIT 1;")
           db
-        rescue SQLite3::BusyException
-          sleep(rand) # FIXME: configurable retry interval
+        rescue SQLite3::BusyException # database is locked
+          sleep(rand)
           retry
         rescue SQLite3::SQLException
           db.close()
@@ -295,6 +295,9 @@ module Hotdog
         begin
           logger.debug("execute: #{q} -- #{args.inspect}")
           prepare(db, q).execute(args)
+        rescue SQLite3::BusyException # database is locked
+          sleep(rand)
+          retry
         rescue
           logger.warn("failed: #{q} -- #{args.inspect}")
           raise
