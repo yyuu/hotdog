@@ -418,6 +418,9 @@ module Hotdog
           begin
             return yield
           rescue => error
+            if error_handler = options[:error_handler]
+              error_handler.call(error)
+            end
             logger.warn("#{error.class}: #{error.message}")
             error.backtrace.each do |frame|
               logger.debug("\t#{frame}")

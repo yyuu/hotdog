@@ -35,8 +35,8 @@ module Hotdog
           scope.slice("host:".length, scope.length)
         }
         if 0 < hosts.length
-          if open_db
-            with_retry do
+          with_retry(error_handler: ->(error) { reload }) do
+            if open_db
               @db.transaction do
                 hosts.each_slice(SQLITE_LIMIT_COMPOUND_SELECT) do |hosts|
                   execute_db(@db, "DELETE FROM hosts_tags WHERE host_id IN ( SELECT id FROM hosts WHERE name IN (%s) );" % hosts.map { "?" }.join(", "), hosts)

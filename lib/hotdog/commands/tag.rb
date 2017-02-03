@@ -27,8 +27,8 @@ module Hotdog
         hosts = args.map { |arg|
           arg.sub(/\Ahost:/, "")
         }
-        if open_db
-          with_retry do
+        with_retry(error_handler: ->(error) { reload }) do
+          if open_db
             @db.transaction do
               create_tags(@db, options[:tags])
               options[:tags].each do |tag|
