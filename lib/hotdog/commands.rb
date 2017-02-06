@@ -80,6 +80,7 @@ module Hotdog
       end
 
       def get_hosts(host_ids, tags=nil)
+        host_ids = Array(host_ids)
         tags ||= @options[:tags]
         update_db
         if host_ids.empty?
@@ -117,6 +118,7 @@ module Hotdog
       end
 
       def get_fields(host_ids)
+        host_ids = Array(host_ids)
         host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |host_ids|
           q = "SELECT DISTINCT tags.name FROM hosts_tags " \
                 "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
@@ -126,6 +128,7 @@ module Hotdog
       end
 
       def get_hosts_fields(host_ids, fields, options={})
+        host_ids = Array(host_ids)
         case fields.length
         when 0
           [[], fields]
@@ -156,6 +159,7 @@ module Hotdog
       end
 
       def get_hosts_field(host_ids, field, options={})
+        host_ids = Array(host_ids)
         if /\Ahost\z/i =~ field
           result = host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |host_ids|
             execute("SELECT name FROM hosts WHERE id IN (%s) ORDER BY id;" % host_ids.map { "?" }.join(", "), host_ids).map { |row| row.to_a }
