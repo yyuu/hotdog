@@ -42,11 +42,16 @@ module Hotdog
       end
 
       def reload(options={})
-        if @db
-          close_db(@db)
-          @db = nil
+        options = @options.merge(options)
+        if options[:offline]
+          logger.info("skip reloading on offline mode.")
+        else
+          if @db
+            close_db(@db)
+            @db = nil
+          end
+          update_db(options)
         end
-        update_db(options)
       end
 
       def define_options(optparse, options={})
