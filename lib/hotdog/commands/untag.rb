@@ -32,6 +32,7 @@ module Hotdog
           # refresh all persistent.db since there is no way to identify user tags
           remove_db(@db)
         else
+          # Try reloading database after error as a workaround for nested transaction.
           with_retry(error_handler: -> (error) { reload }) do
             if open_db
               @db.transaction do
