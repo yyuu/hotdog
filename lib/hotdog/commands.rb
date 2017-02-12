@@ -18,7 +18,7 @@ module Hotdog
         @options = application.options
         @dog = nil # lazy initialization
         @prepared_statements = {}
-        @persistent_db_path = File.join(@options.fetch(:confdir, "."), "persistent.db")
+        @persistent_db_path = File.join(@options.fetch(:confdir, "."), "hotdog.sqlite3")
       end
       attr_reader :application
       attr_reader :logger
