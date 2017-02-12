@@ -81,7 +81,7 @@ module Hotdog
         if "/host/" == tag_name_regexp
           EverythingNode.new()
         else
-          RegexpNode.new(tag_name_regexp)
+          RegexpHostOrTagNode.new(tag_name_regexp)
         end
       }
       rule(tag_name_glob: simple(:tag_name_glob), separator: simple(:separator), tag_value_glob: simple(:tag_value_glob)) {
@@ -109,7 +109,7 @@ module Hotdog
         if "host" == tag_name_glob
           EverythingNode.new()
         else
-          GlobNode.new(tag_name_glob)
+          GlobHostOrTagNode.new(tag_name_glob)
         end
       }
       rule(tag_name: simple(:tag_name), separator: simple(:separator), tag_value_glob: simple(:tag_value_glob)) {
@@ -137,7 +137,7 @@ module Hotdog
         if "host" == tag_name
           EverythingNode.new()
         else
-          StringNode.new(tag_name)
+          StringHostOrTagNode.new(tag_name)
         end
       }
       rule(separator: simple(:separator), tag_value_regexp: simple(:tag_value_regexp)) {

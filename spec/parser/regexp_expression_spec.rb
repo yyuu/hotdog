@@ -51,7 +51,7 @@ describe "tag regexp expression" do
   end
 
   it "interprets tag regexp with tag_name without separator" do
-    expr = Hotdog::Expression::RegexpNode.new("foo", nil)
+    expr = Hotdog::Expression::RegexpHostOrTagNode.new("foo", nil)
     q = [
       "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags",
         "INNER JOIN hosts ON hosts_tags.host_id = hosts.id",

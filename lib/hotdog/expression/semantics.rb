@@ -830,7 +830,7 @@ module Hotdog
       end
     end
 
-    class StringNode < StringExpressionNode
+    class StringHostOrTagNode < StringExpressionNode
       def initialize(tag_name, separator=nil)
         super(tag_name.to_s, nil, separator)
       end
@@ -848,7 +848,7 @@ module Hotdog
       end
 
       def maybe_fallback(options={})
-        fallback = GlobNode.new(to_glob(tag_name), separator)
+        fallback = GlobHostOrTagNode.new(to_glob(tag_name), separator)
         query = fallback.maybe_query(options)
         if query
           QueryExpressionNode.new(query, fallback.condition_values(options))
@@ -981,7 +981,7 @@ module Hotdog
       end
     end
 
-    class GlobNode < GlobExpressionNode
+    class GlobHostOrTagNode < GlobExpressionNode
       def initialize(tag_name, separator=nil)
         super(tag_name.to_s, nil, separator)
       end
@@ -999,7 +999,7 @@ module Hotdog
       end
 
       def maybe_fallback(options={})
-        fallback = GlobNode.new(to_glob(tag_name), separator)
+        fallback = GlobHostOrTagNode.new(to_glob(tag_name), separator)
         query = fallback.maybe_query(options)
         if query
           QueryExpressionNode.new(query, fallback.condition_values(options))
@@ -1112,7 +1112,7 @@ module Hotdog
       end
     end
 
-    class RegexpNode < RegexpExpressionNode
+    class RegexpHostOrTagNode < RegexpExpressionNode
       def initialize(tag_name, separator=nil)
         super(tag_name, separator)
       end
