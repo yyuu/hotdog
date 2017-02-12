@@ -430,11 +430,13 @@ module Hotdog
             if error_handler = options[:error_handler]
               error_handler.call(error)
             end
-            logger.warn("#{error.class}: #{error.message}")
+            logger.info("#{error.class}: #{error.message}")
             error.backtrace.each do |frame|
-              logger.debug("\t#{frame}")
+              logger.info("\t#{frame}")
             end
-            sleep([options[:retry_delay] || (2<<i), options[:retry_max_delay] || 60].min)
+            wait = [options[:retry_delay] || (2<<i), options[:retry_max_delay] || 60].min
+            logger.info("will retry after #{wait} seconds....")
+            sleep(wait)
           end
         end
         raise("retry count exceeded")
