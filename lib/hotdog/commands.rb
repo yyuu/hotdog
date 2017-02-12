@@ -12,16 +12,13 @@ require "uri"
 module Hotdog
   module Commands
     class BaseCommand
-      MASK_DATABASE = 0xffff0000
-      MASK_QUERY = 0x0000ffff
-
       def initialize(application)
         @application = application
         @logger = application.logger
         @options = application.options
         @dog = nil # lazy initialization
         @prepared_statements = {}
-        @persistent_db_path = File.join(@options.fetch(:confdir, "."), "persistent.db")
+        @persistent_db_path = File.join(@options.fetch(:confdir, "."), "hotdog.sqlite3")
       end
       attr_reader :application
       attr_reader :logger
@@ -72,8 +69,7 @@ module Hotdog
       end
 
       def prepare(db, query)
-        k = (db.hash & MASK_DATABASE) | (query.hash & MASK_QUERY)
-        @prepared_statements[k] ||= db.prepare(query)
+        @prepared_statements[query] ||= db.prepare(query)
       end
 
       def format(result, options={})
@@ -201,11 +197,10 @@ module Hotdog
       end
 
       def close_db(db, options={})
-        @prepared_statements = @prepared_statements.reject { |k, statement|
-          (db.hash & MASK_DATABASE == k & MASK_DATABASE).tap do |delete_p|
-            statement.close() if delete_p
-          end
-        }
+        @prepared_statements.each do |query, statement|
+          statement.close()
+        end
+        @prepared_statements.clear()
         db.close()
       end
 
@@ -430,11 +425,13 @@ module Hotdog
             if error_handler = options[:error_handler]
               error_handler.call(error)
             end
-            logger.warn("#{error.class}: #{error.message}")
+            logger.info("#{error.class}: #{error.message}")
             error.backtrace.each do |frame|
-              logger.debug("\t#{frame}")
+              logger.info("\t#{frame}")
             end
-            sleep([options[:retry_delay] || (2<<i), options[:retry_max_delay] || 60].min)
+            wait = [options[:retry_delay] || (2<<i), options[:retry_max_delay] || 60].min
+            logger.info("will retry after #{wait} seconds....")
+            sleep(wait)
           end
         end
         raise("retry count exceeded")
