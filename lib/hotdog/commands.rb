@@ -12,9 +12,6 @@ require "uri"
 module Hotdog
   module Commands
     class BaseCommand
-      MASK_DATABASE = 0xffff0000
-      MASK_QUERY = 0x0000ffff
-
       def initialize(application)
         @application = application
         @logger = application.logger
@@ -72,8 +69,7 @@ module Hotdog
       end
 
       def prepare(db, query)
-        k = (db.hash & MASK_DATABASE) | (query.hash & MASK_QUERY)
-        @prepared_statements[k] ||= db.prepare(query)
+        @prepared_statements[query] ||= db.prepare(query)
       end
 
       def format(result, options={})
@@ -201,11 +197,10 @@ module Hotdog
       end
 
       def close_db(db, options={})
-        @prepared_statements = @prepared_statements.reject { |k, statement|
-          (db.hash & MASK_DATABASE == k & MASK_DATABASE).tap do |delete_p|
-            statement.close() if delete_p
-          end
-        }
+        @prepared_statements.each do |query, statement|
+          statement.close()
+        end
+        @prepared_statements.clear()
         db.close()
       end
 
