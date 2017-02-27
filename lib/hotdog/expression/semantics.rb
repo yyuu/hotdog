@@ -138,13 +138,13 @@ module Hotdog
         case @op
         when :AND
           left_values = @left.evaluate(environment, options).tap do |values|
-            environment.logger.debug("lhs: #{values.length} value(s)")
+            environment.logger.debug("lhs(#{values.length})")
           end
           if left_values.empty?
             []
           else
             right_values = @right.evaluate(environment, options).tap do |values|
-              environment.logger.debug("rhs: #{values.length} value(s)")
+              environment.logger.debug("rhs(#{values.length})")
             end
             if right_values.empty?
               []
@@ -159,16 +159,16 @@ module Hotdog
                       "WHERE ? <= id AND id < ? AND ( id IN (%s) AND id IN (%s) );"
                 environment.execute(q % [left_selected.map { "?" }.join(", "), right_selected.map { "?" }.join(", ")], [range.first, range.last] + left_selected + right_selected).map { |row| row.first }
               }.tap do |values|
-                environment.logger.debug("lhs AND rhs: #{values.length} value(s)")
+                environment.logger.debug("lhs(#{left_values.length}) AND rhs(#{right_values.length}) => #{values.length}")
               end
             end
           end
         when :OR
           left_values = @left.evaluate(environment, options).tap do |values|
-            environment.logger.debug("lhs: #{values.length} value(s)")
+            environment.logger.debug("lhs(#{values.length})")
           end
           right_values = @right.evaluate(environment, options).tap do |values|
-            environment.logger.debug("rhs: #{values.length} value(s)")
+            environment.logger.debug("rhs(#{values.length})")
           end
           if left_values.empty?
             right_values
@@ -186,16 +186,16 @@ module Hotdog
                       "WHERE ? <= id AND id < ? AND ( id IN (%s) OR id IN (%s) );"
                 environment.execute(q % [left_selected.map { "?" }.join(", "), right_selected.map { "?" }.join(", ")], [range.first, range.last] + left_selected + right_selected).map { |row| row.first }
               }.tap do |values|
-                environment.logger.debug("lhs OR rhs: #{values.length} value(s)")
+                environment.logger.debug("lhs(#{left_values.length}) OR rhs(#{right_values.length}) => #{values.length}")
               end
             end
           end
         when :XOR
           left_values = @left.evaluate(environment, options).tap do |values|
-            environment.logger.debug("lhs: #{values.length} value(s)")
+            environment.logger.debug("lhs(#{values.length})")
           end
           right_values = @right.evaluate(environment, options).tap do |values|
-            environment.logger.debug("rhs: #{values.length} value(s)")
+            environment.logger.debug("rhs(#{values.length})")
           end
           if left_values.empty?
             right_values
@@ -215,7 +215,7 @@ module Hotdog
                 rq = right_selected.map { "?" }.join(", ")
                 environment.execute(q % [lq, rq, lq, rq], [range.first, range.last] + left_selected + right_selected + left_selected + right_selected).map { |row| row.first }
               }.tap do |values|
-                environment.logger.debug("lhs XOR rhs: #{values.length} value(s)")
+                environment.logger.debug("lhs(#{left_values.length}) XOR rhs(#{right_values.length}) => #{values.length}")
               end
             end
           end
