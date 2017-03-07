@@ -12,6 +12,7 @@ describe "text" do
       headers: false,
       print0: true,
       print1: false,
+      print2: false,
     }
     expect(fmt.format([["foo", "aaa", 1], ["bar", "bbb", 2], ["baz", "ccc", 3]], options)).to eq("foo aaa 1\0bar bbb 2\0baz ccc 3")
   end
@@ -22,6 +23,7 @@ describe "text" do
       fields: ["key1", "key2", "val1"],
       print0: true,
       print1: false,
+      print2: false,
     }
     expect(fmt.format([["foo", "aaa", 1], ["bar", "bbb", 2], ["baz", "ccc", 3]], options)).to eq("foo aaa 1\0bar bbb 2\0baz ccc 3")
   end
@@ -31,6 +33,7 @@ describe "text" do
       headers: false,
       print0: false,
       print1: true,
+      print2: false,
     }
     expect(fmt.format([["foo", "aaa", 1], ["bar", "bbb", 2], ["baz", "ccc", 3]], options)).to eq(<<-EOS)
 foo aaa 1
@@ -45,6 +48,7 @@ baz ccc 3
       fields: ["key1", "key2", "val1"],
       print0: false,
       print1: true,
+      print2: false,
     }
     expect(fmt.format([["foo", "aaa", 1], ["bar", "bbb", 2], ["baz", "ccc", 3]], options)).to eq(<<-EOS)
 key1 key2 val1
@@ -60,6 +64,7 @@ baz  ccc  3
       headers: false,
       print0: false,
       print1: false,
+      print2: true,
     }
     expect(fmt.format([["foo", "aaa", 1], ["bar", "bbb", 2], ["baz", "ccc", 3]], options)).to eq("foo aaa 1 bar bbb 2 baz ccc 3\n")
   end
@@ -70,6 +75,7 @@ baz  ccc  3
       fields: ["key1", "key2", "val1"],
       print0: false,
       print1: false,
+      print2: true,
     }
     expect(fmt.format([["foo", "aaa", 1], ["bar", "bbb", 2], ["baz", "ccc", 3]], options)).to eq("foo aaa 1 bar bbb 2 baz ccc 3\n")
   end
