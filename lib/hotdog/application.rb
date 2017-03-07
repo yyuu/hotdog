@@ -36,6 +36,7 @@ module Hotdog
         offline: false,
         print0: false,
         print1: true,
+        print2: false,
         primary_tag: nil,
         tags: [],
         display_search_tags: false,
@@ -139,9 +140,18 @@ module Hotdog
       end
       @optparse.on("-0", "--null", "Use null character as separator") do |v|
         options[:print0] = v
+        options[:print1] = !v
+        options[:print2] = !v
       end
       @optparse.on("-1", "Use newline as separator") do |v|
+        options[:print0] = !v
         options[:print1] = v
+        options[:print2] = !v
+      end
+      @optparse.on("-2", "Use space as separator") do |v|
+        options[:print0] = !v
+        options[:print1] = !v
+        options[:print2] = v
       end
       @optparse.on("-d", "--[no-]debug", "Enable debug mode") do |v|
         options[:debug] = v

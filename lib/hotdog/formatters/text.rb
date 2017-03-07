@@ -6,13 +6,19 @@ module Hotdog
       def format(result, options={})
         if options[:print0]
           sep = "\0"
+          show_headers = false
         elsif options[:print1]
           sep = newline
+          show_headers = true
+        elsif options[:print2]
+          sep = " "
+          show_headers = true
         else
           sep = " "
+          show_headers = true
         end
         result = prepare(result)
-        if options[:print1] and options[:headers] and options[:fields]
+        if show_headers and options[:headers] and options[:fields]
           field_length = (0...result.last.length).map { |field_index|
             result.reduce(0) { |length, row|
               [length, row[field_index].to_s.length, options[:fields][field_index].to_s.length].max
