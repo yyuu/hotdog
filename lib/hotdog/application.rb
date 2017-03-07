@@ -28,7 +28,7 @@ module Hotdog
         expiry: 3600,
         fixed_string: false,
         force: false,
-        format: "plain",
+        format: "text",
         headers: false,
         listing: false,
         logger: @logger,
