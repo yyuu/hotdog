@@ -11,7 +11,7 @@ module Hotdog
       def define_options(optparse, options={})
         default_option(options, :ssh_options, {})
         default_option(options, :color, :auto)
-        default_option(options, :max_parallelism, Parallel.processor_count)
+        default_option(options, :max_parallelism, Parallel.processor_count * 2)
         default_option(options, :shuffle, false)
         default_option(options, :ssh_config, nil)
         optparse.on("-C", "Enable compression.") do |v|
@@ -83,7 +83,7 @@ module Hotdog
       end
 
       def parallelism(hosts)
-        options[:max_parallelism] || hosts.size
+        [options[:max_parallelism], hosts.size].compact.min
       end
 
       def filter_hosts(tuples)
