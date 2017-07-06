@@ -417,7 +417,7 @@ module Hotdog
       end
 
       def with_retry(options={}, &block)
-        (options[:retry] || 5).times do |i|
+        (options[:retry] || 10).times do |i|
           begin
             return yield
           rescue => error
@@ -428,7 +428,7 @@ module Hotdog
             error.backtrace.each do |frame|
               logger.info("\t#{frame}")
             end
-            wait = [options[:retry_delay] || (2<<i), options[:retry_max_delay] || 60].min
+            wait = [options[:retry_delay] || (1<<i), options[:retry_max_delay] || 60].min
             logger.info("will retry after #{wait} seconds....")
             sleep(wait)
           end
