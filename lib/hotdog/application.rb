@@ -260,7 +260,12 @@ module Hotdog
     def update_api_key!()
       if options[:api_key_command]
         logger.info("api_key_command> #{options[:api_key_command]}")
-        options[:api_key] = IO.popen(options[:api_key_command]).read.strip
+        options[:api_key] = IO.popen(options[:api_key_command]) do |io|
+          io.read.strip
+        end
+        unless $?.success?
+          raise("failed: #{options[:api_key_command]}")
+        end
       else
         update_keys!
       end
@@ -269,7 +274,12 @@ module Hotdog
     def update_application_key!()
       if options[:application_key_command]
         logger.info("application_key_command> #{options[:application_key_command]}")
-        options[:application_key] = IO.popen(options[:application_key_command]).read.strip
+        options[:application_key] = IO.popen(options[:application_key_command]) do |io|
+          io.read.strip
+        end
+        unless $?.success?
+          raise("failed: #{options[:application_key_command]}")
+        end
       else
         update_keys!
       end
@@ -278,7 +288,12 @@ module Hotdog
     def update_keys!()
       if options[:key_command]
         logger.info("key_command> #{options[:key_command]}")
-        options[:api_key], options[:application_key] = IO.popen(options[:key_command]).read.strip.split(":", 2)
+        options[:api_key], options[:application_key] = IO.popen(options[:key_command]) do |io|
+          io.read.strip.split(":", 2)
+        end
+        unless $?.success?
+          raise("failed: #{options[:key_command]}")
+        end
       end
     end
   end
