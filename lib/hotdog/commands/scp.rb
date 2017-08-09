@@ -7,6 +7,12 @@ require "hotdog/commands/ssh"
 module Hotdog
   module Commands
     class Scp < SingularSshAlike
+      def define_options(optparse, options={})
+        program_name = File.basename($0, '.*')
+        optparse.banner = "Usage: #{program_name} scp [options] pattern -- src @:dst"
+        super
+      end
+
       private
       def build_command_string(host, command=nil, options={})
         # replace "@:" by actual hostname
