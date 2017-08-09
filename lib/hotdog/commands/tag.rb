@@ -33,7 +33,7 @@ module Hotdog
             @db.transaction do
               create_tags(@db, options[:tags])
               options[:tags].each do |tag|
-                associae_tag_hosts(@db, tag, hosts)
+                associate_tag_hosts(@db, tag, hosts)
               end
             end
           end
