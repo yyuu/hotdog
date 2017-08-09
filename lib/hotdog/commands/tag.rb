@@ -40,7 +40,9 @@ module Hotdog
         end
         hosts.each do |host|
           if options[:tags].empty?
-            # nop
+            # nop; just show current tags
+            host_tags = with_retry { host_tags(host, source=options[:tag_source]) }
+            STDOUT.puts host_tags['tags'].inspect
           else
             # add all as user tags
             with_retry(options) do
@@ -57,6 +59,14 @@ module Hotdog
           raise("dog.add_tags(#{host_name.inspect}, #{tags.inspect}, #{options.inspect}) returns [#{code.inspect}, #{resp.inspect}]")
         end
         resp
+      end
+
+      def host_tags(host_name, options={})
+        code, host_tags = dog.host_tags(host_name, options)
+        if code.to_i / 100 != 2
+          raise("dog.host_tags(#{host_name.inspect}, #{options.inspect}) returns [#{code.inspect}, #{host_tags.inspect}]")
+        end
+        host_tags
       end
     end
   end
