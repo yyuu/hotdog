@@ -19,10 +19,10 @@ describe "tag expression" do
       [[1], [2], [3]]
     }
     expect(expr.evaluate(cmd)).to eq([1, 2, 3])
-    expect(expr.dump).to eq({tag_name: "host", separator: ":", tag_value: "foo"})
+    expect(expr.dump).to eq({tagname: "host", separator: ":", tagvalue: "foo"})
   end
 
-  it "interprets tag with tag_name and tag_value" do
+  it "interprets tag with tagname and tagvalue" do
     expr = Hotdog::Expression::StringTagNode.new("foo", "bar", ":")
     q = [
       "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags",
@@ -33,11 +33,11 @@ describe "tag expression" do
       [[1], [2], [3]]
     }
     expect(expr.evaluate(cmd)).to eq([1, 2, 3])
-    expect(expr.dump).to eq({tag_name: "foo", separator: ":", tag_value: "bar"})
+    expect(expr.dump).to eq({tagname: "foo", separator: ":", tagvalue: "bar"})
   end
 
-  it "interprets tag with tag_name with separator" do
-    expr = Hotdog::Expression::StringTagNameNode.new("foo", ":")
+  it "interprets tag with tagname with separator" do
+    expr = Hotdog::Expression::StringTagnameNode.new("foo", ":")
     q = [
       "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags",
         "INNER JOIN tags ON hosts_tags.tag_id = tags.id",
@@ -47,10 +47,10 @@ describe "tag expression" do
       [[1], [2], [3]]
     }
     expect(expr.evaluate(cmd)).to eq([1, 2, 3])
-    expect(expr.dump).to eq({tag_name: "foo", separator: ":"})
+    expect(expr.dump).to eq({tagname: "foo", separator: ":"})
   end
 
-  it "interprets tag with tag_name without separator" do
+  it "interprets tag with tagname without separator" do
     expr = Hotdog::Expression::StringHostOrTagNode.new("foo", nil)
     q = [
       "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags",
@@ -62,11 +62,11 @@ describe "tag expression" do
       [[1], [2], [3]]
     }
     expect(expr.evaluate(cmd)).to eq([1, 2, 3])
-    expect(expr.dump).to eq({tag_name: "foo"})
+    expect(expr.dump).to eq({tagname: "foo"})
   end
 
-  it "interprets tag with tag_value with separator" do
-    expr = Hotdog::Expression::StringTagValueNode.new("foo", ":")
+  it "interprets tag with tagvalue with separator" do
+    expr = Hotdog::Expression::StringTagvalueNode.new("foo", ":")
     q = [
       "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags",
         "INNER JOIN hosts ON hosts_tags.host_id = hosts.id",
@@ -77,11 +77,11 @@ describe "tag expression" do
       [[1], [2], [3]]
     }
     expect(expr.evaluate(cmd)).to eq([1, 2, 3])
-    expect(expr.dump).to eq({separator: ":", tag_value: "foo"})
+    expect(expr.dump).to eq({separator: ":", tagvalue: "foo"})
   end
 
-  it "interprets tag with tag_value without separator" do
-    expr = Hotdog::Expression::StringTagValueNode.new("foo", nil)
+  it "interprets tag with tagvalue without separator" do
+    expr = Hotdog::Expression::StringTagvalueNode.new("foo", nil)
     q = [
       "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags",
         "INNER JOIN hosts ON hosts_tags.host_id = hosts.id",
@@ -92,7 +92,7 @@ describe "tag expression" do
       [[1], [2], [3]]
     }
     expect(expr.evaluate(cmd)).to eq([1, 2, 3])
-    expect(expr.dump).to eq({tag_value: "foo"})
+    expect(expr.dump).to eq({tagvalue: "foo"})
   end
 
   it "empty tag" do

@@ -89,8 +89,8 @@ module Hotdog
         else
           if 0 < tags.length
             fields = tags.map { |tag|
-              tag_name, _tag_value = split_tag(tag)
-              tag_name
+              tagname, _tagvalue = split_tag(tag)
+              tagname
             }
             get_hosts_fields(host_ids, fields)
           else
@@ -99,7 +99,7 @@ module Hotdog
                 fields = [
                   @options[:primary_tag],
                   "host",
-                ] + get_fields(host_ids).reject { |tag_name| tag_name == @options[:primary_tag] }
+                ] + get_fields(host_ids).reject { |tagname| tagname == @options[:primary_tag] }
                 get_hosts_fields(host_ids, fields)
               else
                 fields = [
@@ -152,9 +152,9 @@ module Hotdog
           end
         end
 
-        result = fields.map { |tag_name|
-          tag_value = field_values.fetch(tag_name.downcase, nil)
-          display_tag(tag_name, tag_value)
+        result = fields.map { |tagname|
+          tagvalue = field_values.fetch(tagname.downcase, nil)
+          display_tag(tagname, tagvalue)
         }
         [result, fields]
       end
@@ -171,8 +171,8 @@ module Hotdog
                   "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
                     "WHERE hosts_tags.host_id IN (%s) AND tags.name = ? " \
                       "GROUP BY hosts_tags.host_id, tags.name ORDER BY hosts_tags.host_id;" % host_ids.map { "?" }.join(", ")
-            r = execute(q, host_ids + [field]).map { |tag_name, tag_value|
-              [display_tag(tag_name, tag_value)]
+            r = execute(q, host_ids + [field]).map { |tagname, tagvalue|
+              [display_tag(tagname, tagvalue)]
             }
             if r.empty?
               host_ids.map { [nil] }
@@ -184,12 +184,12 @@ module Hotdog
         [result, [field]]
       end
 
-      def display_tag(tag_name, tag_value)
-        if tag_value
-          if tag_value.empty?
-            tag_name # use `tag_name` as `tag_value` for the tags without any values
+      def display_tag(tagname, tagvalue)
+        if tagvalue
+          if tagvalue.empty?
+            tagname # use `tagname` as `tagvalue` for the tags without any values
           else
-            tag_value
+            tagvalue
           end
         else
           nil
@@ -398,15 +398,15 @@ module Hotdog
       end
 
       def split_tag(tag)
-        tag_name, tag_value = tag.split(":", 2)
-        [tag_name, tag_value || ""]
+        tagname, tagvalue = tag.split(":", 2)
+        [tagname, tagvalue || ""]
       end
 
-      def join_tag(tag_name, tag_value)
-        if tag_value.to_s.empty?
-          tag_name
+      def join_tag(tagname, tagvalue)
+        if tagvalue.to_s.empty?
+          tagname
         else
-          "#{tag_name}:#{tag_value}"
+          "#{tagname}:#{tagvalue}"
         end
       end
 

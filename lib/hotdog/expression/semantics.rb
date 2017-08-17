@@ -461,7 +461,7 @@ module Hotdog
           @args[0] = @args[0].optimize(options)
           if TagExpressionNode === args[1]
             # workaround for expressions like `ORDER_BY((environment:development),role)`
-            @args[1] = @args[1].tag_name
+            @args[1] = @args[1].tagname
           else
             @args[1] = @args[1]
           end
@@ -470,7 +470,7 @@ module Hotdog
           if @args[1]
             if TagExpressionNode === @args[1]
               # workaround for expressions like `ORDER_BY((environment:development),role)`
-              @args[1] = @args[1].tag_name
+              @args[1] = @args[1].tagname
             else
               @args[1] = @args[1]
             end
@@ -548,22 +548,22 @@ module Hotdog
     end
 
     class TagExpressionNode < ExpressionNode
-      def initialize(tag_name, tag_value, separator=nil)
-        @tag_name = tag_name
-        @tag_value = tag_value
+      def initialize(tagname, tagvalue, separator=nil)
+        @tagname = tagname
+        @tagvalue = tagvalue
         @separator = separator
         @fallback = nil
       end
-      attr_reader :tag_name
-      attr_reader :tag_value
+      attr_reader :tagname
+      attr_reader :tagvalue
       attr_reader :separator
 
-      def tag_name?
-        !(tag_name.nil? or tag_name.to_s.empty?)
+      def tagname?
+        !(tagname.nil? or tagname.to_s.empty?)
       end
 
-      def tag_value?
-        !(tag_value.nil? or tag_value.to_s.empty?)
+      def tagvalue?
+        !(tagvalue.nil? or tagvalue.to_s.empty?)
       end
 
       def separator?
@@ -654,7 +654,7 @@ module Hotdog
       end
 
       def ==(other)
-        self.class == other.class and @tag_name == other.tag_name and @tag_value == other.tag_value
+        self.class == other.class and @tagname == other.tagname and @tagvalue == other.tagvalue
       end
 
       def optimize(options={})
@@ -685,9 +685,9 @@ module Hotdog
 
       def dump(options={})
         data = {}
-        data[:tag_name] = tag_name.to_s if tag_name
+        data[:tagname] = tagname.to_s if tagname
         data[:separator] = separator.to_s if separator
-        data[:tag_value] = tag_value.to_s if tag_value
+        data[:tagvalue] = tagvalue.to_s if tagvalue
         data[:fallback ] = @fallback.dump(options) if @fallback
         data
       end
@@ -719,8 +719,8 @@ module Hotdog
     end
 
     class StringHostNode < StringExpressionNode
-      def initialize(tag_value, separator=nil)
-        super("host", tag_value.to_s, separator)
+      def initialize(tagvalue, separator=nil)
+        super("host", tagvalue.to_s, separator)
       end
 
       def condition(options={})
@@ -732,11 +732,11 @@ module Hotdog
       end
 
       def condition_values(options={})
-        [tag_value]
+        [tagvalue]
       end
 
       def maybe_fallback(options={})
-        fallback = GlobHostNode.new(to_glob(tag_value), separator)
+        fallback = GlobHostNode.new(to_glob(tagvalue), separator)
         query = fallback.maybe_query(options)
         if query
           QueryExpressionNode.new(query, fallback.condition_values(options))
@@ -747,8 +747,8 @@ module Hotdog
     end
 
     class StringTagNode < StringExpressionNode
-      def initialize(tag_name, tag_value, separator=nil)
-        super(tag_name.to_s, tag_value.to_s, separator)
+      def initialize(tagname, tagvalue, separator=nil)
+        super(tagname.to_s, tagvalue.to_s, separator)
       end
 
       def condition(options={})
@@ -760,11 +760,11 @@ module Hotdog
       end
 
       def condition_values(options={})
-        [tag_name, tag_value]
+        [tagname, tagvalue]
       end
 
       def maybe_fallback(options={})
-        fallback = GlobTagNode.new(to_glob(tag_name), to_glob(tag_value), separator)
+        fallback = GlobTagNode.new(to_glob(tagname), to_glob(tagvalue), separator)
         query = fallback.maybe_query(options)
         if query
           QueryExpressionNode.new(query, fallback.condition_values(options))
@@ -774,9 +774,9 @@ module Hotdog
       end
     end
 
-    class StringTagNameNode < StringExpressionNode
-      def initialize(tag_name, separator=nil)
-        super(tag_name.to_s, nil, separator)
+    class StringTagnameNode < StringExpressionNode
+      def initialize(tagname, separator=nil)
+        super(tagname.to_s, nil, separator)
       end
 
       def condition(options={})
@@ -788,11 +788,11 @@ module Hotdog
       end
 
       def condition_values(options={})
-        [tag_name]
+        [tagname]
       end
 
       def maybe_fallback(options={})
-        fallback = GlobTagNameNode.new(to_glob(tag_name), separator)
+        fallback = GlobTagnameNode.new(to_glob(tagname), separator)
         query = fallback.maybe_query(options)
         if query
           QueryExpressionNode.new(query, fallback.condition_values(options))
@@ -802,9 +802,9 @@ module Hotdog
       end
     end
 
-    class StringTagValueNode < StringExpressionNode
-      def initialize(tag_value, separator=nil)
-        super(nil, tag_value.to_s, separator)
+    class StringTagvalueNode < StringExpressionNode
+      def initialize(tagvalue, separator=nil)
+        super(nil, tagvalue.to_s, separator)
       end
 
       def condition(options={})
@@ -816,11 +816,11 @@ module Hotdog
       end
 
       def condition_values(options={})
-        [tag_value, tag_value]
+        [tagvalue, tagvalue]
       end
 
       def maybe_fallback(options={})
-        fallback = GlobTagValueNode.new(to_glob(tag_value), separator)
+        fallback = GlobTagvalueNode.new(to_glob(tagvalue), separator)
         query = fallback.maybe_query(options)
         if query
           QueryExpressionNode.new(query, fallback.condition_values(options))
@@ -831,8 +831,8 @@ module Hotdog
     end
 
     class StringHostOrTagNode < StringExpressionNode
-      def initialize(tag_name, separator=nil)
-        super(tag_name.to_s, nil, separator)
+      def initialize(tagname, separator=nil)
+        super(tagname.to_s, nil, separator)
       end
 
       def condition(options={})
@@ -844,11 +844,11 @@ module Hotdog
       end
 
       def condition_values(options={})
-        [tag_name, tag_name, tag_name]
+        [tagname, tagname, tagname]
       end
 
       def maybe_fallback(options={})
-        fallback = GlobHostOrTagNode.new(to_glob(tag_name), separator)
+        fallback = GlobHostOrTagNode.new(to_glob(tagname), separator)
         query = fallback.maybe_query(options)
         if query
           QueryExpressionNode.new(query, fallback.condition_values(options))
@@ -861,17 +861,17 @@ module Hotdog
     class GlobExpressionNode < TagExpressionNode
       def dump(options={})
         data = {}
-        data[:tag_name_glob] = tag_name.to_s if tag_name
+        data[:tagname_glob] = tagname.to_s if tagname
         data[:separator] = separator.to_s if separator
-        data[:tag_value_glob] = tag_value.to_s if tag_value
+        data[:tagvalue_glob] = tagvalue.to_s if tagvalue
         data[:fallback] = @fallback.dump(options) if @fallback
         data
       end
     end
 
     class GlobHostNode < GlobExpressionNode
-      def initialize(tag_value, separator=nil)
-        super("host", tag_value.to_s, separator)
+      def initialize(tagvalue, separator=nil)
+        super("host", tagvalue.to_s, separator)
       end
 
       def condition(options={})
@@ -883,11 +883,11 @@ module Hotdog
       end
 
       def condition_values(options={})
-        [tag_value]
+        [tagvalue]
       end
 
       def maybe_fallback(options={})
-        fallback = GlobHostNode.new(to_glob(tag_value), separator)
+        fallback = GlobHostNode.new(to_glob(tagvalue), separator)
         query = fallback.maybe_query(options)
         if query
           QueryExpressionNode.new(query, fallback.condition_values(options))
@@ -898,8 +898,8 @@ module Hotdog
     end
 
     class GlobTagNode < GlobExpressionNode
-      def initialize(tag_name, tag_value, separator=nil)
-        super(tag_name.to_s, tag_value.to_s, separator)
+      def initialize(tagname, tagvalue, separator=nil)
+        super(tagname.to_s, tagvalue.to_s, separator)
       end
 
       def condition(options={})
@@ -911,11 +911,11 @@ module Hotdog
       end
 
       def condition_values(options={})
-        [tag_name, tag_value]
+        [tagname, tagvalue]
       end
 
       def maybe_fallback(options={})
-        fallback = GlobTagNode.new(to_glob(tag_name), to_glob(tag_value), separator)
+        fallback = GlobTagNode.new(to_glob(tagname), to_glob(tagvalue), separator)
         query = fallback.maybe_query(options)
         if query
           QueryExpressionNode.new(query, fallback.condition_values(options))
@@ -925,9 +925,9 @@ module Hotdog
       end
     end
 
-    class GlobTagNameNode < GlobExpressionNode
-      def initialize(tag_name, separator=nil)
-        super(tag_name.to_s, nil, separator)
+    class GlobTagnameNode < GlobExpressionNode
+      def initialize(tagname, separator=nil)
+        super(tagname.to_s, nil, separator)
       end
 
       def condition(options={})
@@ -939,11 +939,11 @@ module Hotdog
       end
 
       def condition_values(options={})
-        [tag_name]
+        [tagname]
       end
 
       def maybe_fallback(options={})
-        fallback = GlobTagNameNode.new(to_glob(tag_name), separator)
+        fallback = GlobTagnameNode.new(to_glob(tagname), separator)
         query = fallback.maybe_query(options)
         if query
           QueryExpressionNode.new(query, fallback.condition_values(options))
@@ -953,9 +953,9 @@ module Hotdog
       end
     end
 
-    class GlobTagValueNode < GlobExpressionNode
-      def initialize(tag_value, separator=nil)
-        super(nil, tag_value.to_s, separator)
+    class GlobTagvalueNode < GlobExpressionNode
+      def initialize(tagvalue, separator=nil)
+        super(nil, tagvalue.to_s, separator)
       end
 
       def condition(options={})
@@ -967,11 +967,11 @@ module Hotdog
       end
 
       def condition_values(options={})
-        [tag_value, tag_value]
+        [tagvalue, tagvalue]
       end
 
       def maybe_fallback(options={})
-        fallback = GlobTagValueNode.new(to_glob(tag_value), separator)
+        fallback = GlobTagvalueNode.new(to_glob(tagvalue), separator)
         query = fallback.maybe_query(options)
         if query
           QueryExpressionNode.new(query, fallback.condition_values(options))
@@ -982,8 +982,8 @@ module Hotdog
     end
 
     class GlobHostOrTagNode < GlobExpressionNode
-      def initialize(tag_name, separator=nil)
-        super(tag_name.to_s, nil, separator)
+      def initialize(tagname, separator=nil)
+        super(tagname.to_s, nil, separator)
       end
 
       def condition(options={})
@@ -995,11 +995,11 @@ module Hotdog
       end
 
       def condition_values(options={})
-        [tag_name, tag_name, tag_name]
+        [tagname, tagname, tagname]
       end
 
       def maybe_fallback(options={})
-        fallback = GlobHostOrTagNode.new(to_glob(tag_name), separator)
+        fallback = GlobHostOrTagNode.new(to_glob(tagname), separator)
         query = fallback.maybe_query(options)
         if query
           QueryExpressionNode.new(query, fallback.condition_values(options))
@@ -1012,21 +1012,21 @@ module Hotdog
     class RegexpExpressionNode < TagExpressionNode
       def dump(options={})
         data = {}
-        data[:tag_name_regexp] = tag_name.to_s if tag_name
+        data[:tagname_regexp] = tagname.to_s if tagname
         data[:separator] = separator.to_s if separator
-        data[:tag_value_regexp] = tag_value.to_s if tag_value
+        data[:tagvalue_regexp] = tagvalue.to_s if tagvalue
         data[:fallback] = @fallback.dump(options) if @fallback
         data
       end
     end
 
     class RegexpHostNode < RegexpExpressionNode
-      def initialize(tag_value, separator=nil)
-        case tag_value
+      def initialize(tagvalue, separator=nil)
+        case tagvalue
         when /\A\/(.*)\/\z/
-          tag_value = $1
+          tagvalue = $1
         end
-        super("host", tag_value, separator)
+        super("host", tagvalue, separator)
       end
 
       def condition(options={})
@@ -1038,21 +1038,21 @@ module Hotdog
       end
 
       def condition_values(options={})
-        [tag_value]
+        [tagvalue]
       end
     end
 
     class RegexpTagNode < RegexpExpressionNode
-      def initialize(tag_name, tag_value, separator=nil)
-        case tag_name
+      def initialize(tagname, tagvalue, separator=nil)
+        case tagname
         when /\A\/(.*)\/\z/
-          tag_name = $1
+          tagname = $1
         end
-        case tag_value
+        case tagvalue
         when /\A\/(.*)\/\z/
-          tag_value = $1
+          tagvalue = $1
         end
-        super(tag_name, tag_value, separator)
+        super(tagname, tagvalue, separator)
       end
 
       def condition(options={})
@@ -1064,17 +1064,17 @@ module Hotdog
       end
 
       def condition_values(options={})
-        [tag_name, tag_value]
+        [tagname, tagvalue]
       end
     end
 
-    class RegexpTagNameNode < RegexpExpressionNode
-      def initialize(tag_name, separator=nil)
-        case tag_name
+    class RegexpTagnameNode < RegexpExpressionNode
+      def initialize(tagname, separator=nil)
+        case tagname
         when /\A\/(.*)\/\z/
-          tag_name = $1
+          tagname = $1
         end
-        super(tag_name.to_s, nil, separator)
+        super(tagname.to_s, nil, separator)
       end
 
       def condition(options={})
@@ -1086,17 +1086,17 @@ module Hotdog
       end
 
       def condition_values(options={})
-        [tag_name]
+        [tagname]
       end
     end
 
-    class RegexpTagValueNode < RegexpExpressionNode
-      def initialize(tag_value, separator=nil)
-        case tag_value
+    class RegexpTagvalueNode < RegexpExpressionNode
+      def initialize(tagvalue, separator=nil)
+        case tagvalue
         when /\A\/(.*)\/\z/
-          tag_value = $1
+          tagvalue = $1
         end
-        super(nil, tag_value.to_s, separator)
+        super(nil, tagvalue.to_s, separator)
       end
 
       def condition(options={})
@@ -1108,13 +1108,13 @@ module Hotdog
       end
 
       def condition_values(options={})
-        [tag_value, tag_value]
+        [tagvalue, tagvalue]
       end
     end
 
     class RegexpHostOrTagNode < RegexpExpressionNode
-      def initialize(tag_name, separator=nil)
-        super(tag_name, separator)
+      def initialize(tagname, separator=nil)
+        super(tagname, separator)
       end
 
       def condition(options={})
@@ -1126,7 +1126,7 @@ module Hotdog
       end
 
       def condition_values(options={})
-        [tag_name, tag_name, tag_name]
+        [tagname, tagname, tagname]
       end
     end
   end
