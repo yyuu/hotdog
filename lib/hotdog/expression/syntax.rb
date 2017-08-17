@@ -106,52 +106,52 @@ module Hotdog
         )
       }
       rule(:tag) {
-        ( regexp.as(:tag_name_regexp) >> separator.as(:separator) >> regexp.as(:tag_value_regexp) \
-        | regexp.as(:tag_name_regexp) >> separator.as(:separator) \
-        | regexp.as(:tag_name_regexp) \
-        | tag_name_glob.as(:tag_name_glob) >> separator.as(:separator) >> tag_value_glob.as(:tag_value_glob) \
-        | tag_name_glob.as(:tag_name_glob) >> separator.as(:separator) >> tag_value.as(:tag_value) \
-        | tag_name_glob.as(:tag_name_glob) >> separator.as(:separator) \
-        | tag_name_glob.as(:tag_name_glob) \
-        | tag_name.as(:tag_name) >> separator.as(:separator) >> tag_value_glob.as(:tag_value_glob) \
-        | tag_name.as(:tag_name) >> separator.as(:separator) >> tag_value.as(:tag_value) \
-        | tag_name.as(:tag_name) >> separator.as(:separator) \
-        | tag_name.as(:tag_name) \
-        | separator.as(:separator) >> regexp.as(:tag_value_regexp) \
-        | separator.as(:separator) >> tag_value_glob.as(:tag_value_glob) \
-        | separator.as(:separator) >> tag_value.as(:tag_value) \
-        | tag_value_regexp.as(:tag_value_regexp) \
-        | tag_value_glob.as(:tag_value_glob) \
-        | tag_value.as(:tag_value) \
+        ( regexp.as(:tagname_regexp) >> separator.as(:separator) >> regexp.as(:tagvalue_regexp) \
+        | regexp.as(:tagname_regexp) >> separator.as(:separator) \
+        | regexp.as(:tagname_regexp) \
+        | tagname_glob.as(:tagname_glob) >> separator.as(:separator) >> tagvalue_glob.as(:tagvalue_glob) \
+        | tagname_glob.as(:tagname_glob) >> separator.as(:separator) >> tagvalue.as(:tagvalue) \
+        | tagname_glob.as(:tagname_glob) >> separator.as(:separator) \
+        | tagname_glob.as(:tagname_glob) \
+        | tagname.as(:tagname) >> separator.as(:separator) >> tagvalue_glob.as(:tagvalue_glob) \
+        | tagname.as(:tagname) >> separator.as(:separator) >> tagvalue.as(:tagvalue) \
+        | tagname.as(:tagname) >> separator.as(:separator) \
+        | tagname.as(:tagname) \
+        | separator.as(:separator) >> regexp.as(:tagvalue_regexp) \
+        | separator.as(:separator) >> tagvalue_glob.as(:tagvalue_glob) \
+        | separator.as(:separator) >> tagvalue.as(:tagvalue) \
+        | tagvalue_regexp.as(:tagvalue_regexp) \
+        | tagvalue_glob.as(:tagvalue_glob) \
+        | tagvalue.as(:tagvalue) \
         )
       }
-      rule(:tag_name_regexp) {
+      rule(:tagname_regexp) {
         ( regexp \
         )
       }
-      rule(:tag_value_regexp) {
+      rule(:tagvalue_regexp) {
         ( regexp \
         )
       }
-      rule(:tag_name_glob) {
-        ( binary_op.absent? >> unary_op.absent? >> tag_name.repeat(0) >> (glob_char >> tag_name.maybe).repeat(1) \
-        | binary_op >> (glob_char >> tag_name.maybe).repeat(1) \
-        | unary_op >> (glob_char >> tag_name.maybe).repeat(1) \
+      rule(:tagname_glob) {
+        ( binary_op.absent? >> unary_op.absent? >> tagname.repeat(0) >> (glob_char >> tagname.maybe).repeat(1) \
+        | binary_op >> (glob_char >> tagname.maybe).repeat(1) \
+        | unary_op >> (glob_char >> tagname.maybe).repeat(1) \
         )
       }
-      rule(:tag_value_glob) {
-        ( binary_op.absent? >> unary_op.absent? >> tag_value.repeat(0) >> (glob_char >> tag_value.maybe).repeat(1) \
-        | binary_op >> (glob_char >> tag_value.maybe).repeat(1) \
-        | unary_op >> (glob_char >> tag_value.maybe).repeat(1) \
+      rule(:tagvalue_glob) {
+        ( binary_op.absent? >> unary_op.absent? >> tagvalue.repeat(0) >> (glob_char >> tagvalue.maybe).repeat(1) \
+        | binary_op >> (glob_char >> tagvalue.maybe).repeat(1) \
+        | unary_op >> (glob_char >> tagvalue.maybe).repeat(1) \
         )
       }
-      rule(:tag_name) {
+      rule(:tagname) {
         ( binary_op.absent? >> unary_op.absent? >> match('[A-Z_a-z]') >> match('[-./0-9A-Z_a-z]').repeat(0) \
         | binary_op >> match('[-./0-9A-Z_a-z]').repeat(1) \
         | unary_op >> match('[-./0-9A-Z_a-z]').repeat(1) \
         )
       }
-      rule(:tag_value) {
+      rule(:tagvalue) {
         ( binary_op.absent? >> unary_op.absent? >> match('[-./0-9:A-Z_a-z]').repeat(1) \
         | binary_op >> match('[-./0-9:A-Z_a-z]').repeat(1) \
         | unary_op >> match('[-./0-9:A-Z_a-z]').repeat(1) \
