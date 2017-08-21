@@ -355,7 +355,7 @@ module Hotdog
               if query_without_condition
                 condition_length = expressions.map { |expression| expression.condition_values(options).length }.max
                 expressions.each_slice(SQLITE_LIMIT_COMPOUND_SELECT / condition_length).flat_map { |expressions|
-                  q = query_without_condition.sub(/\s*;\s*\z/, "") + " WHERE " + expressions.map { |expression| "( %s )" % expression.condition(options) }.join(" OR ") + ";"
+                  q = query_without_condition.sub(/\s*;\s*\z/, " WHERE #{expressions.map { |expression| "( %s )" % expression.condition(options) }.join(" OR ")};")
                   environment.execute(q, expressions.flat_map { |expression| expression.condition_values(options) }).map { |row| row.first }
                 }
               else
@@ -535,7 +535,7 @@ module Hotdog
 
     class NothingNode < QueryExpressionNode
       def initialize(options={})
-        super("SELECT NULL AS host_id WHERE host_id NOT NULL", [], options)
+        super("SELECT NULL AS host_id WHERE host_id NOT NULL;", [], options)
       end
 
       def evaluate(environment, options={})
@@ -573,7 +573,7 @@ module Hotdog
       def maybe_query(options={})
         query_without_condition = maybe_query_without_condition(options)
         if query_without_condition
-          query_without_condition.sub(/\s*;\s*\z/, "") + " WHERE " + condition(options) + ";"
+          query_without_condition.sub(/\s*;\s*\z/, " WHERE #{condition(options)};")
         else
           nil
         end
