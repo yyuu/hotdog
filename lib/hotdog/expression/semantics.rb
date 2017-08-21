@@ -535,7 +535,7 @@ module Hotdog
 
     class NothingNode < QueryExpressionNode
       def initialize(options={})
-        super("SELECT NULL AS host_id WHERE host_id NOT NULL", [], options)
+        super("SELECT NULL AS host_id WHERE host_id NOT NULL;", [], options)
       end
 
       def evaluate(environment, options={})
