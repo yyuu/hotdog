@@ -9,6 +9,11 @@ describe "tag glob expression" do
     Hotdog::Commands::Search.new(Hotdog::Application.new)
   }
 
+  before(:each) do
+    ENV["DATADOG_API_KEY"] = "DATADOG_API_KEY"
+    ENV["DATADOG_APPLICATION_KEY"] = "DATADOG_APPLICATION_KEY"
+  end
+
   it "interprets tag glob with host" do
     expr = Hotdog::Expression::GlobHostNode.new("foo*", ":")
     q = [
