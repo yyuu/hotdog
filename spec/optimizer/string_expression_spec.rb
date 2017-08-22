@@ -5,15 +5,6 @@ require "hotdog/commands/search"
 require "parslet"
 
 describe "tag expression" do
-  let(:cmd) {
-    Hotdog::Commands::Search.new(Hotdog::Application.new)
-  }
-
-  before(:each) do
-    ENV["DATADOG_API_KEY"] = "DATADOG_API_KEY"
-    ENV["DATADOG_APPLICATION_KEY"] = "DATADOG_APPLICATION_KEY"
-  end
-
   it "interprets tag with host" do
     expr = Hotdog::Expression::StringHostNode.new("foo", ":")
     expect(expr.optimize.dump).to eq({
@@ -111,12 +102,4 @@ describe "tag expression" do
       },
     })
   end
-
-# it "empty tag" do
-#   expr = Hotdog::Expression::StringExpressionNode.new(nil, nil, nil)
-#   expect {
-#     expr.evaluate(cmd)
-#   }.to raise_error(NotImplementedError)
-#   expect(expr.dump).to eq({})
-# end
 end

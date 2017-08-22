@@ -14,6 +14,10 @@ module Hotdog
       def dump(options={})
         {}
       end
+
+      def ==(other)
+        self.dump == other.dump
+      end
     end
 
     class UnaryExpressionNode < ExpressionNode
@@ -272,7 +276,7 @@ module Hotdog
           end
         when :XOR
           if left == right
-            []
+            NothingNode.new(options)
           else
             optimize1(options)
           end
