@@ -3,6 +3,7 @@
 require "json"
 require "parslet"
 require "shellwords"
+require "thread"
 require "hotdog/commands/search"
 
 module Hotdog
@@ -167,22 +168,25 @@ module Hotdog
         else
           stdin = :close
         end
+        stdout_lock = options[:stdout_lock] || Mutex.new
         IO.popen(cmdline, in: stdin) do |io|
           io.each_with_index do |s, i|
             if output
-              if identifier
-                if color
-                  STDOUT.write("\e[0;#{color}m")
+              stdout_lock.synchronize do
+                if identifier
+                  if color
+                    STDOUT.write("\e[0;#{color}m")
+                  end
+                  STDOUT.write(identifier)
+                  STDOUT.write(":")
+                  STDOUT.write(i.to_s)
+                  STDOUT.write(":")
+                  if color
+                    STDOUT.write("\e[0m")
+                  end
                 end
-                STDOUT.write(identifier)
-                STDOUT.write(":")
-                STDOUT.write(i.to_s)
-                STDOUT.write(":")
-                if color
-                  STDOUT.write("\e[0m")
-                end
+                STDOUT.puts(s)
               end
-              STDOUT.puts(s)
             end
           end
         end
