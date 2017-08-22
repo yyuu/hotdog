@@ -14,6 +14,10 @@ module Hotdog
       def dump(options={})
         {}
       end
+
+      def ==(other)
+        self.dump == other.dump
+      end
     end
 
     class UnaryExpressionNode < ExpressionNode
