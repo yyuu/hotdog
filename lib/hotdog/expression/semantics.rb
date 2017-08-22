@@ -272,7 +272,7 @@ module Hotdog
           end
         when :XOR
           if left == right
-            []
+            NothingNode.new(options)
           else
             optimize1(options)
           end
