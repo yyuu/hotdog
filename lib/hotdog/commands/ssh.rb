@@ -1,8 +1,10 @@
 #!/usr/bin/env ruby
 
 require "json"
+require "open3"
 require "parslet"
 require "shellwords"
+require "thread"
 require "hotdog/commands/search"
 
 module Hotdog
@@ -165,28 +167,47 @@ module Hotdog
         if options[:infile]
           cmdline = "cat #{Shellwords.shellescape(options[:infile])} | #{cmdline}"
         end
-        IO.popen(cmdline, in: :close) do |io|
-          io.each_with_index do |raw, i|
-            if output
-              buf = []
-              if identifier
-                if color
-                  buf << ("\e[0;#{color}m")
+        output_lock = options[:output_lock] || Mutex.new
+        rv = false
+        Open3.popen3(cmdline) do |cmdin, cmdout, cmderr, t|
+          cmdin.close
+          i = 0
+          while !cmdout.eof? or !cmderr.eof?
+            rs, _ = IO.select([cmderr, cmdout], [], [], 1)
+            if r = Array(rs).first
+              if raw = r.gets
+                buf = []
+                if r == cmdout
+                  if identifier
+                    if color
+                      buf << "\e[0;#{color}m"
+                    end
+                    buf << identifier
+                    buf << ":"
+                    buf << i.to_s
+                    buf << ":"
+                    if color
+                      buf << "\e[0m"
+                    end
+                  end
+                  buf << raw
+                  i += 1
+                else
+                  buf << raw
                 end
-                buf << identifier
-                buf << ":"
-                buf << i.to_s
-                buf << ":"
-                if color
-                  buf << "\e[0m"
+                output_lock.synchronize do
+                  if r == cmdout
+                    STDOUT.puts(buf.join)
+                  else
+                    STDERR.puts(buf.join)
+                  end
                 end
               end
-              buf << raw
-              STDOUT.puts(buf.join)
             end
           end
+          rv = t.value.success?
         end
-        $?.success? # $? is thread-local variable
+        rv
       end
     end
 
