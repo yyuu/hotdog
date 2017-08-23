@@ -203,8 +203,6 @@ module Hotdog
                   end
                 end
               end
-              buf << raw
-              STDOUT.puts(buf.join)
             end
           end
           rv = t.value.success?
