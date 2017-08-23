@@ -3,6 +3,7 @@
 require "json"
 require "parslet"
 require "shellwords"
+require "thread"
 require "hotdog/commands/search"
 
 module Hotdog
