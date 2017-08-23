@@ -44,10 +44,10 @@ module Hotdog
               true
             }
           else
-            stdout_lock = Mutex.new
+            output_lock = Mutex.new
             stats = Parallel.map(hosts_cmdlines.each_with_index.to_a, in_threads: parallelism(hosts)) { |(host, cmdline), i|
               identifier = options[:show_identifier] ? host : nil
-              success = exec_command(identifier, cmdline, index: i, output: true, infile: (infile ? infile.path : nil), stdout_lock: stdout_lock)
+              success = exec_command(identifier, cmdline, index: i, output: true, infile: (infile ? infile.path : nil), output_lock: output_lock)
               if !success && options[:stop_on_error]
                 raise StopException.new
               end
