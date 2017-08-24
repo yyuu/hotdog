@@ -154,39 +154,48 @@ module Hotdog
         output = options.fetch(:output, true)
         logger.debug("execute: #{cmdline}")
         if use_color?
-          if options.key?(:index)
-            color = 31 + (options[:index] % 6)
-          else
-            color = 36
-          end
+          color = color_code(options[:index])
         else
           color = nil
         end
         if options[:infile]
           cmdline = "cat #{Shellwords.shellescape(options[:infile])} | #{cmdline}"
         end
-        IO.popen(cmdline, in: :close) do |io|
-          io.each_with_index do |raw, i|
+        IO.popen(cmdline, in: :close) do |cmdout|
+          cmdout.each_with_index do |raw, i|
             if output
-              buf = []
-              if identifier
-                if color
-                  buf << ("\e[0;#{color}m")
-                end
-                buf << identifier
-                buf << ":"
-                buf << i.to_s
-                buf << ":"
-                if color
-                  buf << "\e[0m"
-                end
-              end
-              buf << raw
-              STDOUT.puts(buf.join)
+              STDOUT.puts(prettify_output(raw, i, color, identifier))
             end
           end
         end
         $?.success? # $? is thread-local variable
+      end
+
+      private
+      def color_code(index)
+        if index
+          color = 31 + (index % 6)
+        else
+          color = 36
+        end
+      end
+
+      def prettify_output(raw, i, color, identifier)
+        buf = []
+        if identifier
+          if color
+            buf << ("\e[0;#{color}m")
+          end
+          buf << identifier
+          buf << ":"
+          buf << i.to_s
+          buf << ":"
+          if color
+            buf << "\e[0m"
+          end
+        end
+        buf << raw
+        buf.join
       end
     end
 
