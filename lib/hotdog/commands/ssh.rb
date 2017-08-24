@@ -161,10 +161,16 @@ module Hotdog
         if options[:infile]
           cmdline = "cat #{Shellwords.shellescape(options[:infile])} | #{cmdline}"
         end
-        IO.popen(cmdline, in: :close) do |cmdout|
-          cmdout.each_with_index do |raw, i|
-            if output
+        cmderr, child_cmderr = IO.pipe
+        IO.popen(cmdline, in: :close, err: child_cmderr) do |cmdout|
+          i = 0
+          each_readable([cmderr, cmdout]) do |readable|
+            raw = readable.readline
+            if readable == cmdout
               STDOUT.puts(prettify_output(raw, i, color, identifier))
+              i += 1
+            else
+              STDERR.puts(raw)
             end
           end
         end
@@ -172,6 +178,21 @@ module Hotdog
       end
 
       private
+      def each_readable(read_list, timeout=1)
+        loop do
+          # we cannot look until IO#eof? since it will block for pipes
+          # http://ruby-doc.org/core-2.4.0/IO.html#method-i-eof-3F
+          rs = Array(IO.select(read_list, [], [], timeout)).first
+          if r = Array(rs).first
+            begin
+              yield r
+            rescue EOFError => error
+              break
+            end
+          end
+        end
+      end
+
       def color_code(index)
         if index
           color = 31 + (index % 6)
