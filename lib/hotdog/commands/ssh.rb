@@ -3,6 +3,7 @@
 require "json"
 require "parslet"
 require "shellwords"
+require "thread"
 require "hotdog/commands/search"
 
 module Hotdog
@@ -152,41 +153,74 @@ module Hotdog
 
       def exec_command(identifier, cmdline, options={})
         output = options.fetch(:output, true)
+        output_lock = options[:output_lock] || Mutex.new
         logger.debug("execute: #{cmdline}")
         if use_color?
-          if options.key?(:index)
-            color = 31 + (options[:index] % 6)
-          else
-            color = 36
-          end
+          color = color_code(options[:index])
         else
           color = nil
         end
         if options[:infile]
           cmdline = "cat #{Shellwords.shellescape(options[:infile])} | #{cmdline}"
         end
-        IO.popen(cmdline, in: :close) do |io|
-          io.each_with_index do |raw, i|
-            if output
-              buf = []
-              if identifier
-                if color
-                  buf << ("\e[0;#{color}m")
-                end
-                buf << identifier
-                buf << ":"
-                buf << i.to_s
-                buf << ":"
-                if color
-                  buf << "\e[0m"
-                end
+        cmderr, child_cmderr = IO.pipe
+        IO.popen(cmdline, in: :close, err: child_cmderr) do |cmdout|
+          i = 0
+          each_readable([cmderr, cmdout]) do |readable|
+            raw = readable.readline
+            output_lock.synchronize do
+              if readable == cmdout
+                STDOUT.puts(prettify_output(raw, i, color, identifier))
+                i += 1
+              else
+                STDERR.puts(raw)
               end
-              buf << raw
-              STDOUT.puts(buf.join)
             end
           end
         end
         $?.success? # $? is thread-local variable
+      end
+
+      private
+      def each_readable(read_list, timeout=1)
+        loop do
+          # we cannot look until IO#eof? since it will block for pipes
+          # http://ruby-doc.org/core-2.4.0/IO.html#method-i-eof-3F
+          rs = Array(IO.select(read_list, [], [], timeout)).first
+          if r = Array(rs).first
+            begin
+              yield r
+            rescue EOFError => error
+              break
+            end
+          end
+        end
+      end
+
+      def color_code(index)
+        if index
+          color = 31 + (index % 6)
+        else
+          color = 36
+        end
+      end
+
+      def prettify_output(raw, i, color, identifier)
+        buf = []
+        if identifier
+          if color
+            buf << ("\e[0;#{color}m")
+          end
+          buf << identifier
+          buf << ":"
+          buf << i.to_s
+          buf << ":"
+          if color
+            buf << "\e[0m"
+          end
+        end
+        buf << raw
+        buf.join
       end
     end
 
