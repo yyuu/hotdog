@@ -3,6 +3,7 @@
 require "json"
 require "parslet"
 require "shellwords"
+require "thread"
 require "hotdog/commands/search"
 
 module Hotdog
@@ -152,6 +153,7 @@ module Hotdog
 
       def exec_command(identifier, cmdline, options={})
         output = options.fetch(:output, true)
+        output_lock = options[:output_lock] || Mutex.new
         logger.debug("execute: #{cmdline}")
         if use_color?
           color = color_code(options[:index])
@@ -166,11 +168,13 @@ module Hotdog
           i = 0
           each_readable([cmderr, cmdout]) do |readable|
             raw = readable.readline
-            if readable == cmdout
-              STDOUT.puts(prettify_output(raw, i, color, identifier))
-              i += 1
-            else
-              STDERR.puts(raw)
+            output_lock.synchronize do
+              if readable == cmdout
+                STDOUT.puts(prettify_output(raw, i, color, identifier))
+                i += 1
+              else
+                STDERR.puts(raw)
+              end
             end
           end
         end
