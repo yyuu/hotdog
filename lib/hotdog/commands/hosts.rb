@@ -13,7 +13,8 @@ module Hotdog
               execute("SELECT id FROM hosts WHERE LOWER(name) GLOB LOWER(?);", [host_name]).to_a.reduce(:+) || []
             }
           else
-            result = args.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |args|
+            sqlite_limit_compound_select = options[:sqlite_limit_compound_select] || SQLITE_LIMIT_COMPOUND_SELECT
+            result = args.each_slice(sqlite_limit_compound_select).flat_map { |args|
               execute("SELECT id FROM hosts WHERE name IN (%s);" % args.map { "?" }.join(", "), args).to_a.reduce(:+) || []
             }
           end
