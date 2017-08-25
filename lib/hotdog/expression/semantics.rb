@@ -25,6 +25,8 @@ module Hotdog
 
       def initialize(op, expression)
         case (op || "not").to_s
+        when "NOOP", "noop"
+          @op = :NOOP
         when "!", "~", "NOT", "not"
           @op = :NOT
         else
@@ -35,6 +37,8 @@ module Hotdog
 
       def evaluate(environment, options={})
         case @op
+        when :NOOP
+          @expression.evaluate(environment, options)
         when :NOT
           values = @expression.evaluate(environment, options).tap do |values|
             environment.logger.debug("expr: #{values.length} value(s)")
@@ -64,6 +68,8 @@ module Hotdog
 
       def optimize(options={})
         case op
+        when :NOOP
+          optimize1(options)
         when :NOT
           case expression
           when EverythingNode
@@ -74,6 +80,7 @@ module Hotdog
             optimize1(options)
           end
         else
+          @expression = expression.optimize(options)
           self
         end
       end
@@ -89,31 +96,45 @@ module Hotdog
       private
       def optimize1(options={})
         case op
+        when :NOOP
+          expression.optimize(options)
         when :NOT
-          if UnaryExpressionNode === expression and expression.op == :NOT
-            expression.expression.optimize(options)
-          else
-            sqlite_limit_compound_select = options[:sqlite_limit_compound_select] || SQLITE_LIMIT_COMPOUND_SELECT
-            case expression
-            when QueryExpressionNode
-              q = expression.query
-              v = expression.values
-              if q and v.length <= sqlite_limit_compound_select
-                QueryExpressionNode.new("SELECT id AS host_id FROM hosts EXCEPT #{q.sub(/\s*;\s*\z/, "")};", v)
-              else
-                self
-              end
-            when TagExpressionNode
-              q = expression.maybe_query(options)
-              v = expression.condition_values(options)
-              if q and v.length <= sqlite_limit_compound_select
-                QueryExpressionNode.new("SELECT id AS host_id FROM hosts EXCEPT #{q.sub(/\s*;\s*\z/, "")};", v)
-              else
-                self
-              end
+          if UnaryExpressionNode === expression
+            case expression.op
+            when :NOOP
+              @expression = expression.optimize(options)
+              optimize2(options)
+            when :NOT
+              expression.expression.optimize(options)
             else
               self
             end
+          else
+            optimize2(options)
+          end
+        else
+          self
+        end
+      end
+
+      def optimize2(options={})
+        sqlite_limit_compound_select = options[:sqlite_limit_compound_select] || SQLITE_LIMIT_COMPOUND_SELECT
+        case expression
+        when QueryExpressionNode
+          q = expression.query
+          v = expression.values
+          if q and v.length <= sqlite_limit_compound_select
+            QueryExpressionNode.new("SELECT id AS host_id FROM hosts EXCEPT #{q.sub(/\s*;\s*\z/, "")};", v)
+          else
+            self
+          end
+        when TagExpressionNode
+          q = expression.maybe_query(options)
+          v = expression.condition_values(options)
+          if q and v.length <= sqlite_limit_compound_select
+            QueryExpressionNode.new("SELECT id AS host_id FROM hosts EXCEPT #{q.sub(/\s*;\s*\z/, "")};", v)
+          else
+            self
           end
         else
           self
