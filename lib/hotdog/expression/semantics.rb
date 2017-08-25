@@ -46,8 +46,9 @@ module Hotdog
           else
             # workaround for "too many terms in compound SELECT"
             min, max = environment.execute("SELECT MIN(id), MAX(id) FROM hosts LIMIT 1;").first.to_a
-            (min / (SQLITE_LIMIT_COMPOUND_SELECT - 2)).upto(max / (SQLITE_LIMIT_COMPOUND_SELECT - 2)).flat_map { |i|
-              range = ((SQLITE_LIMIT_COMPOUND_SELECT - 2) * i)...((SQLITE_LIMIT_COMPOUND_SELECT - 2) * (i + 1))
+            sqlite_limit_compound_select = options[:sqlite_limit_compound_select] || SQLITE_LIMIT_COMPOUND_SELECT
+            (min / (sqlite_limit_compound_select - 2)).upto(max / (sqlite_limit_compound_select - 2)).flat_map { |i|
+              range = ((sqlite_limit_compound_select - 2) * i)...((sqlite_limit_compound_select - 2) * (i + 1))
               selected = values.select { |n| range === n }
               q = "SELECT id FROM hosts " \
                     "WHERE ? <= id AND id < ? AND id NOT IN (%s);"
@@ -92,11 +93,12 @@ module Hotdog
           if UnaryExpressionNode === expression and expression.op == :NOT
             expression.expression.optimize(options)
           else
+            sqlite_limit_compound_select = options[:sqlite_limit_compound_select] || SQLITE_LIMIT_COMPOUND_SELECT
             case expression
             when QueryExpressionNode
               q = expression.query
               v = expression.values
-              if q and v.length <= SQLITE_LIMIT_COMPOUND_SELECT
+              if q and v.length <= sqlite_limit_compound_select
                 QueryExpressionNode.new("SELECT id AS host_id FROM hosts EXCEPT #{q.sub(/\s*;\s*\z/, "")};", v)
               else
                 self
@@ -104,7 +106,7 @@ module Hotdog
             when TagExpressionNode
               q = expression.maybe_query(options)
               v = expression.condition_values(options)
-              if q and v.length <= SQLITE_LIMIT_COMPOUND_SELECT
+              if q and v.length <= sqlite_limit_compound_select
                 QueryExpressionNode.new("SELECT id AS host_id FROM hosts EXCEPT #{q.sub(/\s*;\s*\z/, "")};", v)
               else
                 self
@@ -154,8 +156,9 @@ module Hotdog
             else
               # workaround for "too many terms in compound SELECT"
               min, max = environment.execute("SELECT MIN(id), MAX(id) FROM hosts LIMIT 1;").first.to_a
-              (min / ((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 2)).upto(max / ((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 2)).flat_map { |i|
-                range = (((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 2) * i)...(((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 2) * (i + 1))
+              sqlite_limit_compound_select = options[:sqlite_limit_compound_select] || SQLITE_LIMIT_COMPOUND_SELECT
+              (min / ((sqlite_limit_compound_select - 2) / 2)).upto(max / ((sqlite_limit_compound_select - 2) / 2)).flat_map { |i|
+                range = (((sqlite_limit_compound_select - 2) / 2) * i)...(((sqlite_limit_compound_select - 2) / 2) * (i + 1))
                 left_selected = left_values.select { |n| range === n }
                 right_selected = right_values.select { |n| range === n }
                 q = "SELECT id FROM hosts " \
@@ -181,8 +184,9 @@ module Hotdog
             else
               # workaround for "too many terms in compound SELECT"
               min, max = environment.execute("SELECT MIN(id), MAX(id) FROM hosts LIMIT 1;").first.to_a
-              (min / ((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 2)).upto(max / ((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 2)).flat_map { |i|
-                range = (((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 2) * i)...(((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 2) * (i + 1))
+              sqlite_limit_compound_select = options[:sqlite_limit_compound_select] || SQLITE_LIMIT_COMPOUND_SELECT
+              (min / ((sqlite_limit_compound_select - 2) / 2)).upto(max / ((sqlite_limit_compound_select - 2) / 2)).flat_map { |i|
+                range = (((sqlite_limit_compound_select - 2) / 2) * i)...(((sqlite_limit_compound_select - 2) / 2) * (i + 1))
                 left_selected = left_values.select { |n| range === n }
                 right_selected = right_values.select { |n| range === n }
                 q = "SELECT id FROM hosts " \
@@ -208,8 +212,9 @@ module Hotdog
             else
               # workaround for "too many terms in compound SELECT"
               min, max = environment.execute("SELECT MIN(id), MAX(id) FROM hosts LIMIT 1;").first.to_a
-              (min / ((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 4)).upto(max / ((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 4)).flat_map { |i|
-                range = (((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 4) * i)...(((SQLITE_LIMIT_COMPOUND_SELECT - 2) / 4) * (i + 1))
+              sqlite_limit_compound_select = options[:sqlite_limit_compound_select] || SQLITE_LIMIT_COMPOUND_SELECT
+              (min / ((sqlite_limit_compound_select - 2) / 4)).upto(max / ((sqlite_limit_compound_select - 2) / 4)).flat_map { |i|
+                range = (((sqlite_limit_compound_select - 2) / 4) * i)...(((sqlite_limit_compound_select - 2) / 4) * (i + 1))
                 left_selected = left_values.select { |n| range === n }
                 right_selected = right_values.select { |n| range === n }
                 q = "SELECT id FROM hosts " \
@@ -299,7 +304,8 @@ module Hotdog
           lv = left.condition_values(options)
           rq = right.maybe_query(options)
           rv = right.condition_values(options)
-          if lq and rq and lv.length + rv.length <= SQLITE_LIMIT_COMPOUND_SELECT
+          sqlite_limit_compound_select = options[:sqlite_limit_compound_select] || SQLITE_LIMIT_COMPOUND_SELECT
+          if lq and rq and lv.length + rv.length <= sqlite_limit_compound_select
             case op
             when :AND
               q = "#{lq.sub(/\s*;\s*\z/, "")} INTERSECT #{rq.sub(/\s*;\s*\z/, "")};"
@@ -334,8 +340,9 @@ module Hotdog
         else
           raise(SyntaxError.new("unknown multinary operator: #{op.inspect}"))
         end
-        if SQLITE_LIMIT_COMPOUND_SELECT < expressions.length
-          raise(ArgumentError.new("expressions limit exceeded: #{expressions.length} for #{SQLITE_LIMIT_COMPOUND_SELECT}"))
+        sqlite_limit_compound_select = options[:sqlite_limit_compound_select] || SQLITE_LIMIT_COMPOUND_SELECT
+        if sqlite_limit_compound_select < expressions.length
+          raise(ArgumentError.new("expressions limit exceeded: #{expressions.length} for #{sqlite_limit_compound_select}"))
         end
         @expressions = expressions
         @fallback = options[:fallback]
@@ -357,7 +364,8 @@ module Hotdog
               query_without_condition = expressions.first.maybe_query_without_condition(options)
               if query_without_condition
                 condition_length = expressions.map { |expression| expression.condition_values(options).length }.max
-                expressions.each_slice(SQLITE_LIMIT_COMPOUND_SELECT / condition_length).flat_map { |expressions|
+                sqlite_limit_compound_select = options[:sqlite_limit_compound_select] || SQLITE_LIMIT_COMPOUND_SELECT
+                expressions.each_slice(sqlite_limit_compound_select / condition_length).flat_map { |expressions|
                   q = query_without_condition.sub(/\s*;\s*\z/, " WHERE #{expressions.map { |expression| "( %s )" % expression.condition(options) }.join(" OR ")};")
                   environment.execute(q, expressions.flat_map { |expression| expression.condition_values(options) }).map { |row| row.first }
                 }

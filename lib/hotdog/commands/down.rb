@@ -39,7 +39,8 @@ module Hotdog
           with_retry(error_handler: ->(error) { reload }) do
             if open_db
               @db.transaction do
-                hosts.each_slice(SQLITE_LIMIT_COMPOUND_SELECT) do |hosts|
+                sqlite_limit_compound_select = options[:sqlite_limit_compound_select] || SQLITE_LIMIT_COMPOUND_SELECT
+                hosts.each_slice(sqlite_limit_compound_select) do |hosts|
                   execute_db(@db, "DELETE FROM hosts_tags WHERE host_id IN ( SELECT id FROM hosts WHERE name IN (%s) );" % hosts.map { "?" }.join(", "), hosts)
                   execute_db(@db, "DELETE FROM hosts WHERE name IN (%s);" % hosts.map { "?" }.join(", "), hosts)
                 end
