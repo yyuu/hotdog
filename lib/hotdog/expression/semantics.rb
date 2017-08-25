@@ -62,7 +62,6 @@ module Hotdog
       end
 
       def optimize(options={})
-        @expression = @expression.optimize(options)
         case op
         when :NOT
           case expression
@@ -91,7 +90,7 @@ module Hotdog
         case op
         when :NOT
           if UnaryExpressionNode === expression and expression.op == :NOT
-            expression.expression
+            expression.expression.optimize(options)
           else
             case expression
             when QueryExpressionNode
