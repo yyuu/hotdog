@@ -605,11 +605,11 @@ module Hotdog
     end
 
     class TagExpressionNode < ExpressionNode
-      def initialize(tagname, tagvalue, separator=nil)
+      def initialize(tagname, tagvalue, separator=nil, fallback=nil)
         @tagname = tagname
         @tagvalue = tagvalue
         @separator = separator
-        @fallback = nil
+        @fallback = fallback
       end
       attr_reader :tagname
       attr_reader :tagvalue
@@ -716,8 +716,12 @@ module Hotdog
 
       def optimize(options={})
         # fallback to glob expression
-        @fallback = maybe_fallback(options)
-        self
+        # FIXME:
+        self.dup.tap do |o_self|
+          o_self.instance_eval {
+            @fallback ||= maybe_fallback(options)
+          }
+        end
       end
 
       def to_glob(s)
@@ -755,8 +759,8 @@ module Hotdog
     end
 
     class AnyHostNode < TagExpressionNode
-      def initialize(separator=nil)
-        super("host", nil, separator)
+      def initialize(separator=nil, fallback=nil)
+        super("host", nil, separator, fallback)
       end
 
       def condition(options={})
@@ -776,8 +780,8 @@ module Hotdog
     end
 
     class StringHostNode < StringExpressionNode
-      def initialize(tagvalue, separator=nil)
-        super("host", tagvalue.to_s, separator)
+      def initialize(tagvalue, separator=nil, fallback=nil)
+        super("host", tagvalue.to_s, separator, fallback)
       end
 
       def condition(options={})
@@ -804,8 +808,8 @@ module Hotdog
     end
 
     class StringTagNode < StringExpressionNode
-      def initialize(tagname, tagvalue, separator=nil)
-        super(tagname.to_s, tagvalue.to_s, separator)
+      def initialize(tagname, tagvalue, separator=nil, fallback=nil)
+        super(tagname.to_s, tagvalue.to_s, separator, fallback)
       end
 
       def condition(options={})
@@ -832,8 +836,8 @@ module Hotdog
     end
 
     class StringTagnameNode < StringExpressionNode
-      def initialize(tagname, separator=nil)
-        super(tagname.to_s, nil, separator)
+      def initialize(tagname, separator=nil, fallback=nil)
+        super(tagname.to_s, nil, separator, fallback)
       end
 
       def condition(options={})
@@ -860,8 +864,8 @@ module Hotdog
     end
 
     class StringTagvalueNode < StringExpressionNode
-      def initialize(tagvalue, separator=nil)
-        super(nil, tagvalue.to_s, separator)
+      def initialize(tagvalue, separator=nil, fallback=nil)
+        super(nil, tagvalue.to_s, separator, fallback)
       end
 
       def condition(options={})
@@ -888,8 +892,8 @@ module Hotdog
     end
 
     class StringHostOrTagNode < StringExpressionNode
-      def initialize(tagname, separator=nil)
-        super(tagname.to_s, nil, separator)
+      def initialize(tagname, separator=nil, fallback=nil)
+        super(tagname.to_s, nil, separator, fallback)
       end
 
       def condition(options={})
@@ -927,8 +931,8 @@ module Hotdog
     end
 
     class GlobHostNode < GlobExpressionNode
-      def initialize(tagvalue, separator=nil)
-        super("host", tagvalue.to_s, separator)
+      def initialize(tagvalue, separator=nil, fallback=nil)
+        super("host", tagvalue.to_s, separator, fallback)
       end
 
       def condition(options={})
@@ -955,8 +959,8 @@ module Hotdog
     end
 
     class GlobTagNode < GlobExpressionNode
-      def initialize(tagname, tagvalue, separator=nil)
-        super(tagname.to_s, tagvalue.to_s, separator)
+      def initialize(tagname, tagvalue, separator=nil, fallback=nil)
+        super(tagname.to_s, tagvalue.to_s, separator, fallback)
       end
 
       def condition(options={})
@@ -983,8 +987,8 @@ module Hotdog
     end
 
     class GlobTagnameNode < GlobExpressionNode
-      def initialize(tagname, separator=nil)
-        super(tagname.to_s, nil, separator)
+      def initialize(tagname, separator=nil, fallback=nil)
+        super(tagname.to_s, nil, separator, fallback)
       end
 
       def condition(options={})
@@ -1011,8 +1015,8 @@ module Hotdog
     end
 
     class GlobTagvalueNode < GlobExpressionNode
-      def initialize(tagvalue, separator=nil)
-        super(nil, tagvalue.to_s, separator)
+      def initialize(tagvalue, separator=nil, fallback=nil)
+        super(nil, tagvalue.to_s, separator, fallback)
       end
 
       def condition(options={})
@@ -1039,8 +1043,8 @@ module Hotdog
     end
 
     class GlobHostOrTagNode < GlobExpressionNode
-      def initialize(tagname, separator=nil)
-        super(tagname.to_s, nil, separator)
+      def initialize(tagname, separator=nil, fallback=nil)
+        super(tagname.to_s, nil, separator, fallback)
       end
 
       def condition(options={})
@@ -1078,12 +1082,12 @@ module Hotdog
     end
 
     class RegexpHostNode < RegexpExpressionNode
-      def initialize(tagvalue, separator=nil)
+      def initialize(tagvalue, separator=nil, fallback=nil)
         case tagvalue
         when /\A\/(.*)\/\z/
           tagvalue = $1
         end
-        super("host", tagvalue, separator)
+        super("host", tagvalue, separator, fallback)
       end
 
       def condition(options={})
@@ -1100,7 +1104,7 @@ module Hotdog
     end
 
     class RegexpTagNode < RegexpExpressionNode
-      def initialize(tagname, tagvalue, separator=nil)
+      def initialize(tagname, tagvalue, separator=nil, fallback=nil)
         case tagname
         when /\A\/(.*)\/\z/
           tagname = $1
@@ -1109,7 +1113,7 @@ module Hotdog
         when /\A\/(.*)\/\z/
           tagvalue = $1
         end
-        super(tagname, tagvalue, separator)
+        super(tagname, tagvalue, separator, fallback)
       end
 
       def condition(options={})
@@ -1126,12 +1130,12 @@ module Hotdog
     end
 
     class RegexpTagnameNode < RegexpExpressionNode
-      def initialize(tagname, separator=nil)
+      def initialize(tagname, separator=nil, fallback=nil)
         case tagname
         when /\A\/(.*)\/\z/
           tagname = $1
         end
-        super(tagname.to_s, nil, separator)
+        super(tagname.to_s, nil, separator, fallback)
       end
 
       def condition(options={})
@@ -1148,12 +1152,12 @@ module Hotdog
     end
 
     class RegexpTagvalueNode < RegexpExpressionNode
-      def initialize(tagvalue, separator=nil)
+      def initialize(tagvalue, separator=nil, fallback=nil)
         case tagvalue
         when /\A\/(.*)\/\z/
           tagvalue = $1
         end
-        super(nil, tagvalue.to_s, separator)
+        super(nil, tagvalue.to_s, separator, fallback)
       end
 
       def condition(options={})
@@ -1170,8 +1174,8 @@ module Hotdog
     end
 
     class RegexpHostOrTagNode < RegexpExpressionNode
-      def initialize(tagname, separator=nil)
-        super(tagname, separator)
+      def initialize(tagname, separator=nil, fallback=nil)
+        super(tagname, separator, fallback)
       end
 
       def condition(options={})
