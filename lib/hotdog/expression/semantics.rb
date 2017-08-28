@@ -256,59 +256,79 @@ module Hotdog
       end
 
       def optimize(options={})
-        @left = @left.optimize(options)
-        @right = @right.optimize(options)
+        o_left = @left.optimize(options)
+        o_right = @right.optimize(options)
         case op
         when :AND
-          case left
+          case o_left
           when EverythingNode
-            right
+            o_right
           when NothingNode
-            left
+            o_left
           else
-            if left == right
-              left
+            if o_left == o_right
+              o_left
             else
-              optimize1(options)
+              # FIXME:
+              BinaryExpressionNode.new(
+                op,
+                o_left,
+                o_right,
+              ).__send__(:optimize1, options)
             end
           end
         when :OR
-          case left
+          case o_left
           when EverythingNode
-            left
+            o_left
           when NothingNode
-            right
+            o_right
           else
-            if left == right
-              left
+            if o_left == o_right
+              o_left
             else
-              if MultinaryExpressionNode === left
-                if left.op == op
-                  left.merge(right, fallback: self)
+              if MultinaryExpressionNode === o_left
+                if o_left.op == op
+                  o_left.merge(o_right, fallback: self)
                 else
-                  optimize1(options)
+                  # FIXME:
+                  BinaryExpressionNode.new(
+                    op,
+                    o_left,
+                    o_right,
+                  ).__send__(:optimize1, options)
                 end
               else
-                if MultinaryExpressionNode === right
-                  if right.op == op
-                    right.merge(left, fallback: self)
+                if MultinaryExpressionNode === o_right
+                  if o_right.op == op
+                    o_right.merge(o_left, fallback: self)
                   else
-                    optimize1(options)
+                    # FIXME:
+                    BinaryExpressionNode.new(
+                      op,
+                      o_left,
+                      o_right,
+                    ).__send__(:optimize1, options)
                   end
                 else
-                  MultinaryExpressionNode.new(op, [left, right], fallback: self)
+                  MultinaryExpressionNode.new(op, [o_left, o_right], fallback: self)
                 end
               end
             end
           end
         when :XOR
-          if left == right
+          if o_left == o_right
             NothingNode.new(options)
           else
-            optimize1(options)
+            # FIXME:
+            BinaryExpressionNode.new(
+              op,
+              o_left,
+              o_right,
+            ).__send__(:optimize1, options)
           end
         else
-          self
+          self.dup
         end
       end
 
@@ -342,13 +362,13 @@ module Hotdog
                       "INTERSECT #{rq.sub(/\s*;\s*\z/, "")};"
               QueryExpressionNode.new(q, lv + rv, fallback: self)
             else
-              self
+              self.dup
             end
           else
-            self
+            self.dup
           end
         else
-          self
+          self.dup
         end
       end
     end
