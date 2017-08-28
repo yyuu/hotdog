@@ -11,6 +11,10 @@ module Hotdog
         self.dup
       end
 
+      def compact(options={})
+        self
+      end
+
       def dump(options={})
         {}
       end
@@ -67,22 +71,36 @@ module Hotdog
       end
 
       def optimize(options={})
+        o_self = compact(options)
+        if UnaryExpressionNode === o_self
+          case o_self.op
+          when :NOT
+            case o_self.expression
+            when EverythingNode
+              NothingNode.new(options)
+            when NothingNode
+              EverythingNode.new(options)
+            else
+              # FIXME:
+              o_self.__send__(:optimize1, options)
+            end
+          else
+            # FIXME:
+            o_self.__send__(:optimize1, options)
+          end
+        else
+          o_self.optimize(options)
+        end
+      end
+
+      def compact(options={})
         case op
         when :NOOP
-          optimize1(options)
-        when :NOT
-          case expression
-          when EverythingNode
-            NothingNode.new(options)
-          when NothingNode
-            EverythingNode.new(options)
-          else
-            optimize1(options)
-          end
+          expression.compact(options)
         else
           UnaryExpressionNode.new(
             op,
-            expression.optimize(options),
+            expression.compact(options),
           )
         end
       end
