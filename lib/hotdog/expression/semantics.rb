@@ -80,8 +80,10 @@ module Hotdog
             optimize1(options)
           end
         else
-          @expression = expression.optimize(options)
-          self
+          UnaryExpressionNode.new(
+            op,
+            expression.optimize(options),
+          )
         end
       end
 
@@ -107,13 +109,13 @@ module Hotdog
             when :NOT
               expression.expression.optimize(options)
             else
-              self
+              self.dup
             end
           else
             optimize2(options)
           end
         else
-          self
+          self.dup
         end
       end
 
@@ -126,7 +128,7 @@ module Hotdog
           if q and v.length <= sqlite_limit_compound_select
             QueryExpressionNode.new("SELECT id AS host_id FROM hosts EXCEPT #{q.sub(/\s*;\s*\z/, "")};", v)
           else
-            self
+            self.dup
           end
         when TagExpressionNode
           q = expression.maybe_query(options)
@@ -134,10 +136,10 @@ module Hotdog
           if q and v.length <= sqlite_limit_compound_select
             QueryExpressionNode.new("SELECT id AS host_id FROM hosts EXCEPT #{q.sub(/\s*;\s*\z/, "")};", v)
           else
-            self
+            self.dup
           end
         else
-          self
+          self.dup
         end
       end
     end
