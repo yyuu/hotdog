@@ -7,7 +7,7 @@ require "parslet"
 describe "tag glob expression" do
   it "interprets tag glob with host" do
     expr = Hotdog::Expression::GlobHostNode.new("foo*", ":")
-    expect(expr.optimize.dump).to eq({
+    expect(expr.optimize.optimize.optimize.dump).to eq({
       tagname_glob: "host",
       separator: ":",
       tagvalue_glob: "foo*",
@@ -23,7 +23,7 @@ describe "tag glob expression" do
 
   it "interprets tag glob with tagname and tagvalue" do
     expr = Hotdog::Expression::GlobTagNode.new("foo*", "bar*", ":")
-    expect(expr.optimize.dump).to eq({
+    expect(expr.optimize.optimize.optimize.dump).to eq({
       tagname_glob: "foo*",
       separator: ":",
       tagvalue_glob: "bar*",
@@ -40,7 +40,7 @@ describe "tag glob expression" do
 
   it "interprets tag glob with tagname with separator" do
     expr = Hotdog::Expression::GlobTagnameNode.new("foo*", ":")
-    expect(expr.optimize.dump).to eq({
+    expect(expr.optimize.optimize.optimize.dump).to eq({
       tagname_glob: "foo*",
       separator: ":",
       fallback: {
@@ -56,7 +56,7 @@ describe "tag glob expression" do
 
   it "interprets tag glob with tagname without separator" do
     expr = Hotdog::Expression::GlobHostOrTagNode.new("foo*", nil)
-    expect(expr.optimize.dump).to eq({
+    expect(expr.optimize.optimize.optimize.dump).to eq({
       tagname_glob: "foo*",
       fallback: {
         query: [
@@ -72,7 +72,7 @@ describe "tag glob expression" do
 
   it "interprets tag glob with tagvalue with separator" do
     expr = Hotdog::Expression::GlobTagvalueNode.new("foo*", ":")
-    expect(expr.optimize.dump).to eq({
+    expect(expr.optimize.optimize.optimize.dump).to eq({
       separator: ":",
       tagvalue_glob: "foo*",
       fallback: {
@@ -89,7 +89,7 @@ describe "tag glob expression" do
 
   it "interprets tag glob with tagvalue without separator" do
     expr = Hotdog::Expression::GlobTagvalueNode.new("foo*", nil)
-    expect(expr.optimize.dump).to eq({
+    expect(expr.optimize.optimize.optimize.dump).to eq({
       tagvalue_glob: "foo*",
       fallback: {
         query: [

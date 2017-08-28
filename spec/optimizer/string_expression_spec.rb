@@ -7,7 +7,7 @@ require "parslet"
 describe "tag expression" do
   it "interprets tag with host" do
     expr = Hotdog::Expression::StringHostNode.new("foo", ":")
-    expect(expr.optimize.dump).to eq({
+    expect(expr.optimize.optimize.optimize.dump).to eq({
       tagname: "host",
       separator: ":",
       tagvalue: "foo",
@@ -23,7 +23,7 @@ describe "tag expression" do
 
   it "interprets tag with tagname and tagvalue" do
     expr = Hotdog::Expression::StringTagNode.new("foo", "bar", ":")
-    expect(expr.optimize.dump).to eq({
+    expect(expr.optimize.optimize.optimize.dump).to eq({
       tagname: "foo",
       separator: ":",
       tagvalue: "bar",
@@ -40,7 +40,7 @@ describe "tag expression" do
 
   it "interprets tag with tagname with separator" do
     expr = Hotdog::Expression::StringTagnameNode.new("foo", ":")
-    expect(expr.optimize.dump).to eq({
+    expect(expr.optimize.optimize.optimize.dump).to eq({
       tagname: "foo",
       separator: ":",
       fallback: {
@@ -56,7 +56,7 @@ describe "tag expression" do
 
   it "interprets tag with tagname without separator" do
     expr = Hotdog::Expression::StringHostOrTagNode.new("foo", nil)
-    expect(expr.optimize.dump).to eq({
+    expect(expr.optimize.optimize.optimize.dump).to eq({
       tagname: "foo",
       fallback: {
         query: [
@@ -72,7 +72,7 @@ describe "tag expression" do
 
   it "interprets tag with tagvalue with separator" do
     expr = Hotdog::Expression::StringTagvalueNode.new("foo", ":")
-    expect(expr.optimize.dump).to eq({
+    expect(expr.optimize.optimize.optimize.dump).to eq({
       tagvalue: "foo",
       separator: ":",
       fallback: {
@@ -89,7 +89,7 @@ describe "tag expression" do
 
   it "interprets tag with tagvalue without separator" do
     expr = Hotdog::Expression::StringTagvalueNode.new("foo", nil)
-    expect(expr.optimize.dump).to eq({
+    expect(expr.optimize.optimize.optimize.dump).to eq({
       tagvalue: "foo",
       fallback: {
         query: [

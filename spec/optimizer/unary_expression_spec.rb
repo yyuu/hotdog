@@ -7,7 +7,7 @@ require "parslet"
 describe "unary expression" do
   it "NOT nothing should return everything" do
     expr = Hotdog::Expression::UnaryExpressionNode.new("NOT", Hotdog::Expression::NothingNode.new())
-    expect(expr.optimize.dump).to eq({
+    expect(expr.optimize.optimize.optimize.dump).to eq({
       query: "SELECT id AS host_id FROM hosts;",
       values: [],
     })
@@ -15,7 +15,7 @@ describe "unary expression" do
 
   it "NOT everything should return nothing" do
     expr = Hotdog::Expression::UnaryExpressionNode.new("NOT", Hotdog::Expression::EverythingNode.new())
-    expect(expr.optimize.dump).to eq({
+    expect(expr.optimize.optimize.optimize.dump).to eq({
       query: "SELECT NULL AS host_id WHERE host_id NOT NULL;",
       values: [],
     })
@@ -29,7 +29,7 @@ describe "unary expression" do
         Hotdog::Expression::NothingNode.new(),
       ),
     )
-    expect(expr.optimize.dump).to eq({
+    expect(expr.optimize.optimize.optimize.dump).to eq({
       query: "SELECT NULL AS host_id WHERE host_id NOT NULL;",
       values: [],
     })
@@ -43,7 +43,7 @@ describe "unary expression" do
         Hotdog::Expression::EverythingNode.new(),
       ),
     )
-    expect(expr.optimize.dump).to eq({
+    expect(expr.optimize.optimize.optimize.dump).to eq({
       query: "SELECT id AS host_id FROM hosts;",
       values: [],
     })
@@ -60,7 +60,7 @@ describe "unary expression" do
         ),
       ),
     )
-    expect(expr.optimize.dump).to eq({
+    expect(expr.optimize.optimize.optimize.dump).to eq({
       query: "SELECT id AS host_id FROM hosts;",
       values: [],
     })
@@ -77,7 +77,7 @@ describe "unary expression" do
         ),
       ),
     )
-    expect(expr.optimize.dump).to eq({
+    expect(expr.optimize.optimize.optimize.dump).to eq({
       query: "SELECT NULL AS host_id WHERE host_id NOT NULL;",
       values: [],
     })
@@ -88,7 +88,7 @@ describe "unary expression" do
       "NOT",
       Hotdog::Expression::StringHostNode.new("foo", ":"),
     )
-    expect(expr.optimize.dump).to eq({
+    expect(expr.optimize.optimize.optimize.dump).to eq({
       query: "SELECT id AS host_id FROM hosts EXCEPT SELECT hosts.id AS host_id FROM hosts WHERE hosts.name = ?;",
       values: ["foo"],
     })
@@ -102,7 +102,7 @@ describe "unary expression" do
         Hotdog::Expression::StringHostNode.new("foo", ":"),
       ),
     )
-    expect(expr.optimize.dump).to eq({
+    expect(expr.optimize.optimize.optimize.dump).to eq({
       tagname: "host",
       separator: ":",
       tagvalue: "foo",
@@ -127,7 +127,7 @@ describe "unary expression" do
         ),
       ),
     )
-    expect(expr.optimize.dump).to eq({
+    expect(expr.optimize.optimize.optimize.dump).to eq({
       query: "SELECT id AS host_id FROM hosts EXCEPT SELECT hosts.id AS host_id FROM hosts WHERE hosts.name = ?;",
       values: ["foo"],
     })
@@ -138,7 +138,7 @@ describe "unary expression" do
       "NOOP",
       Hotdog::Expression::StringHostNode.new("foo", ":"),
     )
-    expect(expr.optimize.dump).to eq({
+    expect(expr.optimize.optimize.optimize.dump).to eq({
       tagname: "host",
       separator: ":",
       tagvalue: "foo",
@@ -160,7 +160,7 @@ describe "unary expression" do
         Hotdog::Expression::StringHostNode.new("foo", ":"),
       ),
     )
-    expect(expr.optimize.dump).to eq({
+    expect(expr.optimize.optimize.optimize.dump).to eq({
       tagname: "host",
       separator: ":",
       tagvalue: "foo",
@@ -185,7 +185,7 @@ describe "unary expression" do
         ),
       ),
     )
-    expect(expr.optimize.dump).to eq({
+    expect(expr.optimize.optimize.optimize.dump).to eq({
       tagname: "host",
       separator: ":",
       tagvalue: "foo",
@@ -210,7 +210,7 @@ describe "unary expression" do
         ),
       ),
     )
-    expect(expr.optimize.dump).to eq({
+    expect(expr.optimize.optimize.optimize.dump).to eq({
       query: "SELECT id AS host_id FROM hosts EXCEPT SELECT hosts.id AS host_id FROM hosts WHERE hosts.name = ?;",
       values: ["foo"],
     })
@@ -227,7 +227,7 @@ describe "unary expression" do
         ),
       ),
     )
-    expect(expr.optimize.dump).to eq({
+    expect(expr.optimize.optimize.optimize.dump).to eq({
       query: "SELECT id AS host_id FROM hosts EXCEPT SELECT hosts.id AS host_id FROM hosts WHERE hosts.name = ?;",
       values: ["foo"],
     })
@@ -244,7 +244,7 @@ describe "unary expression" do
         ),
       ),
     )
-    expect(expr.optimize.dump).to eq({
+    expect(expr.optimize.optimize.optimize.dump).to eq({
       query: "SELECT id AS host_id FROM hosts EXCEPT SELECT hosts.id AS host_id FROM hosts WHERE hosts.name = ?;",
       values: ["foo"],
     })
@@ -261,7 +261,7 @@ describe "unary expression" do
         ),
       ),
     )
-    expect(expr.optimize.dump).to eq({
+    expect(expr.optimize.optimize.optimize.dump).to eq({
       tagname: "host",
       separator: ":",
       tagvalue: "foo",
@@ -286,7 +286,7 @@ describe "unary expression" do
         ),
       ),
     )
-    expect(expr.optimize.dump).to eq({
+    expect(expr.optimize.optimize.optimize.dump).to eq({
       tagname: "host",
       separator: ":",
       tagvalue: "foo",
@@ -311,7 +311,7 @@ describe "unary expression" do
         ),
       ),
     )
-    expect(expr.optimize.dump).to eq({
+    expect(expr.optimize.optimize.optimize.dump).to eq({
       tagname: "host",
       separator: ":",
       tagvalue: "foo",
