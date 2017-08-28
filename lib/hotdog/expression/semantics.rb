@@ -521,8 +521,6 @@ module Hotdog
 
       def optimize(options={})
         case function
-        when :HEAD
-          o_args = [@args[0].optimize(options)]
         when :GROUP_BY
           o_args = [@args[0].optimize(options)]
           if TagExpressionNode === args[1]
@@ -541,14 +539,14 @@ module Hotdog
               o_args << @args[1]
             end
           end
-        when :REVERSE
-          o_args = [@args[0].optimize(options)]
-        when :SHUFFLE
-          o_args = [@args[0].optimize(options)]
-        when :SLICE
-          o_args = [@args[0].optimize(options)]
-        when :TAIL
-          o_args = [@args[0].optimize(options)]
+        else
+          o_args = @args.map { |arg|
+            if ExpressionNode === arg
+              arg.optimize(options)
+            else
+              arg
+            end
+          }
         end
         FuncallNode.new(
           @function,
