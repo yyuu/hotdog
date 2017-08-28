@@ -276,7 +276,6 @@ describe "unary expression" do
   end
 
   it "NOT NOOP NOT host should return everything except the host" do
-    pending("optimization of 2+ depth unary expression is not yet supported")
     expr = Hotdog::Expression::UnaryExpressionNode.new(
       "NOT",
       Hotdog::Expression::UnaryExpressionNode.new(

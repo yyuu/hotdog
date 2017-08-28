@@ -11,6 +11,10 @@ module Hotdog
         self.dup
       end
 
+      def compact(options={})
+        self
+      end
+
       def dump(options={})
         {}
       end
@@ -67,22 +71,34 @@ module Hotdog
       end
 
       def optimize(options={})
+        o_self = compact(options)
+        if UnaryExpressionNode === o_self
+          case o_self.op
+          when :NOT
+            case o_self.expression
+            when EverythingNode
+              NothingNode.new(options)
+            when NothingNode
+              EverythingNode.new(options)
+            else
+              o_self.optimize1(options)
+            end
+          else
+            o_self.optimize1(options)
+          end
+        else
+          o_self.optimize(options)
+        end
+      end
+
+      def compact(options={})
         case op
         when :NOOP
-          optimize1(options)
-        when :NOT
-          case expression
-          when EverythingNode
-            NothingNode.new(options)
-          when NothingNode
-            EverythingNode.new(options)
-          else
-            optimize1(options)
-          end
+          expression.compact(options)
         else
           UnaryExpressionNode.new(
             op,
-            expression.optimize(options),
+            expression.compact(options),
           )
         end
       end
@@ -95,7 +111,7 @@ module Hotdog
         {unary_op: @op.to_s, expression: @expression.dump(options)}
       end
 
-      private
+      protected
       def optimize1(options={})
         case op
         when :NOOP
@@ -269,12 +285,11 @@ module Hotdog
             if o_left == o_right
               o_left
             else
-              # FIXME:
               BinaryExpressionNode.new(
                 op,
                 o_left,
                 o_right,
-              ).__send__(:optimize1, options)
+              ).optimize1(options)
             end
           end
         when :OR
@@ -291,24 +306,22 @@ module Hotdog
                 if o_left.op == op
                   o_left.merge(o_right, fallback: self)
                 else
-                  # FIXME:
                   BinaryExpressionNode.new(
                     op,
                     o_left,
                     o_right,
-                  ).__send__(:optimize1, options)
+                  ).optimize1(options)
                 end
               else
                 if MultinaryExpressionNode === o_right
                   if o_right.op == op
                     o_right.merge(o_left, fallback: self)
                   else
-                    # FIXME:
                     BinaryExpressionNode.new(
                       op,
                       o_left,
                       o_right,
-                    ).__send__(:optimize1, options)
+                    ).optimize1(options)
                   end
                 else
                   MultinaryExpressionNode.new(op, [o_left, o_right], fallback: self)
@@ -320,12 +333,11 @@ module Hotdog
           if o_left == o_right
             NothingNode.new(options)
           else
-            # FIXME:
             BinaryExpressionNode.new(
               op,
               o_left,
               o_right,
-            ).__send__(:optimize1, options)
+            ).optimize1(options)
           end
         else
           self.dup
@@ -340,7 +352,7 @@ module Hotdog
         {left: @left.dump(options), binary_op: @op.to_s, right: @right.dump(options)}
       end
 
-      private
+      protected
       def optimize1(options)
         if TagExpressionNode === left and TagExpressionNode === right
           lq = left.maybe_query(options)
@@ -716,7 +728,6 @@ module Hotdog
 
       def optimize(options={})
         # fallback to glob expression
-        # FIXME:
         self.dup.tap do |o_self|
           o_self.instance_eval {
             @fallback ||= maybe_fallback(options)
