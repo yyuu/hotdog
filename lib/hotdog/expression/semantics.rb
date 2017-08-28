@@ -120,8 +120,7 @@ module Hotdog
           if UnaryExpressionNode === expression
             case expression.op
             when :NOOP
-              @expression = expression.optimize(options)
-              optimize2(options)
+              expression.optimize(options)
             when :NOT
               expression.expression.optimize(options)
             else
