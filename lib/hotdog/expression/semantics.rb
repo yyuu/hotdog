@@ -8,7 +8,7 @@ module Hotdog
       end
 
       def optimize(options={})
-        self
+        self.dup
       end
 
       def dump(options={})
