@@ -510,35 +510,38 @@ module Hotdog
       def optimize(options={})
         case function
         when :HEAD
-          @args[0] = @args[0].optimize(options)
+          o_args = [@args[0].optimize(options)]
         when :GROUP_BY
-          @args[0] = @args[0].optimize(options)
+          o_args = [@args[0].optimize(options)]
           if TagExpressionNode === args[1]
             # workaround for expressions like `ORDER_BY((environment:development),role)`
-            @args[1] = @args[1].tagname
+            o_args << @args[1].tagname
           else
-            @args[1] = @args[1]
+            o_args << @args[1]
           end
         when :ORDER_BY
-          @args[0] = @args[0].optimize(options)
+          o_args = [@args[0].optimize(options)]
           if @args[1]
             if TagExpressionNode === @args[1]
               # workaround for expressions like `ORDER_BY((environment:development),role)`
-              @args[1] = @args[1].tagname
+              o_args << @args[1].tagname
             else
-              @args[1] = @args[1]
+              o_args << @args[1]
             end
           end
         when :REVERSE
-          @args[0] = @args[0].optimize(options)
+          o_args = [@args[0].optimize(options)]
         when :SHUFFLE
-          @args[0] = @args[0].optimize(options)
+          o_args = [@args[0].optimize(options)]
         when :SLICE
-          @args[0] = @args[0].optimize(options)
+          o_args = [@args[0].optimize(options)]
         when :TAIL
-          @args[0] = @args[0].optimize(options)
+          o_args = [@args[0].optimize(options)]
         end
-        self
+        FuncallNode.new(
+          @function,
+          o_args,
+        )
       end
 
       def evaluate(environment, options={})
