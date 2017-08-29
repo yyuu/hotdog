@@ -27,7 +27,7 @@ module Hotdog
     class UnaryExpressionNode < ExpressionNode
       attr_reader :op, :expression
 
-      def initialize(op, expression)
+      def initialize(op, expression, options={})
         case (op || "not").to_s
         when "NOOP", "noop"
           @op = :NOOP
@@ -37,6 +37,7 @@ module Hotdog
           raise(SyntaxError.new("unknown unary operator: #{op.inspect}"))
         end
         @expression = expression
+        @options = {}
       end
 
       def evaluate(environment, options={})
@@ -162,7 +163,7 @@ module Hotdog
     class BinaryExpressionNode < ExpressionNode
       attr_reader :op, :left, :right
 
-      def initialize(op, left, right)
+      def initialize(op, left, right, options={})
         case (op || "or").to_s
         when "&&", "&", "AND", "and"
           @op = :AND
@@ -175,6 +176,7 @@ module Hotdog
         end
         @left = left
         @right = right
+        @options = {}
       end
 
       def evaluate(environment, options={})
@@ -399,7 +401,7 @@ module Hotdog
           raise(ArgumentError.new("expressions limit exceeded: #{expressions.length} for #{sqlite_limit_compound_select}"))
         end
         @expressions = expressions
-        @fallback = options[:fallback]
+        @options = options
       end
 
       def merge(other, options={})
@@ -434,8 +436,8 @@ module Hotdog
           values = []
         end
         if values.empty?
-          if @fallback
-            @fallback.evaluate(environment, options={})
+          if @options[:fallback]
+            @options[:fallback].evaluate(environment, options={})
           else
             []
           end
@@ -453,15 +455,15 @@ module Hotdog
       def initialize(query, values=[], options={})
         @query = query
         @values = values
-        @fallback = options[:fallback]
+        @options = options
       end
       attr_reader :query
       attr_reader :values
 
       def evaluate(environment, options={})
         values = environment.execute(@query, @values).map { |row| row.first }
-        if values.empty? and @fallback
-          @fallback.evaluate(environment, options)
+        if values.empty? and @options[:fallback]
+          @options[:fallback].evaluate(environment, options)
         else
           values
         end
@@ -469,7 +471,7 @@ module Hotdog
 
       def dump(options={})
         data = {query: @query, values: @values}
-        data[:fallback] = @fallback.dump(options) if @fallback
+        data[:fallback] = @options[:fallback].dump(options) if @options[:fallback]
         data
       end
     end
@@ -477,7 +479,7 @@ module Hotdog
     class FuncallNode < ExpressionNode
       attr_reader :function, :args
 
-      def initialize(function, args)
+      def initialize(function, args, options={})
         # FIXME: smart argument handling (e.g. arity & type checking)
         case function.to_s
         when "HEAD", "head"
@@ -505,6 +507,7 @@ module Hotdog
           raise(SyntaxError.new("unknown function call: #{function}"))
         end
         @args = args
+        @options = options
       end
 
       def dump(options={})
@@ -563,7 +566,7 @@ module Hotdog
                 "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
                 "WHERE tags.name = ? AND hosts_tags.host_id IN (%s) " \
                 "GROUP BY tags.value;" % intermediate.map { "?" }.join(", ")
-          QueryExpressionNode.new(q, [args[1]] + intermediate, fallback: nil).evaluate(environment, options)
+          QueryExpressionNode.new(q, [args[1]] + intermediate).evaluate(environment, options)
         when :ORDER_BY
           intermediate = args[0].evaluate(environment, options)
           if args[1]
@@ -571,13 +574,13 @@ module Hotdog
                   "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
                   "WHERE tags.name = ? AND hosts_tags.host_id IN (%s) " \
                   "ORDER BY tags.value;" % intermediate.map { "?" }.join(", ")
-            QueryExpressionNode.new(q, [args[1]] + intermediate, fallback: nil).evaluate(environment, options)
+            QueryExpressionNode.new(q, [args[1]] + intermediate).evaluate(environment, options)
           else
             q = "SELECT DISTINCT hosts_tags.host_id FROM hosts_tags " \
                   "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
                   "WHERE hosts_tags.host_id IN (%s) " \
                   "ORDER BY hosts_tags.host_id;" % intermediate.map { "?" }.join(", ")
-            QueryExpressionNode.new(q, intermediate, fallback: nil).evaluate(environment, options)
+            QueryExpressionNode.new(q, intermediate).evaluate(environment, options)
           end
         when :REVERSE
           args[0].evaluate(environment, options).reverse()
@@ -603,22 +606,14 @@ module Hotdog
       def initialize(options={})
         super("SELECT NULL AS host_id WHERE host_id NOT NULL;", [], options)
       end
-
-      def evaluate(environment, options={})
-        if @fallback
-          @fallback.evaluate(environment, options)
-        else
-          []
-        end
-      end
     end
 
     class TagExpressionNode < ExpressionNode
-      def initialize(tagname, tagvalue, separator=nil, fallback=nil)
+      def initialize(tagname, tagvalue, separator=nil, options={})
         @tagname = tagname
         @tagvalue = tagvalue
         @separator = separator
-        @fallback = fallback
+        @options = options
       end
       attr_reader :tagname
       attr_reader :tagvalue
@@ -683,32 +678,11 @@ module Hotdog
             if options[:did_fallback]
               []
             else
-              if not environment.fixed_string? and @fallback
-                # avoid optimizing @fallback to prevent infinite recursion
-                values = @fallback.evaluate(environment, options.merge(did_fallback: true))
-                if values.empty?
-                  if reload(environment, options)
-                    evaluate(environment, options).tap do |values|
-                      if values.empty?
-                        environment.logger.info("no result: #{self.dump.inspect}")
-                      end
-                    end
-                  else
-                    []
-                  end
-                else
-                  values
-                end
+              if not environment.fixed_string? and @options[:fallback]
+                # avoid optimizing @options[:fallback] to prevent infinite recursion
+                @options[:fallback].evaluate(environment, options.merge(did_fallback: true))
               else
-                if reload(environment, options)
-                  evaluate(environment, options).tap do |values|
-                    if values.empty?
-                      environment.logger.info("no result: #{self.dump.inspect}")
-                    end
-                  end
-                else
-                  []
-                end
+                []
               end
             end
           else
@@ -727,7 +701,7 @@ module Hotdog
         # fallback to glob expression
         self.dup.tap do |o_self|
           o_self.instance_eval {
-            @fallback ||= maybe_fallback(options)
+            @options[:fallback] ||= maybe_fallback(options)
           }
         end
       end
@@ -740,24 +714,12 @@ module Hotdog
         s ? to_glob(s.to_s) : nil
       end
 
-      def reload(environment, options={})
-        $did_reload ||= false
-        if $did_reload
-          false
-        else
-          $did_reload = true
-          environment.logger.info("force reloading all hosts and tags.")
-          environment.reload(force: true)
-          true
-        end
-      end
-
       def dump(options={})
         data = {}
         data[:tagname] = tagname.to_s if tagname
         data[:separator] = separator.to_s if separator
         data[:tagvalue] = tagvalue.to_s if tagvalue
-        data[:fallback ] = @fallback.dump(options) if @fallback
+        data[:fallback] = @options[:fallback].dump(options) if @options[:fallback]
         data
       end
 
@@ -767,8 +729,8 @@ module Hotdog
     end
 
     class AnyHostNode < TagExpressionNode
-      def initialize(separator=nil, fallback=nil)
-        super("host", nil, separator, fallback)
+      def initialize(separator=nil, options={})
+        super("host", nil, separator, options)
       end
 
       def condition(options={})
@@ -788,8 +750,8 @@ module Hotdog
     end
 
     class StringHostNode < StringExpressionNode
-      def initialize(tagvalue, separator=nil, fallback=nil)
-        super("host", tagvalue.to_s, separator, fallback)
+      def initialize(tagvalue, separator=nil, options={})
+        super("host", tagvalue.to_s, separator, options)
       end
 
       def condition(options={})
@@ -816,8 +778,8 @@ module Hotdog
     end
 
     class StringTagNode < StringExpressionNode
-      def initialize(tagname, tagvalue, separator=nil, fallback=nil)
-        super(tagname.to_s, tagvalue.to_s, separator, fallback)
+      def initialize(tagname, tagvalue, separator=nil, options={})
+        super(tagname.to_s, tagvalue.to_s, separator, options)
       end
 
       def condition(options={})
@@ -844,8 +806,8 @@ module Hotdog
     end
 
     class StringTagnameNode < StringExpressionNode
-      def initialize(tagname, separator=nil, fallback=nil)
-        super(tagname.to_s, nil, separator, fallback)
+      def initialize(tagname, separator=nil, options={})
+        super(tagname.to_s, nil, separator, options)
       end
 
       def condition(options={})
@@ -872,8 +834,8 @@ module Hotdog
     end
 
     class StringTagvalueNode < StringExpressionNode
-      def initialize(tagvalue, separator=nil, fallback=nil)
-        super(nil, tagvalue.to_s, separator, fallback)
+      def initialize(tagvalue, separator=nil, options={})
+        super(nil, tagvalue.to_s, separator, options)
       end
 
       def condition(options={})
@@ -900,8 +862,8 @@ module Hotdog
     end
 
     class StringHostOrTagNode < StringExpressionNode
-      def initialize(tagname, separator=nil, fallback=nil)
-        super(tagname.to_s, nil, separator, fallback)
+      def initialize(tagname, separator=nil, options={})
+        super(tagname.to_s, nil, separator, options)
       end
 
       def condition(options={})
@@ -933,14 +895,14 @@ module Hotdog
         data[:tagname_glob] = tagname.to_s if tagname
         data[:separator] = separator.to_s if separator
         data[:tagvalue_glob] = tagvalue.to_s if tagvalue
-        data[:fallback] = @fallback.dump(options) if @fallback
+        data[:fallback] = @options[:fallback].dump(options) if @options[:fallback]
         data
       end
     end
 
     class GlobHostNode < GlobExpressionNode
-      def initialize(tagvalue, separator=nil, fallback=nil)
-        super("host", tagvalue.to_s, separator, fallback)
+      def initialize(tagvalue, separator=nil, options={})
+        super("host", tagvalue.to_s, separator, options)
       end
 
       def condition(options={})
@@ -967,8 +929,8 @@ module Hotdog
     end
 
     class GlobTagNode < GlobExpressionNode
-      def initialize(tagname, tagvalue, separator=nil, fallback=nil)
-        super(tagname.to_s, tagvalue.to_s, separator, fallback)
+      def initialize(tagname, tagvalue, separator=nil, options={})
+        super(tagname.to_s, tagvalue.to_s, separator, options)
       end
 
       def condition(options={})
@@ -995,8 +957,8 @@ module Hotdog
     end
 
     class GlobTagnameNode < GlobExpressionNode
-      def initialize(tagname, separator=nil, fallback=nil)
-        super(tagname.to_s, nil, separator, fallback)
+      def initialize(tagname, separator=nil, options={})
+        super(tagname.to_s, nil, separator, options)
       end
 
       def condition(options={})
@@ -1023,8 +985,8 @@ module Hotdog
     end
 
     class GlobTagvalueNode < GlobExpressionNode
-      def initialize(tagvalue, separator=nil, fallback=nil)
-        super(nil, tagvalue.to_s, separator, fallback)
+      def initialize(tagvalue, separator=nil, options={})
+        super(nil, tagvalue.to_s, separator, options)
       end
 
       def condition(options={})
@@ -1051,8 +1013,8 @@ module Hotdog
     end
 
     class GlobHostOrTagNode < GlobExpressionNode
-      def initialize(tagname, separator=nil, fallback=nil)
-        super(tagname.to_s, nil, separator, fallback)
+      def initialize(tagname, separator=nil, options={})
+        super(tagname.to_s, nil, separator, options)
       end
 
       def condition(options={})
@@ -1084,18 +1046,18 @@ module Hotdog
         data[:tagname_regexp] = tagname.to_s if tagname
         data[:separator] = separator.to_s if separator
         data[:tagvalue_regexp] = tagvalue.to_s if tagvalue
-        data[:fallback] = @fallback.dump(options) if @fallback
+        data[:fallback] = @options[:fallback].dump(options) if @options[:fallback]
         data
       end
     end
 
     class RegexpHostNode < RegexpExpressionNode
-      def initialize(tagvalue, separator=nil, fallback=nil)
+      def initialize(tagvalue, separator=nil, options={})
         case tagvalue
         when /\A\/(.*)\/\z/
           tagvalue = $1
         end
-        super("host", tagvalue, separator, fallback)
+        super("host", tagvalue, separator, options)
       end
 
       def condition(options={})
@@ -1112,7 +1074,7 @@ module Hotdog
     end
 
     class RegexpTagNode < RegexpExpressionNode
-      def initialize(tagname, tagvalue, separator=nil, fallback=nil)
+      def initialize(tagname, tagvalue, separator=nil, options={})
         case tagname
         when /\A\/(.*)\/\z/
           tagname = $1
@@ -1121,7 +1083,7 @@ module Hotdog
         when /\A\/(.*)\/\z/
           tagvalue = $1
         end
-        super(tagname, tagvalue, separator, fallback)
+        super(tagname, tagvalue, separator, options)
       end
 
       def condition(options={})
@@ -1138,12 +1100,12 @@ module Hotdog
     end
 
     class RegexpTagnameNode < RegexpExpressionNode
-      def initialize(tagname, separator=nil, fallback=nil)
+      def initialize(tagname, separator=nil, options={})
         case tagname
         when /\A\/(.*)\/\z/
           tagname = $1
         end
-        super(tagname.to_s, nil, separator, fallback)
+        super(tagname.to_s, nil, separator, options)
       end
 
       def condition(options={})
@@ -1160,12 +1122,12 @@ module Hotdog
     end
 
     class RegexpTagvalueNode < RegexpExpressionNode
-      def initialize(tagvalue, separator=nil, fallback=nil)
+      def initialize(tagvalue, separator=nil, options={})
         case tagvalue
         when /\A\/(.*)\/\z/
           tagvalue = $1
         end
-        super(nil, tagvalue.to_s, separator, fallback)
+        super(nil, tagvalue.to_s, separator, options)
       end
 
       def condition(options={})
@@ -1182,8 +1144,8 @@ module Hotdog
     end
 
     class RegexpHostOrTagNode < RegexpExpressionNode
-      def initialize(tagname, separator=nil, fallback=nil)
-        super(tagname, separator, fallback)
+      def initialize(tagname, separator=nil, options={})
+        super(tagname, nil, separator, options)
       end
 
       def condition(options={})
