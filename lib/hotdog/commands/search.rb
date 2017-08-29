@@ -105,7 +105,15 @@ module Hotdog
               JSON.pretty_generate(optimized.dump)
             }
           end
-          optimized.evaluate(environment)
+          result = optimized.evaluate(environment)
+          if result.empty? and !$did_reload
+            $did_reload = true
+            environment.logger.info("reloading all hosts and tags.")
+            environment.reload(force: true)
+            optimized.evaluate(environment)
+          else
+            result
+          end
         else
           raise("parser error: unknown expression: #{node.inspect}")
         end

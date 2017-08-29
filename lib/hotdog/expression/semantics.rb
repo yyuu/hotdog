@@ -685,30 +685,9 @@ module Hotdog
             else
               if not environment.fixed_string? and @fallback
                 # avoid optimizing @fallback to prevent infinite recursion
-                values = @fallback.evaluate(environment, options.merge(did_fallback: true))
-                if values.empty?
-                  if reload(environment, options)
-                    evaluate(environment, options).tap do |values|
-                      if values.empty?
-                        environment.logger.info("no result: #{self.dump.inspect}")
-                      end
-                    end
-                  else
-                    []
-                  end
-                else
-                  values
-                end
+                @fallback.evaluate(environment, options.merge(did_fallback: true))
               else
-                if reload(environment, options)
-                  evaluate(environment, options).tap do |values|
-                    if values.empty?
-                      environment.logger.info("no result: #{self.dump.inspect}")
-                    end
-                  end
-                else
-                  []
-                end
+                []
               end
             end
           else
@@ -738,18 +717,6 @@ module Hotdog
 
       def maybe_glob(s)
         s ? to_glob(s.to_s) : nil
-      end
-
-      def reload(environment, options={})
-        $did_reload ||= false
-        if $did_reload
-          false
-        else
-          $did_reload = true
-          environment.logger.info("force reloading all hosts and tags.")
-          environment.reload(force: true)
-          true
-        end
       end
 
       def dump(options={})
