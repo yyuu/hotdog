@@ -11,7 +11,6 @@ require "uri"
 
 module Hotdog
   module Commands
-
     class BaseCommand
       def initialize(application)
         @application = application
@@ -351,7 +350,7 @@ module Hotdog
 
       def prepare_downtimes(downtimes)
         now = Time.new.to_i
-        Hash(downtimes).select { |downtime|
+        Array(downtimes).select { |downtime|
           # active downtimes
           downtime["active"] and ( downtime["start"].nil? or downtime["start"] < now ) and ( downtime["end"].nil? or now <= downtime["end"] ) and downtime["monitor_id"].nil?
         }.flat_map { |downtime|
