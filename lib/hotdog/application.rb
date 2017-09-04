@@ -33,6 +33,7 @@ module Hotdog
         force: false,
         format: "text",
         headers: false,
+        host_mode: HOST_MODE_DEFAULT, # FIXME: better naming?
         listing: false,
         logger: @logger,
         max_time: 5,
@@ -130,6 +131,14 @@ module Hotdog
       end
     end
 
+    def host_mode()
+      if options[:host_mode]
+        options[:host_mode]
+      else
+        HOST_MODE_DEFAULT
+      end
+    end
+
     private
     def define_options
       @optparse.on("--endpoint ENDPOINT", "Datadog API endpoint") do |endpoint|
@@ -170,6 +179,9 @@ module Hotdog
       end
       @optparse.on("-h", "--[no-]headers", "Display headeres for each columns") do |v|
         options[:headers] = v
+      end
+      @optparse.on("--host-mode=MODE", "Specify custom host mode", Integer) do |v|
+        options[:host_mode] = v.to_i
       end
       @optparse.on("-l", "--[no-]listing", "Use listing format") do |v|
         options[:listing] = v

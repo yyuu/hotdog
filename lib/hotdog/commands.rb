@@ -121,12 +121,13 @@ module Hotdog
 
       def get_fields(host_ids)
         host_ids = Array(host_ids)
-        host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT -1).flat_map { |host_ids|
+        mode = application.host_mode || HOST_MODE_DEFAULT
+        host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 1).flat_map { |host_ids|
           q = "SELECT DISTINCT tags.name FROM hosts_tags " \
                 "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
                 "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                "WHERE hosts.mode = ? AND hosts.id IN (%s) ORDER BY hosts.id;" % hosts_ids.map { "?" }.join(", ")
-          execute(q, [HOST_MODE_DEFAULT] + host_ids).map { |row| row.first }
+                "WHERE hosts.mode = ? AND hosts.id IN (%s) ORDER BY hosts.id;" % host_ids.map { "?" }.join(", ")
+          execute(q, [mode] + host_ids).map { |row| row.first }
         }.uniq
       end
 
@@ -144,6 +145,7 @@ module Hotdog
 
       def get_host_fields(host_id, fields, options={})
         field_values = {}
+        mode = application.host_mode || HOST_MODE_DEFAULT
         fields.uniq.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 2).each do |fields|
           q = "SELECT LOWER(tags.name), GROUP_CONCAT(tags.value, ',') FROM hosts_tags " \
                 "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
@@ -151,7 +153,7 @@ module Hotdog
                 "WHERE hosts.mode = ? AND hosts.id = ? AND tags.name IN (%s) " \
                     "GROUP BY tags.name;" % fields.map { "?" }.join(", ")
 
-          execute(q, [HOST_MODE_DEFAULT, host_id] + fields).each do |row|
+          execute(q, [mode, host_id] + fields).each do |row|
             field_values[row[0]] = row[1]
           end
         end
@@ -165,9 +167,10 @@ module Hotdog
 
       def get_hosts_field(host_ids, field, options={})
         host_ids = Array(host_ids)
+        mode = application.host_mode || HOST_MODE_DEFAULT
         if /\Ahost\z/i =~ field
           result = host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 1).flat_map { |host_ids|
-            execute("SELECT name FROM hosts WHERE mode = ? AND id IN (%s) ORDER BY id;" % host_ids.map { "?" }.join(", "), [HOST_MODE_DEFAULT] + host_ids).map { |row| row.to_a }
+            execute("SELECT name FROM hosts WHERE mode = ? AND id IN (%s) ORDER BY id;" % host_ids.map { "?" }.join(", "), [mode] + host_ids).map { |row| row.to_a }
           }
         else
           result = host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 2).flat_map { |host_ids|
@@ -176,7 +179,7 @@ module Hotdog
                   "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
                     "WHERE hosts.mode = ? AND hosts.id IN (%s) AND tags.name = ? " \
                       "GROUP BY hosts_tags.host_id, tags.name ORDER BY hosts_tags.host_id;" % host_ids.map { "?" }.join(", ")
-            r = execute(q, [HOST_MODE_DEFAULT] + host_ids + [field]).map { |tagname, tagvalue|
+            r = execute(q, [mode] + host_ids + [field]).map { |tagname, tagvalue|
               [display_tag(tagname, tagvalue)]
             }
             if r.empty?
