@@ -11,6 +11,9 @@ require "hotdog/version"
 module Hotdog
   SQLITE_LIMIT_COMPOUND_SELECT = 500 # TODO: get actual value from `sqlite3_limit()`?
 
+  HOST_MODE_DEFAULT = 0
+  HOST_MODE_MAINTENANCE = 1
+
   class Application
     def initialize()
       @logger = Logger.new(STDERR).tap { |logger|
