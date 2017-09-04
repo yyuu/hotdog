@@ -266,9 +266,25 @@ module Hotdog
 
       def create_db(db, options={})
         options = @options.merge(options)
-        all_tags = get_all_tags()
+        requests = {all_downtimes: "/api/v1/downtime", all_tags: "/api/v1/tags/hosts"}
+        begin
+          parallelism = Parallel.processor_count
+          # generate payload before forking threads to avoid fetching keys multiple times
+          query = URI.encode_www_form(api_key: application.api_key, application_key: application.application_key)
+          responses = Hash[Parallel.map(requests, in_threads: parallelism) { |name, request_path|
+            [name, datadog_get(request_path, query)]
+          }]
+        rescue => error
+          STDERR.puts(error.message)
+          exit(1)
+        end
+        all_tags = prepare_tags(responses.fetch(:all_tags, {}))
+        all_downtimes = prepare_downtimes(responses.fetch(:all_downtimes, {}))
+        if not all_downtimes.empty?
+          logger.info("ignore host(s) with scheduled downtimes: #{all_downtimes.inspect}")
+        end
         db.transaction do
-          execute_db(db, "CREATE TABLE IF NOT EXISTS hosts (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(255) NOT NULL COLLATE NOCASE, mode INTEGER NOT NULL DEFAULT 0);")
+          execute_db(db, "CREATE TABLE IF NOT EXISTS hosts (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(255) NOT NULL COLLATE NOCASE, mode INTEGER NOT NULL DEFAULT #{HOST_MODE_DEFAULT});")
           execute_db(db, "CREATE UNIQUE INDEX IF NOT EXISTS hosts_name ON hosts (name);")
           execute_db(db, "CREATE TABLE IF NOT EXISTS tags (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(200) NOT NULL COLLATE NOCASE, value VARCHAR(200) NOT NULL COLLATE NOCASE);")
           execute_db(db, "CREATE UNIQUE INDEX IF NOT EXISTS tags_name_value ON tags (name, value);")
@@ -279,7 +295,7 @@ module Hotdog
           create_tags(db, known_tags)
 
           known_hosts = all_tags.values.reduce(:+).uniq
-          create_hosts(db, known_hosts)
+          create_hosts(db, known_hosts, all_downtimes)
 
           all_tags.each do |tag, hosts|
             associate_tag_hosts(db, tag, hosts)
@@ -312,44 +328,43 @@ module Hotdog
         end
       end
 
-      def get_all_tags() #==> Hash<Tag,Array<Host>>
+      def datadog_get(request_path, query=nil)
+        # TODO: make this pluggable
         endpoint = options[:endpoint]
-        requests = {all_downtime: "/api/v1/downtime", all_tags: "/api/v1/tags/hosts"}
-        query = URI.encode_www_form(api_key: application.api_key, application_key: application.application_key)
+        query ||= URI.encode_www_form(api_key: application.api_key, application_key: application.application_key)
+        uri = URI.join(endpoint, "#{request_path}?#{query}")
         begin
-          parallelism = Parallel.processor_count
-          responses = Hash[Parallel.map(requests, in_threads: parallelism) { |name, request_path|
-            uri = URI.join(endpoint, "#{request_path}?#{query}")
-            begin
-              response = uri.open("User-Agent" => "hotdog/#{Hotdog::VERSION}") { |fp| fp.read }
-              [name, MultiJson.load(response)]
-            rescue OpenURI::HTTPError => error
-              code, _body = error.io.status
-              raise(RuntimeError.new("dog.get_#{name}() returns [#{code.inspect}, ...]"))
-            end
-          }]
-        rescue => error
-          STDERR.puts(error.message)
-          exit(1)
+          response = uri.open("User-Agent" => "hotdog/#{Hotdog::VERSION}") { |fp| fp.read }
+          MultiJson.load(response)
+        rescue OpenURI::HTTPError => error
+          code, _body = error.io.status
+          raise(RuntimeError.new("dog.get_#{name}() returns [#{code.inspect}, ...]"))
         end
+      end
+
+      def prepare_tags(tags)
+        Hash(tags).fetch("tags", {})
+      end
+
+      def prepare_downtimes(downtimes)
         now = Time.new.to_i
-        downtimes = responses.fetch(:all_downtime, []).select { |downtime|
+        Hash(downtimes).select { |downtime|
           # active downtimes
           downtime["active"] and ( downtime["start"].nil? or downtime["start"] < now ) and ( downtime["end"].nil? or now <= downtime["end"] ) and downtime["monitor_id"].nil?
         }.flat_map { |downtime|
           # find host scopes
           downtime["scope"].select { |scope| scope.start_with?("host:") }.map { |scope| scope.sub(/\Ahost:/, "") }
         }
-        if not downtimes.empty?
-          logger.info("ignore host(s) with scheduled downtimes: #{downtimes.inspect}")
-        end
-        Hash[responses.fetch(:all_tags, {}).fetch("tags", []).map { |tag, hosts| [tag, hosts.reject { |host| downtimes.include?(host) }] }]
       end
 
-      def create_hosts(db, hosts)
+      def create_hosts(db, hosts, downtimes)
         hosts.each_slice(SQLITE_LIMIT_COMPOUND_SELECT) do |hosts|
-          q = "INSERT OR IGNORE INTO hosts (name, mode) VALUES %s" % hosts.map { "(?, 0)" }.join(", ")
+          q = "INSERT OR IGNORE INTO hosts (name) VALUES %s;" % hosts.map { "(?)" }.join(", ")
           execute_db(db, q, hosts)
+        end
+        downtimes.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 1) do |downtimes|
+          q = "UPDATE hosts SET mode = ? WHERE name IN (%s);" % downtimes.map { "?" }.join(", ")
+          execute_db(db, q, [HOST_MODE_MAINTENANCE] + downtimes)
         end
         # create virtual `host` tag
         execute_db(db, "INSERT OR IGNORE INTO tags (name, value) SELECT 'host', hosts.name FROM hosts;")
