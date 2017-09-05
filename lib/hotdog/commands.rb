@@ -120,13 +120,13 @@ module Hotdog
 
       def get_fields(host_ids)
         host_ids = Array(host_ids)
-        mode = application.host_mode || HOST_MODE_DEFAULT
+        status = application.status || STATUS_RUNNING
         host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 1).flat_map { |host_ids|
           q = "SELECT DISTINCT tags.name FROM hosts_tags " \
                 "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
                 "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                "WHERE hosts.mode = ? AND hosts.id IN (%s) ORDER BY hosts.id;" % host_ids.map { "?" }.join(", ")
-          execute(q, [mode] + host_ids).map { |row| row.first }
+                "WHERE hosts.status = ? AND hosts.id IN (%s) ORDER BY hosts.id;" % host_ids.map { "?" }.join(", ")
+          execute(q, [status] + host_ids).map { |row| row.first }
         }.uniq
       end
 
@@ -144,15 +144,15 @@ module Hotdog
 
       def get_host_fields(host_id, fields, options={})
         field_values = {}
-        mode = application.host_mode || HOST_MODE_DEFAULT
+        status = application.status || STATUS_RUNNING
         fields.uniq.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 2).each do |fields|
           q = "SELECT LOWER(tags.name), GROUP_CONCAT(tags.value, ',') FROM hosts_tags " \
                 "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
                 "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                "WHERE hosts.mode = ? AND hosts.id = ? AND tags.name IN (%s) " \
+                "WHERE hosts.status = ? AND hosts.id = ? AND tags.name IN (%s) " \
                     "GROUP BY tags.name;" % fields.map { "?" }.join(", ")
 
-          execute(q, [mode, host_id] + fields).each do |row|
+          execute(q, [status, host_id] + fields).each do |row|
             field_values[row[0]] = row[1]
           end
         end
@@ -166,19 +166,19 @@ module Hotdog
 
       def get_hosts_field(host_ids, field, options={})
         host_ids = Array(host_ids)
-        mode = application.host_mode || HOST_MODE_DEFAULT
+        status = application.status || STATUS_RUNNING
         if /\Ahost\z/i =~ field
           result = host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 1).flat_map { |host_ids|
-            execute("SELECT name FROM hosts WHERE mode = ? AND id IN (%s) ORDER BY id;" % host_ids.map { "?" }.join(", "), [mode] + host_ids).map { |row| row.to_a }
+            execute("SELECT name FROM hosts WHERE status = ? AND id IN (%s) ORDER BY id;" % host_ids.map { "?" }.join(", "), [status] + host_ids).map { |row| row.to_a }
           }
         else
           result = host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 2).flat_map { |host_ids|
             q = "SELECT LOWER(tags.name), GROUP_CONCAT(tags.value, ',') FROM hosts_tags " \
                   "INNER JOIN hosts ON hosts_tags.host_id = hosts.id " \
                   "INNER JOIN tags ON hosts_tags.tag_id = tags.id " \
-                    "WHERE hosts.mode = ? AND hosts.id IN (%s) AND tags.name = ? " \
+                    "WHERE hosts.status = ? AND hosts.id IN (%s) AND tags.name = ? " \
                       "GROUP BY hosts_tags.host_id, tags.name ORDER BY hosts_tags.host_id;" % host_ids.map { "?" }.join(", ")
-            r = execute(q, [mode] + host_ids + [field]).map { |tagname, tagvalue|
+            r = execute(q, [status] + host_ids + [field]).map { |tagname, tagvalue|
               [display_tag(tagname, tagvalue)]
             }
             if r.empty?
@@ -236,7 +236,7 @@ module Hotdog
       def __open_db(options={})
         begin
           db = SQLite3::Database.new(persistent_db_path)
-          db.execute("SELECT hosts_tags.host_id, hosts.mode FROM hosts_tags INNER JOIN hosts ON hosts_tags.host_id = hosts.id INNER JOIN tags ON hosts_tags.tag_id = tags.id LIMIT 1;")
+          db.execute("SELECT hosts_tags.host_id, hosts.status FROM hosts_tags INNER JOIN hosts ON hosts_tags.host_id = hosts.id INNER JOIN tags ON hosts_tags.tag_id = tags.id LIMIT 1;")
           db
         rescue SQLite3::BusyException # database is locked
           sleep(rand)
@@ -286,7 +286,7 @@ module Hotdog
           logger.info("ignore host(s) with scheduled downtimes: #{all_downtimes.inspect}")
         end
         db.transaction do
-          execute_db(db, "CREATE TABLE IF NOT EXISTS hosts (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(255) NOT NULL COLLATE NOCASE, mode INTEGER NOT NULL DEFAULT #{HOST_MODE_DEFAULT});")
+          execute_db(db, "CREATE TABLE IF NOT EXISTS hosts (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(255) NOT NULL COLLATE NOCASE, status INTEGER NOT NULL DEFAULT #{STATUS_PENDING});")
           execute_db(db, "CREATE UNIQUE INDEX IF NOT EXISTS hosts_name ON hosts (name);")
           execute_db(db, "CREATE TABLE IF NOT EXISTS tags (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(200) NOT NULL COLLATE NOCASE, value VARCHAR(200) NOT NULL COLLATE NOCASE);")
           execute_db(db, "CREATE UNIQUE INDEX IF NOT EXISTS tags_name_value ON tags (name, value);")
@@ -360,13 +360,12 @@ module Hotdog
       end
 
       def create_hosts(db, hosts, downtimes)
-        hosts.each_slice(SQLITE_LIMIT_COMPOUND_SELECT) do |hosts|
-          q = "INSERT OR IGNORE INTO hosts (name) VALUES %s;" % hosts.map { "(?)" }.join(", ")
-          execute_db(db, q, hosts)
-        end
-        downtimes.each_slice(SQLITE_LIMIT_COMPOUND_SELECT - 1) do |downtimes|
-          q = "UPDATE hosts SET mode = ? WHERE name IN (%s);" % downtimes.map { "?" }.join(", ")
-          execute_db(db, q, [HOST_MODE_MAINTENANCE] + downtimes)
+        hosts.each_slice(SQLITE_LIMIT_COMPOUND_SELECT / 2) do |hosts|
+          q = "INSERT OR IGNORE INTO hosts (name, status) VALUES %s;" % hosts.map { "(?, ?)" }.join(", ")
+          execute_db(db, q, hosts.map { |host|
+            status = downtimes.include?(host) ? STATUS_STOPPED : STATUS_RUNNING
+            [host, status]
+          })
         end
         # create virtual `host` tag
         execute_db(db, "INSERT OR IGNORE INTO tags (name, value) SELECT 'host', hosts.name FROM hosts;")

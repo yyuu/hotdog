@@ -41,8 +41,8 @@ module Hotdog
               @db.transaction do
                 sqlite_limit_compound_select = options[:sqlite_limit_compound_select] || SQLITE_LIMIT_COMPOUND_SELECT
                 hosts.each_slice(sqlite_limit_compound_select - 1) do |hosts|
-                  q = "UPDATE hosts SET mode = ? WHERE name IN (%s);" % hosts.map { "?" }.join(", ")
-                  execute_db(@db, q, [HOST_MODE_MAINTENANCE] + hosts)
+                  q = "UPDATE hosts SET status = ? WHERE name IN (%s);" % hosts.map { "?" }.join(", ")
+                  execute_db(@db, q, [STATUS_STOPPING] + hosts)
                 end
               end
             end
