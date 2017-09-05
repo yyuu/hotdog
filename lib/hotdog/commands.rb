@@ -236,7 +236,7 @@ module Hotdog
       def __open_db(options={})
         begin
           db = SQLite3::Database.new(persistent_db_path)
-          db.execute("SELECT hosts_tags.host_id, hosts.status FROM hosts_tags INNER JOIN hosts ON hosts_tags.host_id = hosts.id INNER JOIN tags ON hosts_tags.tag_id = tags.id LIMIT 1;")
+          db.execute("SELECT hosts_tags.host_id, hosts.source, hosts.status FROM hosts_tags INNER JOIN hosts ON hosts_tags.host_id = hosts.id INNER JOIN tags ON hosts_tags.tag_id = tags.id LIMIT 1;")
           db
         rescue SQLite3::BusyException # database is locked
           sleep(rand)
@@ -286,7 +286,7 @@ module Hotdog
           logger.info("ignore host(s) with scheduled downtimes: #{all_downtimes.inspect}")
         end
         db.transaction do
-          execute_db(db, "CREATE TABLE IF NOT EXISTS hosts (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(255) NOT NULL COLLATE NOCASE, status INTEGER NOT NULL DEFAULT #{STATUS_PENDING});")
+          execute_db(db, "CREATE TABLE IF NOT EXISTS hosts (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(255) NOT NULL COLLATE NOCASE, source INTEGER NOT NULL DEFAULT #{SOURCE_DATADOG}, status INTEGER NOT NULL DEFAULT #{STATUS_PENDING});")
           execute_db(db, "CREATE UNIQUE INDEX IF NOT EXISTS hosts_name ON hosts (name);")
           execute_db(db, "CREATE TABLE IF NOT EXISTS tags (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(200) NOT NULL COLLATE NOCASE, value VARCHAR(200) NOT NULL COLLATE NOCASE);")
           execute_db(db, "CREATE UNIQUE INDEX IF NOT EXISTS tags_name_value ON tags (name, value);")

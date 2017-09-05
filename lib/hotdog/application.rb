@@ -11,6 +11,9 @@ require "hotdog/version"
 module Hotdog
   SQLITE_LIMIT_COMPOUND_SELECT = 500 # TODO: get actual value from `sqlite3_limit()`?
 
+  # only datadog is supported as of Sep 5, 2017
+  SOURCE_DATADOG = 0x01
+
   # | status   | description   |
   # | -------- | ------------- |
   # | 00000000 | pending       |
