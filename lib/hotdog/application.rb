@@ -11,6 +11,21 @@ require "hotdog/version"
 module Hotdog
   SQLITE_LIMIT_COMPOUND_SELECT = 500 # TODO: get actual value from `sqlite3_limit()`?
 
+  # | status   | description   |
+  # | -------- | ------------- |
+  # | 00000000 | pending       |
+  # | 00010000 | running       |
+  # | 00100000 | shutting-down |
+  # | 00110000 | terminated    |
+  # | 01000000 | stopping      |
+  # | 01010000 | stopped       |
+  STATUS_PENDING       = 0b00000000
+  STATUS_RUNNING       = 0b00010000
+  STATUS_SHUTTING_DOWN = 0b00100000
+  STATUS_TERMINATED    = 0b00110000
+  STATUS_STOPPING      = 0b01000000
+  STATUS_STOPPED       = 0b01010000
+
   class Application
     def initialize()
       @logger = Logger.new(STDERR).tap { |logger|
@@ -30,6 +45,7 @@ module Hotdog
         force: false,
         format: "text",
         headers: false,
+        status: STATUS_RUNNING,
         listing: false,
         logger: @logger,
         max_time: 5,
@@ -127,6 +143,10 @@ module Hotdog
       end
     end
 
+    def status()
+      options.fetch(:status, STATUS_RUNNING)
+    end
+
     private
     def define_options
       @optparse.on("--endpoint ENDPOINT", "Datadog API endpoint") do |endpoint|
@@ -167,6 +187,24 @@ module Hotdog
       end
       @optparse.on("-h", "--[no-]headers", "Display headeres for each columns") do |v|
         options[:headers] = v
+      end
+      @optparse.on("--status=STATUS", "Specify custom host status") do |v|
+        case v
+        when /\Apending\z/i
+          options[:status] = STATUS_PENDING
+        when /\Arunning\z/i
+          options[:status] = STATUS_RUNNING
+        when /\Ashutting-down\z/i
+          options[:status] = STATUS_SHUTTING_DOWN
+        when /\Aterminated\z/i
+          options[:status] = STATUS_TERMINATED
+        when /\Astopping\z/i
+          options[:status] = STATUS_STOPPING
+        when /\Astopped\z/i
+          options[:status] = STATUS_STOPPED
+        else
+          options[:status] = v.to_i
+        end
       end
       @optparse.on("-l", "--[no-]listing", "Use listing format") do |v|
         options[:listing] = v

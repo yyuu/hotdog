@@ -40,9 +40,9 @@ module Hotdog
             if open_db
               @db.transaction do
                 sqlite_limit_compound_select = options[:sqlite_limit_compound_select] || SQLITE_LIMIT_COMPOUND_SELECT
-                hosts.each_slice(sqlite_limit_compound_select) do |hosts|
-                  execute_db(@db, "DELETE FROM hosts_tags WHERE host_id IN ( SELECT id FROM hosts WHERE name IN (%s) );" % hosts.map { "?" }.join(", "), hosts)
-                  execute_db(@db, "DELETE FROM hosts WHERE name IN (%s);" % hosts.map { "?" }.join(", "), hosts)
+                hosts.each_slice(sqlite_limit_compound_select - 1) do |hosts|
+                  q = "UPDATE hosts SET status = ? WHERE name IN (%s);" % hosts.map { "?" }.join(", ")
+                  execute_db(@db, q, [STATUS_STOPPING] + hosts)
                 end
               end
             end
