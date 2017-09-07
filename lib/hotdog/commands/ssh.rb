@@ -71,6 +71,7 @@ module Hotdog
         tuples, fields = get_hosts_with_search_tags(result0, node)
         tuples = filter_hosts(tuples)
         validate_hosts!(tuples, fields)
+        logger.info("target host(s): #{tuples.map {|tuple| tuple.first }.inspect}")
         run_main(tuples.map {|tuple| tuple.first }, options)
       end
 
