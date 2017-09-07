@@ -24,9 +24,6 @@ describe "commands" do
     cmd.options[:listing] = false
     cmd.options[:primary_tag] = nil
     allow(cmd).to receive(:update_db)
-    allow(cmd).to receive(:execute).with("SELECT id FROM hosts WHERE status = ? AND id IN (?, ?, ?);", [Hotdog::STATUS_RUNNING, 1, 2, 3]) {
-      [[1], [2], [3]]
-    }
     allow(cmd).to receive(:get_hosts_fields).with([1, 2, 3], ["host"])
     expect(cmd.__send__(:get_hosts, [1, 2, 3], []))
   end
@@ -35,9 +32,6 @@ describe "commands" do
     cmd.options[:listing] = false
     cmd.options[:primary_tag] = "foo"
     allow(cmd).to receive(:update_db)
-    allow(cmd).to receive(:execute).with("SELECT id FROM hosts WHERE status = ? AND id IN (?, ?, ?);", [Hotdog::STATUS_RUNNING, 1, 2, 3]) {
-      [[1], [2], [3]]
-    }
     allow(cmd).to receive(:get_hosts_fields).with([1, 2, 3], ["foo"])
     expect(cmd.__send__(:get_hosts, [1, 2, 3], []))
   end
@@ -46,9 +40,6 @@ describe "commands" do
     cmd.options[:listing] = false
     cmd.options[:primary_tag] = nil
     allow(cmd).to receive(:update_db)
-    allow(cmd).to receive(:execute).with("SELECT id FROM hosts WHERE status = ? AND id IN (?, ?, ?);", [Hotdog::STATUS_RUNNING, 1, 2, 3]) {
-      [[1], [2], [3]]
-    }
     allow(cmd).to receive(:get_hosts_fields).with([1, 2, 3], ["foo", "bar", "baz"])
     expect(cmd.__send__(:get_hosts, [1, 2, 3], ["foo", "bar", "baz"]))
   end
@@ -57,15 +48,13 @@ describe "commands" do
     cmd.options[:listing] = true
     cmd.options[:primary_tag] = nil
     allow(cmd).to receive(:update_db)
-    allow(cmd).to receive(:execute).with("SELECT id FROM hosts WHERE status = ? AND id IN (?, ?, ?);", [Hotdog::STATUS_RUNNING, 1, 2, 3]) {
-      [[1], [2], [3]]
-    }
     q1 = [
       "SELECT DISTINCT tags.name FROM hosts_tags",
+        "INNER JOIN hosts ON hosts_tags.host_id = hosts.id",
         "INNER JOIN tags ON hosts_tags.tag_id = tags.id",
-          "WHERE hosts_tags.host_id IN (?, ?, ?) ORDER BY hosts_tags.host_id;",
+          "WHERE hosts.status = ? AND hosts.id IN (?, ?, ?) ORDER BY hosts.id;",
     ]
-    allow(cmd).to receive(:execute).with(q1.join(" "), [1, 2, 3]) {
+    allow(cmd).to receive(:execute).with(q1.join(" "), [Hotdog::STATUS_RUNNING, 1, 2, 3]) {
       [["foo"], ["bar"], ["baz"]]
     }
     allow(cmd).to receive(:get_hosts_fields).with([1, 2, 3], ["host", "foo", "bar", "baz"])
@@ -76,15 +65,13 @@ describe "commands" do
     cmd.options[:listing] = true
     cmd.options[:primary_tag] = "bar"
     allow(cmd).to receive(:update_db)
-    allow(cmd).to receive(:execute).with("SELECT id FROM hosts WHERE status = ? AND id IN (?, ?, ?);", [Hotdog::STATUS_RUNNING, 1, 2, 3]) {
-      [[1], [2], [3]]
-    }
     q1 = [
       "SELECT DISTINCT tags.name FROM hosts_tags",
+        "INNER JOIN hosts ON hosts_tags.host_id = hosts.id",
         "INNER JOIN tags ON hosts_tags.tag_id = tags.id",
-          "WHERE hosts_tags.host_id IN (?, ?, ?) ORDER BY hosts_tags.host_id;",
+          "WHERE hosts.status = ? AND hosts.id IN (?, ?, ?) ORDER BY hosts.id;",
     ]
-    allow(cmd).to receive(:execute).with(q1.join(" "), [1, 2, 3]) {
+    allow(cmd).to receive(:execute).with(q1.join(" "), [Hotdog::STATUS_RUNNING, 1, 2, 3]) {
       [["foo"], ["bar"], ["baz"]]
     }
     allow(cmd).to receive(:get_hosts_fields).with([1, 2, 3], ["bar", "host", "foo", "baz"])
@@ -96,44 +83,40 @@ describe "commands" do
   end
 
   it "get host fields without host" do
-    allow(cmd).to receive(:execute).with("SELECT id FROM hosts WHERE status = ? AND id IN (?, ?, ?);", [Hotdog::STATUS_RUNNING, 1, 2, 3]) {
-      [[1], [2], [3]]
-    }
     q1 = [
       "SELECT LOWER(tags.name), GROUP_CONCAT(tags.value, ',') FROM hosts_tags",
+        "INNER JOIN hosts ON hosts_tags.host_id = hosts.id",
         "INNER JOIN tags ON hosts_tags.tag_id = tags.id",
-          "WHERE hosts_tags.host_id = ? AND tags.name IN (?, ?, ?)",
+          "WHERE hosts.status = ? AND hosts.id = ? AND tags.name IN (?, ?, ?)",
             "GROUP BY tags.name;",
     ]
-    allow(cmd).to receive(:execute).with(q1.join(" "), [1, "foo", "bar", "baz"]) {
+    allow(cmd).to receive(:execute).with(q1.join(" "), [Hotdog::STATUS_RUNNING, 1, "foo", "bar", "baz"]) {
       [["foo", "foo1"], ["bar", "bar1"], ["baz", "baz1"]]
     }
-    allow(cmd).to receive(:execute).with(q1.join(" "), [2, "foo", "bar", "baz"]) {
+    allow(cmd).to receive(:execute).with(q1.join(" "), [Hotdog::STATUS_RUNNING, 2, "foo", "bar", "baz"]) {
       [["foo", "foo2"], ["bar", "bar2"], ["baz", "baz2"]]
     }
-    allow(cmd).to receive(:execute).with(q1.join(" "), [3, "foo", "bar", "baz"]) {
+    allow(cmd).to receive(:execute).with(q1.join(" "), [Hotdog::STATUS_RUNNING, 3, "foo", "bar", "baz"]) {
       [["foo", "foo3"], ["bar", "bar3"], ["baz", "baz3"]]
     }
     expect(cmd.__send__(:get_hosts_fields, [1, 2, 3], ["foo", "bar", "baz"])).to eq([[["foo1", "bar1", "baz1"], ["foo2", "bar2", "baz2"], ["foo3", "bar3", "baz3"]], ["foo", "bar", "baz"]])
   end
 
   it "get host fields with host" do
-    allow(cmd).to receive(:execute).with("SELECT id FROM hosts WHERE status = ? AND id IN (?, ?, ?);", [Hotdog::STATUS_RUNNING, 1, 2, 3]) {
-      [[1], [2], [3]]
-    }
     q1 = [
       "SELECT LOWER(tags.name), GROUP_CONCAT(tags.value, ',') FROM hosts_tags",
+        "INNER JOIN hosts ON hosts_tags.host_id = hosts.id",
         "INNER JOIN tags ON hosts_tags.tag_id = tags.id",
-          "WHERE hosts_tags.host_id = ? AND tags.name IN (?, ?, ?)",
+          "WHERE hosts.status = ? AND hosts.id = ? AND tags.name IN (?, ?, ?)",
             "GROUP BY tags.name;",
     ]
-    allow(cmd).to receive(:execute).with(q1.join(" "), [1, "foo", "bar", "host"]) {
+    allow(cmd).to receive(:execute).with(q1.join(" "), [Hotdog::STATUS_RUNNING, 1, "foo", "bar", "host"]) {
       [["foo", "foo1"], ["bar", "bar1"], ["host", "host1"]]
     }
-    allow(cmd).to receive(:execute).with(q1.join(" "), [2, "foo", "bar", "host"]) {
+    allow(cmd).to receive(:execute).with(q1.join(" "), [Hotdog::STATUS_RUNNING, 2, "foo", "bar", "host"]) {
       [["foo", "foo2"], ["bar", "bar2"], ["host", "host2"]]
     }
-    allow(cmd).to receive(:execute).with(q1.join(" "), [3, "foo", "bar", "host"]) {
+    allow(cmd).to receive(:execute).with(q1.join(" "), [Hotdog::STATUS_RUNNING, 3, "foo", "bar", "host"]) {
       [["foo", "foo3"], ["bar", "bar3"], ["host", "host3"]]
     }
     expect(cmd.__send__(:get_hosts_fields, [1, 2, 3], ["foo", "bar", "host"])).to eq([[["foo1", "bar1", "host1"], ["foo2", "bar2", "host2"], ["foo3", "bar3", "host3"]], ["foo", "bar", "host"]])
