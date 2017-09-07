@@ -81,7 +81,7 @@ module Hotdog
       end
 
       def get_hosts(host_ids, tags=nil)
-        host_ids = filter_hosts(host_ids)
+        host_ids = filter_hosts_by_status(host_ids)
         tags ||= @options[:tags]
         update_db
         if host_ids.empty?
@@ -185,7 +185,7 @@ module Hotdog
         [result, [field]]
       end
 
-      def filter_hosts(host_ids)
+      def filter_hosts_by_status(host_ids)
         host_ids = Array(host_ids)
         status = application.status || STATUS_RUNNING
         host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |host_ids|
