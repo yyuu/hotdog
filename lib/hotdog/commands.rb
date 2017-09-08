@@ -81,7 +81,10 @@ module Hotdog
       end
 
       def get_hosts(host_ids, tags=nil)
-        host_ids = filter_hosts_by_status(host_ids)
+        status = application.status || STATUS_RUNNING
+        host_ids = Array(host_ids).each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |host_ids|
+          execute("SELECT id FROM hosts WHERE status = ? AND id IN (%s);" % host_ids.map { "?" }.join(", "), [status] + host_ids).map { |row| row[0] }
+        }
         tags ||= @options[:tags]
         update_db
         if host_ids.empty?
@@ -183,14 +186,6 @@ module Hotdog
           }
         end
         [result, [field]]
-      end
-
-      def filter_hosts_by_status(host_ids)
-        host_ids = Array(host_ids)
-        status = application.status || STATUS_RUNNING
-        host_ids.each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |host_ids|
-          execute("SELECT id FROM hosts WHERE status = ? AND id IN (%s);" % host_ids.map { "?" }.join(", "), [status] + host_ids).map { |row| row[0] }
-        }
       end
 
       def display_tag(tagname, tagvalue)
