@@ -40,7 +40,7 @@ module Hotdog
         optparse.on("-u SSH_USER", "SSH login user name") do |user|
           options[:ssh_options]["User"] = user
         end
-        optparse.on("-v", "--verbose", "Enable verbose ode") do |v|
+        optparse.on("-v", "--verbose", "Enable verbose mode") do |v|
           options[:verbose] = v
         end
         optparse.on("--filter=COMMAND", "Command to filter search result.") do |command|
@@ -169,12 +169,14 @@ module Hotdog
           i = 0
           each_readable([cmderr, cmdout]) do |readable|
             raw = readable.readline
-            output_lock.synchronize do
-              if readable == cmdout
-                STDOUT.puts(prettify_output(raw, i, color, identifier))
-                i += 1
-              else
-                STDERR.puts(raw)
+            if output
+              output_lock.synchronize do
+                if readable == cmdout
+                  STDOUT.puts(prettify_output(raw, i, color, identifier))
+                  i += 1
+                else
+                  STDERR.puts(raw)
+                end
               end
             end
           end
