@@ -40,7 +40,7 @@ module Hotdog
         optparse.on("-u SSH_USER", "SSH login user name") do |user|
           options[:ssh_options]["User"] = user
         end
-        optparse.on("-v", "--verbose", "Enable verbose ode") do |v|
+        optparse.on("-v", "--verbose", "Enable verbose mode") do |v|
           options[:verbose] = v
         end
         optparse.on("--filter=COMMAND", "Command to filter search result.") do |command|
