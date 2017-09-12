@@ -169,12 +169,14 @@ module Hotdog
           i = 0
           each_readable([cmderr, cmdout]) do |readable|
             raw = readable.readline
-            output_lock.synchronize do
-              if readable == cmdout
-                STDOUT.puts(prettify_output(raw, i, color, identifier))
-                i += 1
-              else
-                STDERR.puts(raw)
+            if output
+              output_lock.synchronize do
+                if readable == cmdout
+                  STDOUT.puts(prettify_output(raw, i, color, identifier))
+                  i += 1
+                else
+                  STDERR.puts(raw)
+                end
               end
             end
           end
