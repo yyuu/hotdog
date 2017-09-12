@@ -29,10 +29,15 @@ module Hotdog
   STATUS_STOPPING      = 0b01000000
   STATUS_STOPPED       = 0b01010000
 
+  VERBOSITY_NULL  = 0
+  VERBOSITY_INFO  = 1
+  VERBOSITY_DEBUG = 2
+  VERBOSITY_TRACE = 4
+
   class Application
     def initialize()
       @logger = Logger.new(STDERR).tap { |logger|
-        logger.level = Logger::INFO
+        logger.level = Logger::WARN
       }
       @optparse = OptionParser.new
       @optparse.version = Hotdog::VERSION
@@ -59,7 +64,8 @@ module Hotdog
         primary_tag: nil,
         tags: [],
         display_search_tags: false,
-        verbose: false,
+        verbose: false, # TODO: remove
+        verbosity: VERBOSITY_NULL,
       }
       define_options
     end
@@ -104,10 +110,12 @@ module Hotdog
 
         options[:formatter] = get_formatter(options[:format])
 
-        if options[:debug] or options[:verbose]
+        if options[:debug] or VERBOSITY_DEBUG <= options[:verbosity]
           options[:logger].level = Logger::DEBUG
         else
-          options[:logger].level = Logger::INFO
+          if VERBOSITY_INFO <= options[:verbosity]
+            options[:logger].level = Logger::INFO
+          end
         end
 
         command.run(args, @options)
@@ -221,8 +229,9 @@ module Hotdog
       @optparse.on("-x", "--display-search-tags", "Show tags used in search expression") do |v|
         options[:display_search_tags] = v
       end
-      @optparse.on("-V", "--[no-]verbose", "Enable verbose mode") do |v|
-        options[:verbose] = v
+      @optparse.on("-V", "-v", "--[no-]verbose", "Enable verbose mode") do |v|
+        options[:verbose] = v # TODO: remove
+        options[:verbosity] += 1
       end
       @optparse.on("--[no-]offline", "Enable offline mode") do |v|
         options[:offline] = v
