@@ -172,7 +172,7 @@ module Hotdog
                   STDOUT.puts(prettify_output(raw, i, color, identifier))
                   i += 1
                 else
-                  STDERR.puts(raw)
+                  STDERR.puts(prettify_output(raw, nil, nil, identifier))
                 end
               end
             end
@@ -213,8 +213,10 @@ module Hotdog
           end
           buf << identifier
           buf << ":"
-          buf << i.to_s
-          buf << ":"
+          if i
+            buf << i.to_s
+            buf << ":"
+          end
           if color
             buf << "\e[0m"
           end
