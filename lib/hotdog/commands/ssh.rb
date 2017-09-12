@@ -40,9 +40,6 @@ module Hotdog
         optparse.on("-u SSH_USER", "SSH login user name") do |user|
           options[:ssh_options]["User"] = user
         end
-        optparse.on("-v", "--verbose", "Enable verbose mode") do |v|
-          options[:verbose] = v
-        end
         optparse.on("--filter=COMMAND", "Command to filter search result.") do |command|
           options[:filter_command] = command
         end
@@ -126,7 +123,7 @@ module Hotdog
           cmdline << "-F" << File.expand_path(options[:ssh_config])
         end
         cmdline += options[:ssh_options].flat_map { |k, v| ["-o", "#{k}=#{v}"] }
-        if options[:verbose]
+        if VERBOSITY_TRACE <= options[:verbosity]
           cmdline << "-v"
         end
         cmdline
