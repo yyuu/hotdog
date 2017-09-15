@@ -19,14 +19,14 @@ describe "option parser for search" do
 
   it "can handle common options before subcommand" do
     allow(cmd).to receive(:run).with(["foo", "bar", "baz"], a_hash_including(
-      verbose: true,
+      verbosity: Hotdog::VERBOSITY_INFO,
     ))
     app.main(["--verbose", "search", "foo", "bar", "baz"])
   end
 
   it "can handle common options after subcommand" do
     allow(cmd).to receive(:run).with(["foo", "bar", "baz"], a_hash_including(
-      verbose: true,
+      verbosity: Hotdog::VERBOSITY_INFO,
     ))
     app.main(["search", "--verbose", "foo", "bar", "baz"])
   end

@@ -26,7 +26,7 @@ describe "option parser for down" do
   it "can handle subcommand options after subcommand" do
     allow(cmd).to receive(:run).with(["foo", "bar", "baz"], a_hash_including(
       downtime: 12345,
-      verbose: false,
+      verbosity: Hotdog::VERBOSITY_NULL,
     ))
     app.main(["down", "--downtime", "12345", "foo", "bar", "baz"])
   end
@@ -34,7 +34,7 @@ describe "option parser for down" do
   it "can handle common options before subcommand" do
     allow(cmd).to receive(:run).with(["foo", "bar", "baz"], a_hash_including(
       downtime: 12345,
-      verbose: true,
+      verbosity: Hotdog::VERBOSITY_INFO,
     ))
     app.main(["--verbose", "down", "--downtime", "12345", "foo", "bar", "baz"])
   end
@@ -42,7 +42,7 @@ describe "option parser for down" do
   it "can handle common options after subcommand" do
     allow(cmd).to receive(:run).with(["foo", "bar", "baz"], a_hash_including(
       downtime: 12345,
-      verbose: true,
+      verbosity: Hotdog::VERBOSITY_INFO,
     ))
     app.main(["down", "--downtime", "12345", "--verbose", "foo", "bar", "baz"])
   end
