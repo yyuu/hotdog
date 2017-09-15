@@ -26,7 +26,7 @@ describe "option parser for pssh" do
   it "can handle subcommand options after subcommand" do
     allow(cmd).to receive(:run).with(["foo", "bar", "baz"], a_hash_including(
       max_parallelism: 42,
-      verbose: false,
+      verbosity: Hotdog::VERBOSITY_NULL,
     ))
     app.main(["pssh", "-P", "42", "foo", "bar", "baz"])
   end
@@ -34,7 +34,7 @@ describe "option parser for pssh" do
   it "can handle common options before subcommand" do
     allow(cmd).to receive(:run).with(["foo", "bar", "baz"], a_hash_including(
       max_parallelism: 42,
-      verbose: true,
+      verbosity: Hotdog::VERBOSITY_INFO,
     ))
     app.main(["--verbose", "pssh", "-P", "42", "foo", "bar", "baz"])
   end
@@ -42,7 +42,7 @@ describe "option parser for pssh" do
   it "can handle common options after subcommand" do
     allow(cmd).to receive(:run).with(["foo", "bar", "baz"], a_hash_including(
       max_parallelism: 42,
-      verbose: true,
+      verbosity: Hotdog::VERBOSITY_INFO,
     ))
     app.main(["pssh", "-P", "42", "--verbose", "foo", "bar", "baz"])
   end
@@ -50,7 +50,7 @@ describe "option parser for pssh" do
   it "can handle subcommand options with remote command, 1" do
     allow(cmd).to receive(:run).with([], a_hash_including(
       max_parallelism: 42,
-      verbose: true,
+      verbosity: Hotdog::VERBOSITY_INFO,
     ))
     app.main(["pssh", "-P", "42", "--verbose", "--", "foo", "bar", "baz"])
     expect(cmd.remote_command).to eq("foo bar baz")
@@ -59,7 +59,7 @@ describe "option parser for pssh" do
   it "can handle subcommand options with remote command, 2" do
     allow(cmd).to receive(:run).with(["foo"], a_hash_including(
       max_parallelism: 42,
-      verbose: true,
+      verbosity: Hotdog::VERBOSITY_INFO,
     ))
     app.main(["pssh", "-P", "42", "--verbose", "foo", "--", "bar", "baz"])
     expect(cmd.remote_command).to eq("bar baz")
@@ -68,7 +68,7 @@ describe "option parser for pssh" do
   it "can handle subcommand options with remote command, 3" do
     allow(cmd).to receive(:run).with(["foo"], a_hash_including(
       max_parallelism: 42,
-      verbose: true,
+      verbosity: Hotdog::VERBOSITY_INFO,
     ))
     app.main(["pssh", "-P", "42", "--verbose", "foo", "--", "bar", "--", "baz"])
     expect(cmd.remote_command).to eq("bar -- baz")
