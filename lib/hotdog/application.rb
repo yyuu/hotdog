@@ -231,10 +231,13 @@ module Hotdog
       @optparse.on("--primary-tag TAG", "Use specified tag as the primary tag") do |tag|
         options[:primary_tag] = tag
       end
+      @optparse.on("-q", "--[no-]quiet", "Decrease verbosity") do |v|
+        options[:verbosity] -= 1
+      end
       @optparse.on("-x", "--display-search-tags", "Show tags used in search expression") do |v|
         options[:display_search_tags] = v
       end
-      @optparse.on("-V", "-v", "--[no-]verbose", "Enable verbose mode") do |v|
+      @optparse.on("-V", "-v", "--[no-]verbose", "Increase verbosity") do |v|
         options[:verbosity] += 1
       end
       @optparse.on("--[no-]offline", "Enable offline mode") do |v|
