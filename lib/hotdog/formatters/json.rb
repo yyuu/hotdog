@@ -8,9 +8,13 @@ module Hotdog
       def format(result, options={})
         result = prepare(result)
         if options[:headers] and options[:fields]
-          result.unshift(options[:fields])
+          result.map! do |record|
+            Hash[options[:fields].zip(record)]
+          end
+          JSON.pretty_generate(result) + newline
+        else
+          JSON.pretty_generate(result) + newline
         end
-        JSON.pretty_generate(result) + newline
       end
     end
   end
