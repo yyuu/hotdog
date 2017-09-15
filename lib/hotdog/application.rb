@@ -36,9 +36,7 @@ module Hotdog
 
   class Application
     def initialize()
-      @logger = Logger.new(STDERR).tap { |logger|
-        logger.level = Logger::WARN
-      }
+      @logger = Logger.new(STDERR)
       @optparse = OptionParser.new
       @optparse.version = Hotdog::VERSION
       @options = {
@@ -64,9 +62,10 @@ module Hotdog
         primary_tag: nil,
         tags: [],
         display_search_tags: false,
-        verbose: false, # TODO: remove
+        verbose: false,
         verbosity: VERBOSITY_NULL,
       }
+
       define_options
     end
     attr_reader :logger
@@ -110,11 +109,17 @@ module Hotdog
 
         options[:formatter] = get_formatter(options[:format])
 
-        if options[:debug] or VERBOSITY_DEBUG <= options[:verbosity]
+        if ( options[:debug] or options[:verbose] ) and ( options[:verbosity] < VERBOSITY_DEBUG )
+          options[:verbosity] = VERBOSITY_DEBUG
+        end
+
+        if VERBOSITY_DEBUG <= options[:verbosity]
           options[:logger].level = Logger::DEBUG
         else
           if VERBOSITY_INFO <= options[:verbosity]
             options[:logger].level = Logger::INFO
+          else
+            options[:logger].level = Logger::WARN
           end
         end
 
@@ -230,7 +235,6 @@ module Hotdog
         options[:display_search_tags] = v
       end
       @optparse.on("-V", "-v", "--[no-]verbose", "Enable verbose mode") do |v|
-        options[:verbose] = v # TODO: remove
         options[:verbosity] += 1
       end
       @optparse.on("--[no-]offline", "Enable offline mode") do |v|
