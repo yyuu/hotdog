@@ -40,26 +40,21 @@ describe "json" do
     }
     expect(fmt.format([["foo", "aaa", 1], ["bar", "bbb", 2], ["baz", "ccc", 3]], options)).to eq(<<-EOS)
 [
-  [
-    "key1",
-    "key2",
-    "val1"
-  ],
-  [
-    "foo",
-    "aaa",
-    1
-  ],
-  [
-    "bar",
-    "bbb",
-    2
-  ],
-  [
-    "baz",
-    "ccc",
-    3
-  ]
+  {
+    "key1": "foo",
+    "key2": "aaa",
+    "val1": 1
+  },
+  {
+    "key1": "bar",
+    "key2": "bbb",
+    "val1": 2
+  },
+  {
+    "key1": "baz",
+    "key2": "ccc",
+    "val1": 3
+  }
 ]
     EOS
   end
