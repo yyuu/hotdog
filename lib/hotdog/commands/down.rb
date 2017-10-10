@@ -10,7 +10,26 @@ module Hotdog
         default_option(options, :retry, 5)
         default_option(options, :start, Time.new)
         optparse.on("--downtime DURATION") do |v|
-          options[:downtime] = v.to_i
+          case v
+          when /\A\s*(\d+)\s*(?:seconds?|sec|S)\s*\z/
+            options[:downtime] = $1.to_i
+          when /\A\s*(\d+)\s*(?:minutes?|min|M)\s*\z/
+            options[:downtime] = $1.to_i * 60
+          when /\A\s*(\d+)\s*(?:hours?|H)\s*\z/
+            options[:downtime] = $1.to_i * 60 * 60
+          when /\A\s*(\d+)\s*(?:days?|d)\s*\z/
+            options[:downtime] = $1.to_i * 60 * 60 * 24
+          when /\A\s*(\d+)\s*(?:weeks?|w)\s*\z/
+            options[:downtime] = $1.to_i * 60 * 60 * 24 * 7
+          when /\A\s*(\d+)\s*(?:months?|m)\s*\z/i
+            options[:downtime] = $1.to_i * 60 * 60 * 24 * 30
+          when /\A\s*(\d+)\s*(?:years?|y)\s*\z/i
+            options[:downtime] = $1.to_i * 60 * 60 * 24 * 365
+          when /\A\s*(\d+)\s*\z/
+            options[:downtime] = $1.to_i
+          else
+            raise(OptionParser::InvalidArgument.new("downtime argument value is invalid: #{v}"))
+          end
         end
         optparse.on("--retry NUM") do |v|
           options[:retry] = v.to_i
