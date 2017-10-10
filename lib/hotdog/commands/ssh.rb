@@ -108,7 +108,7 @@ module Hotdog
 
       def validate_hosts!(tuples, fields)
         if tuples.length < 1
-          STDERR.puts("no match found")
+          logger.error("no match found")
           exit(1)
         end
       end
