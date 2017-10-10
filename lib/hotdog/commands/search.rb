@@ -48,15 +48,10 @@ module Hotdog
         result0 = evaluate(node, self)
         if 0 < result0.length
           result, fields = get_hosts_with_search_tags(result0, node)
-          if options[:limit]
-            STDOUT.print(format(result.take(options[:limit]), fields: fields))
-            logger.info("found %d host(s), limited to %d in result." % [result.length, options[:limit]])
-          else
-            STDOUT.print(format(result, fields: fields))
-            logger.info("found %d host(s)." % result.length)
-          end
+          STDOUT.print(format(result, fields: fields))
+          logger.info("found %d host(s)." % result.length)
         else
-          STDERR.puts("no match found: #{expression}")
+          logger.error("no match found: #{expression}")
           exit(1)
         end
       end
@@ -121,9 +116,12 @@ module Hotdog
 
       private
       def rewrite_expression(expression)
-        if expression.empty?
+        if expression.strip.empty?
           # return everything if given expression is empty
           expression = "*"
+        end
+        if options[:limit]
+          expression = "LIMIT((#{expression}), #{options[:limit]})"
         end
         expression
       end
