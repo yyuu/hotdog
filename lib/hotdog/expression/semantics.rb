@@ -229,9 +229,13 @@ module Hotdog
                 range = (((sqlite_limit_compound_select - 2) / 2) * i)...(((sqlite_limit_compound_select - 2) / 2) * (i + 1))
                 left_selected = left_values.select { |n| range === n }
                 right_selected = right_values.select { |n| range === n }
-                q = "SELECT id FROM hosts " \
-                      "WHERE ? <= id AND id < ? AND ( id IN (%s) OR id IN (%s) );"
-                environment.execute(q % [left_selected.map { "?" }.join(", "), right_selected.map { "?" }.join(", ")], [range.first, range.last] + left_selected + right_selected).map { |row| row.first }
+                if 0 < left_selected.length or 0 < right_selected.length
+                  q = "SELECT id FROM hosts " \
+                        "WHERE ? <= id AND id < ? AND ( id IN (%s) OR id IN (%s) );"
+                  environment.execute(q % [left_selected.map { "?" }.join(", "), right_selected.map { "?" }.join(", ")], [range.first, range.last] + left_selected + right_selected).map { |row| row.first }
+                else
+                  []
+                end
               }.tap do |values|
                 environment.logger.debug("lhs(#{left_values.length}) OR rhs(#{right_values.length}) => #{values.length}")
               end
@@ -257,11 +261,15 @@ module Hotdog
                 range = (((sqlite_limit_compound_select - 2) / 4) * i)...(((sqlite_limit_compound_select - 2) / 4) * (i + 1))
                 left_selected = left_values.select { |n| range === n }
                 right_selected = right_values.select { |n| range === n }
-                q = "SELECT id FROM hosts " \
-                      "WHERE ? <= id AND id < ? AND NOT (id IN (%s) AND id IN (%s)) AND ( id IN (%s) OR id IN (%s) );"
-                lq = left_selected.map { "?" }.join(", ")
-                rq = right_selected.map { "?" }.join(", ")
-                environment.execute(q % [lq, rq, lq, rq], [range.first, range.last] + left_selected + right_selected + left_selected + right_selected).map { |row| row.first }
+                if 0 < left_selected.length or 0 < right_selected.length
+                  q = "SELECT id FROM hosts " \
+                        "WHERE ? <= id AND id < ? AND NOT (id IN (%s) AND id IN (%s)) AND ( id IN (%s) OR id IN (%s) );"
+                  lq = left_selected.map { "?" }.join(", ")
+                  rq = right_selected.map { "?" }.join(", ")
+                  environment.execute(q % [lq, rq, lq, rq], [range.first, range.last] + left_selected + right_selected + left_selected + right_selected).map { |row| row.first }
+                else
+                  []
+                end
               }.tap do |values|
                 environment.logger.debug("lhs(#{left_values.length}) XOR rhs(#{right_values.length}) => #{values.length}")
               end
