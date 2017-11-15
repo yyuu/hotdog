@@ -81,10 +81,15 @@ module Hotdog
       end
 
       def get_hosts(host_ids, tags=nil)
-        status = application.status || STATUS_RUNNING
+        status = application.status
+        n = Array(host_ids).length
         host_ids = Array(host_ids).each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |host_ids|
           execute("SELECT id FROM hosts WHERE status = ? AND id IN (%s);" % host_ids.map { "?" }.join(", "), [status] + host_ids).map { |row| row[0] }
         }
+        m = host_ids.length
+        if n != m
+          logger.warn("filtered out #{n - m} host(s) out of #{n} due to status != #{application.status_name}.")
+        end
         tags ||= @options[:tags]
         update_db
         if host_ids.empty?
@@ -139,7 +144,7 @@ module Hotdog
         when 1
           get_hosts_field(host_ids, fields.first, options)
         else
-          [host_ids.sort.map { |host_id| get_host_fields(host_id, fields, options) }.map { |result, fields| result }, fields]
+          [host_ids.map { |host_id| get_host_fields(host_id, fields, options) }.map { |result, fields| result }, fields]
         end
       end
 
