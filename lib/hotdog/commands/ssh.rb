@@ -236,17 +236,17 @@ module Hotdog
       end
 
       private
-      def rewrite_expression(expression)
-        expression = super(expression)
-        if options[:index]
-          expression = "SLICE((#{expression}), #{options[:index]}, 1)"
-        end
-        expression
-      end
-
+      # rewriting `options[:index]` as SLICE expression won't work as expected with hosts' status
+      # since the result may be filtered again with using the status,
+      # the filtering needs to be done after the `evaluate()`.
+      #
+      # for now we need to keep using `filter_hosts()` in favor of `rewrite_expression() to do
+      # the filtering based on status filtering.
       def filter_hosts(tuples)
         tuples = super
         if options[:index] and options[:index] < tuples.length
+          filtered_tuples = tuples.reject.with_index { |tuple, i| i == options[:index] }
+          logger.warn("filtered host(s): #{filtered_tuples.map { |tuple| tuple.first }.inspect}")
           [tuples[options[:index]]]
         else
           tuples
