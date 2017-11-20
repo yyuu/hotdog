@@ -369,13 +369,25 @@ module Hotdog
             [host, status]
           })
         end
+
         # create virtual `host` tag
         execute_db(db, "INSERT OR IGNORE INTO tags (name, value) SELECT 'host', hosts.name FROM hosts;")
-        q = "INSERT OR REPLACE INTO hosts_tags (host_id, tag_id) " \
+        execute_db(db,
+            "INSERT OR REPLACE INTO hosts_tags (host_id, tag_id) " \
               "SELECT hosts.id, tags.id FROM hosts " \
                 "INNER JOIN ( SELECT * FROM tags WHERE name = 'host' ) AS tags " \
                   "ON hosts.name = tags.value;"
-        execute_db(db, q)
+        )
+
+        # create virtual `@host` tag
+        execute_db(db, "INSERT OR IGNORE INTO tags (name, value) SELECT '@host', hosts.name FROM hosts;")
+        execute_db(db,
+            "INSERT OR REPLACE INTO hosts_tags (host_id, tag_id) " \
+              "SELECT hosts.id, tags.id FROM hosts " \
+                "INNER JOIN ( SELECT * FROM tags WHERE name = '@host' ) AS tags " \
+                  "ON hosts.name = tags.value;"
+        )
+
       end
 
       def create_tags(db, tags)
