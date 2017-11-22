@@ -88,7 +88,7 @@ module Hotdog
         }
         m = host_ids.length
         if n != m
-          logger.warn("filtered out #{n - m} host(s) out of #{n} due to status != #{application.status_name}.")
+          logger.warn("filtered out #{n - m} host(s) out of #{n} due to status != #{application.status}.")
         end
         tags ||= @options[:tags]
         update_db
@@ -294,6 +294,36 @@ module Hotdog
           execute_db(db, "CREATE UNIQUE INDEX IF NOT EXISTS tags_name_value ON tags (name, value);")
           execute_db(db, "CREATE TABLE IF NOT EXISTS hosts_tags (host_id INTEGER NOT NULL, tag_id INTEGER NOT NULL);")
           execute_db(db, "CREATE UNIQUE INDEX IF NOT EXISTS hosts_tags_host_id_tag_id ON hosts_tags (host_id, tag_id);")
+
+          execute_db(db, "CREATE TABLE IF NOT EXISTS source_names (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(200) NOT NULL COLLATE NOCASE);")
+          [
+            SOURCE_DATADOG,
+          ].each do |source_id|
+            source_name = {
+              SOURCE_DATADOG => "datadog",
+            }.fetch(source_id, "unknown")
+            execute_db(db, "INSERT OR IGNORE INTO source_names (id, name) VALUES (?, ?);", [source_id, source_name])
+          end
+                     
+          execute_db(db, "CREATE TABLE IF NOT EXISTS status_names (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(200) NOT NULL COLLATE NOCASE);")
+          [
+            STATUS_PENDING,
+            STATUS_RUNNING,
+            STATUS_SHUTTING_DOWN,
+            STATUS_TERMINATED,
+            STATUS_STOPPING,
+            STATUS_STOPPED,
+          ].each do |status_id|
+            status_name = {
+              STATUS_PENDING       => "pending",
+              STATUS_RUNNING       => "running",
+              STATUS_SHUTTING_DOWN => "shutting-down",
+              STATUS_TERMINATED    => "terminated",
+              STATUS_STOPPING      => "stopping",
+              STATUS_STOPPED       => "stopped",
+            }.fetch(status_id, "unknown")
+            execute_db(db, "INSERT OR IGNORE INTO status_names (id, name) VALUES (?, ?);", [status_id, status_name])
+          end
 
           known_tags = all_tags.keys.map { |tag| split_tag(tag) }.uniq
           create_tags(db, known_tags)

@@ -163,17 +163,6 @@ module Hotdog
       options.fetch(:status, STATUS_RUNNING)
     end
 
-    def status_name()
-      {
-        STATUS_PENDING       => "pending",
-        STATUS_RUNNING       => "running",
-        STATUS_SHUTTING_DOWN => "shutting-down",
-        STATUS_TERMINATED    => "terminated",
-        STATUS_STOPPING      => "stopping",
-        STATUS_STOPPED       => "stopped",
-      }.fetch(self.status, "unknown")
-    end
-
     private
     def define_options
       @optparse.on("--endpoint ENDPOINT", "Datadog API endpoint") do |endpoint|
