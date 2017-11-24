@@ -15,6 +15,8 @@ module Hotdog
         default_option(options, :max_parallelism, Parallel.processor_count * 2)
         default_option(options, :shuffle, false)
         default_option(options, :ssh_config, nil)
+        # we must not need to run ssh against terminated hosts
+        default_option(options, :status, STATUS_RUNNING)
         optparse.on("-C", "Enable compression.") do |v|
           options[:ssh_options]["Compression"] = "yes"
         end
