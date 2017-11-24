@@ -59,9 +59,13 @@ module Hotdog
             (min / (sqlite_limit_compound_select - 2)).upto(max / (sqlite_limit_compound_select - 2)).flat_map { |i|
               range = ((sqlite_limit_compound_select - 2) * i)...((sqlite_limit_compound_select - 2) * (i + 1))
               selected = values.select { |n| range === n }
-              q = "SELECT id FROM hosts " \
-                    "WHERE ? <= id AND id < ? AND id NOT IN (%s);"
-              environment.execute(q % selected.map { "?" }.join(", "), [range.first, range.last] + selected).map { |row| row.first }
+              if 0 < selected.length
+                q = "SELECT id FROM hosts " \
+                      "WHERE ? <= id AND id < ? AND id NOT IN (%s);"
+                environment.execute(q % selected.map { "?" }.join(", "), [range.first, range.last] + selected).map { |row| row.first }
+              else
+                []
+              end
             }.tap do |values|
               environment.logger.debug("NOT expr: #{values.length} value(s)")
             end
@@ -201,9 +205,13 @@ module Hotdog
                 range = (((sqlite_limit_compound_select - 2) / 2) * i)...(((sqlite_limit_compound_select - 2) / 2) * (i + 1))
                 left_selected = left_values.select { |n| range === n }
                 right_selected = right_values.select { |n| range === n }
-                q = "SELECT id FROM hosts " \
-                      "WHERE ? <= id AND id < ? AND ( id IN (%s) AND id IN (%s) );"
-                environment.execute(q % [left_selected.map { "?" }.join(", "), right_selected.map { "?" }.join(", ")], [range.first, range.last] + left_selected + right_selected).map { |row| row.first }
+                if 0 < left_selected.length and 0 < right_selected.length
+                  q = "SELECT id FROM hosts " \
+                        "WHERE ? <= id AND id < ? AND ( id IN (%s) AND id IN (%s) );"
+                  environment.execute(q % [left_selected.map { "?" }.join(", "), right_selected.map { "?" }.join(", ")], [range.first, range.last] + left_selected + right_selected).map { |row| row.first }
+                else
+                  []
+                end
               }.tap do |values|
                 environment.logger.debug("lhs(#{left_values.length}) AND rhs(#{right_values.length}) => #{values.length}")
               end
