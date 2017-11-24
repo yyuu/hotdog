@@ -106,9 +106,9 @@ module Hotdog
         )
       }
       rule(:tag) {
-        ( regexp.as(:tagname_regexp) >> separator.as(:separator) >> regexp.as(:tagvalue_regexp) \
-        | regexp.as(:tagname_regexp) >> separator.as(:separator) \
-        | regexp.as(:tagname_regexp) \
+        ( tagname_regexp.as(:tagname_regexp) >> separator.as(:separator) >> tagvalue_regexp.as(:tagvalue_regexp) \
+        | tagname_regexp.as(:tagname_regexp) >> separator.as(:separator) \
+        | tagname_regexp.as(:tagname_regexp) \
         | tagname_glob.as(:tagname_glob) >> separator.as(:separator) >> tagvalue_glob.as(:tagvalue_glob) \
         | tagname_glob.as(:tagname_glob) >> separator.as(:separator) >> tagvalue.as(:tagvalue) \
         | tagname_glob.as(:tagname_glob) >> separator.as(:separator) \
@@ -117,6 +117,10 @@ module Hotdog
         | tagname.as(:tagname) >> separator.as(:separator) >> tagvalue.as(:tagvalue) \
         | tagname.as(:tagname) >> separator.as(:separator) \
         | tagname.as(:tagname) \
+        | (str('@') >> tagname).as(:tagname) >> separator.as(:separator) >> tagvalue_glob.as(:tagvalue_glob) \
+        | (str('@') >> tagname).as(:tagname) >> separator.as(:separator) >> tagvalue.as(:tagvalue) \
+        | (str('@') >> tagname).as(:tagname) >> separator.as(:separator) \
+        | (str('@') >> tagname).as(:tagname) \
         | separator.as(:separator) >> regexp.as(:tagvalue_regexp) \
         | separator.as(:separator) >> tagvalue_glob.as(:tagvalue_glob) \
         | separator.as(:separator) >> tagvalue.as(:tagvalue) \
