@@ -120,6 +120,14 @@ module Hotdog
           # return everything if given expression is empty
           expression = "*"
         end
+        if options[:source]
+          source_name = application.source_name(options[:source])
+          expression = "@source:#{source_name} AND (#{expression})"
+        end
+        if options[:status]
+          status_name = application.status_name(options[:status])
+          expression = "@status:#{status_name} AND (#{expression})"
+        end
         if options[:limit]
           expression = "LIMIT((#{expression}), #{options[:limit]})"
         end

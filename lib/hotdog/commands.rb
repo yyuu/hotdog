@@ -81,15 +81,6 @@ module Hotdog
       end
 
       def get_hosts(host_ids, tags=nil)
-        status = application.status
-        n = Array(host_ids).length
-        host_ids = Array(host_ids).each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |host_ids|
-          execute("SELECT id FROM hosts WHERE status = ? AND id IN (%s);" % host_ids.map { "?" }.join(", "), [status] + host_ids).map { |row| row[0] }
-        }
-        m = host_ids.length
-        if n != m
-          logger.warn("filtered out #{n - m} host(s) out of #{n} due to status != #{application.status}.")
-        end
         tags ||= @options[:tags]
         update_db
         if host_ids.empty?
@@ -296,32 +287,21 @@ module Hotdog
           execute_db(db, "CREATE UNIQUE INDEX IF NOT EXISTS hosts_tags_host_id_tag_id ON hosts_tags (host_id, tag_id);")
 
           execute_db(db, "CREATE TABLE IF NOT EXISTS source_names (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(200) NOT NULL COLLATE NOCASE);")
-          [
-            SOURCE_DATADOG,
-          ].each do |source_id|
-            source_name = {
-              SOURCE_DATADOG => "datadog",
-            }.fetch(source_id, "unknown")
+          {
+            SOURCE_DATADOG => application.source_name(SOURCE_DATADOG),
+          }.each do |source_id, source_name|
             execute_db(db, "INSERT OR IGNORE INTO source_names (id, name) VALUES (?, ?);", [source_id, source_name])
           end
                      
           execute_db(db, "CREATE TABLE IF NOT EXISTS status_names (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(200) NOT NULL COLLATE NOCASE);")
-          [
-            STATUS_PENDING,
-            STATUS_RUNNING,
-            STATUS_SHUTTING_DOWN,
-            STATUS_TERMINATED,
-            STATUS_STOPPING,
-            STATUS_STOPPED,
-          ].each do |status_id|
-            status_name = {
-              STATUS_PENDING       => "pending",
-              STATUS_RUNNING       => "running",
-              STATUS_SHUTTING_DOWN => "shutting-down",
-              STATUS_TERMINATED    => "terminated",
-              STATUS_STOPPING      => "stopping",
-              STATUS_STOPPED       => "stopped",
-            }.fetch(status_id, "unknown")
+          {
+            STATUS_PENDING       => application.status_name(STATUS_PENDING),
+            STATUS_RUNNING       => application.status_name(STATUS_RUNNING),
+            STATUS_SHUTTING_DOWN => application.status_name(STATUS_SHUTTING_DOWN),
+            STATUS_TERMINATED    => application.status_name(STATUS_TERMINATED),
+            STATUS_STOPPING      => application.status_name(STATUS_STOPPING),
+            STATUS_STOPPED       => application.status_name(STATUS_STOPPED),
+          }.each do |status_id, status_name|
             execute_db(db, "INSERT OR IGNORE INTO status_names (id, name) VALUES (?, ?);", [status_id, status_name])
           end
 
