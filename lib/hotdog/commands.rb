@@ -392,11 +392,12 @@ module Hotdog
       end
 
       def create_hosts(db, hosts, downtimes)
-        hosts.each_slice(SQLITE_LIMIT_COMPOUND_SELECT / 2) do |hosts|
-          q = "INSERT OR IGNORE INTO hosts (name, status) VALUES %s;" % hosts.map { "(?, ?)" }.join(", ")
+        hosts.each_slice(SQLITE_LIMIT_COMPOUND_SELECT / 3) do |hosts|
+          q = "INSERT OR IGNORE INTO hosts (name, source, status) VALUES %s;" % hosts.map { "(?, ?, ?)" }.join(", ")
           execute_db(db, q, hosts.map { |host|
+            source = SOURCE_DATADOG
             status = downtimes.include?(host) ? STATUS_STOPPED : STATUS_RUNNING
-            [host, status]
+            [host, source, status]
           })
         end
 
@@ -405,8 +406,7 @@ module Hotdog
         execute_db(db,
             "INSERT OR REPLACE INTO hosts_tags (host_id, tag_id) " \
               "SELECT hosts.id, tags.id FROM hosts " \
-                "INNER JOIN ( SELECT * FROM tags WHERE name = 'host' ) AS tags " \
-                  "ON hosts.name = tags.value;"
+                "INNER JOIN tags ON tags.name = 'host' AND hosts.name = tags.value;"
         )
 
         # create virtual `@host` tag
@@ -414,10 +414,26 @@ module Hotdog
         execute_db(db,
             "INSERT OR REPLACE INTO hosts_tags (host_id, tag_id) " \
               "SELECT hosts.id, tags.id FROM hosts " \
-                "INNER JOIN ( SELECT * FROM tags WHERE name = '@host' ) AS tags " \
-                  "ON hosts.name = tags.value;"
+                "INNER JOIN tags ON tags.name = '@host' AND hosts.name = tags.value;"
         )
 
+        # create virtual `@source` tag
+        execute_db(db, "INSERT OR IGNORE INTO tags (name, value) SELECT '@source', name FROM source_names;")
+        execute_db(db,
+            "INSERT OR REPLACE INTO hosts_tags (host_id, tag_id) " \
+              "SELECT hosts.id, tags.id FROM hosts " \
+                "INNER JOIN source_names ON hosts.source = source_names.id " \
+                "INNER JOIN tags ON tags.name = '@source' AND source_names.name = tags.value;"
+        )
+
+        # create virtual `@status` tag
+        execute_db(db, "INSERT OR IGNORE INTO tags (name, value) SELECT '@status', name FROM status_names;")
+        execute_db(db,
+            "INSERT OR REPLACE INTO hosts_tags (host_id, tag_id) " \
+              "SELECT hosts.id, tags.id FROM hosts " \
+                "INNER JOIN status_names ON hosts.status = status_names.id " \
+                "INNER JOIN tags ON tags.name = '@status' AND status_names.name = tags.value;"
+        )
       end
 
       def create_tags(db, tags)
