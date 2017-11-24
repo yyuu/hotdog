@@ -81,15 +81,6 @@ module Hotdog
       end
 
       def get_hosts(host_ids, tags=nil)
-        status = application.status
-        n = Array(host_ids).length
-        host_ids = Array(host_ids).each_slice(SQLITE_LIMIT_COMPOUND_SELECT).flat_map { |host_ids|
-          execute("SELECT id FROM hosts WHERE status = ? AND id IN (%s);" % host_ids.map { "?" }.join(", "), [status] + host_ids).map { |row| row[0] }
-        }
-        m = host_ids.length
-        if n != m
-          logger.warn("filtered out #{n - m} host(s) out of #{n} due to status != #{application.status_name}.")
-        end
         tags ||= @options[:tags]
         update_db
         if host_ids.empty?
@@ -295,6 +286,25 @@ module Hotdog
           execute_db(db, "CREATE TABLE IF NOT EXISTS hosts_tags (host_id INTEGER NOT NULL, tag_id INTEGER NOT NULL);")
           execute_db(db, "CREATE UNIQUE INDEX IF NOT EXISTS hosts_tags_host_id_tag_id ON hosts_tags (host_id, tag_id);")
 
+          execute_db(db, "CREATE TABLE IF NOT EXISTS source_names (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(200) NOT NULL COLLATE NOCASE);")
+          {
+            SOURCE_DATADOG => application.source_name(SOURCE_DATADOG),
+          }.each do |source_id, source_name|
+            execute_db(db, "INSERT OR IGNORE INTO source_names (id, name) VALUES (?, ?);", [source_id, source_name])
+          end
+                     
+          execute_db(db, "CREATE TABLE IF NOT EXISTS status_names (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(200) NOT NULL COLLATE NOCASE);")
+          {
+            STATUS_PENDING       => application.status_name(STATUS_PENDING),
+            STATUS_RUNNING       => application.status_name(STATUS_RUNNING),
+            STATUS_SHUTTING_DOWN => application.status_name(STATUS_SHUTTING_DOWN),
+            STATUS_TERMINATED    => application.status_name(STATUS_TERMINATED),
+            STATUS_STOPPING      => application.status_name(STATUS_STOPPING),
+            STATUS_STOPPED       => application.status_name(STATUS_STOPPED),
+          }.each do |status_id, status_name|
+            execute_db(db, "INSERT OR IGNORE INTO status_names (id, name) VALUES (?, ?);", [status_id, status_name])
+          end
+
           known_tags = all_tags.keys.map { |tag| split_tag(tag) }.uniq
           create_tags(db, known_tags)
 
@@ -362,20 +372,48 @@ module Hotdog
       end
 
       def create_hosts(db, hosts, downtimes)
-        hosts.each_slice(SQLITE_LIMIT_COMPOUND_SELECT / 2) do |hosts|
-          q = "INSERT OR IGNORE INTO hosts (name, status) VALUES %s;" % hosts.map { "(?, ?)" }.join(", ")
+        hosts.each_slice(SQLITE_LIMIT_COMPOUND_SELECT / 3) do |hosts|
+          q = "INSERT OR IGNORE INTO hosts (name, source, status) VALUES %s;" % hosts.map { "(?, ?, ?)" }.join(", ")
           execute_db(db, q, hosts.map { |host|
+            source = SOURCE_DATADOG
             status = downtimes.include?(host) ? STATUS_STOPPED : STATUS_RUNNING
-            [host, status]
+            [host, source, status]
           })
         end
+
         # create virtual `host` tag
         execute_db(db, "INSERT OR IGNORE INTO tags (name, value) SELECT 'host', hosts.name FROM hosts;")
-        q = "INSERT OR REPLACE INTO hosts_tags (host_id, tag_id) " \
+        execute_db(db,
+            "INSERT OR REPLACE INTO hosts_tags (host_id, tag_id) " \
               "SELECT hosts.id, tags.id FROM hosts " \
-                "INNER JOIN ( SELECT * FROM tags WHERE name = 'host' ) AS tags " \
-                  "ON hosts.name = tags.value;"
-        execute_db(db, q)
+                "INNER JOIN tags ON tags.name = 'host' AND hosts.name = tags.value;"
+        )
+
+        # create virtual `@host` tag
+        execute_db(db, "INSERT OR IGNORE INTO tags (name, value) SELECT '@host', hosts.name FROM hosts;")
+        execute_db(db,
+            "INSERT OR REPLACE INTO hosts_tags (host_id, tag_id) " \
+              "SELECT hosts.id, tags.id FROM hosts " \
+                "INNER JOIN tags ON tags.name = '@host' AND hosts.name = tags.value;"
+        )
+
+        # create virtual `@source` tag
+        execute_db(db, "INSERT OR IGNORE INTO tags (name, value) SELECT '@source', name FROM source_names;")
+        execute_db(db,
+            "INSERT OR REPLACE INTO hosts_tags (host_id, tag_id) " \
+              "SELECT hosts.id, tags.id FROM hosts " \
+                "INNER JOIN source_names ON hosts.source = source_names.id " \
+                "INNER JOIN tags ON tags.name = '@source' AND source_names.name = tags.value;"
+        )
+
+        # create virtual `@status` tag
+        execute_db(db, "INSERT OR IGNORE INTO tags (name, value) SELECT '@status', name FROM status_names;")
+        execute_db(db,
+            "INSERT OR REPLACE INTO hosts_tags (host_id, tag_id) " \
+              "SELECT hosts.id, tags.id FROM hosts " \
+                "INNER JOIN status_names ON hosts.status = status_names.id " \
+                "INNER JOIN tags ON tags.name = '@status' AND status_names.name = tags.value;"
+        )
       end
 
       def create_tags(db, tags)

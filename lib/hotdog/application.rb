@@ -159,11 +159,21 @@ module Hotdog
       end
     end
 
+    def source()
+      options.fetch(:source, SOURCE_DATADOG)
+    end
+
+    def source_name(source=self.source)
+      {
+        SOURCE_DATADOG => "datadog",
+      }.fetch(source, "unknown")
+    end
+
     def status()
       options.fetch(:status, STATUS_RUNNING)
     end
 
-    def status_name()
+    def status_name(status=self.status)
       {
         STATUS_PENDING       => "pending",
         STATUS_RUNNING       => "running",
@@ -171,7 +181,7 @@ module Hotdog
         STATUS_TERMINATED    => "terminated",
         STATUS_STOPPING      => "stopping",
         STATUS_STOPPED       => "stopped",
-      }.fetch(self.status, "unknown")
+      }.fetch(status, "unknown")
     end
 
     private
@@ -215,22 +225,38 @@ module Hotdog
       @optparse.on("-h", "--[no-]headers", "Display headeres for each columns") do |v|
         options[:headers] = v
       end
+      @optparse.on("--source=SOURCE", "Specify custom host source") do |v|
+        case v
+        when /\A\d\z/i
+          options[:source] = v.to_i
+        when /\A(?:all|any)\z/i
+          options[:source] = nil
+        when /\A(?:datadog)\z/i
+          options[:source] = SOURCE_DATADOG
+        else
+          raise(OptionParser::InvalidArgument.new("unknown source: #{v}"))
+        end
+      end
       @optparse.on("--status=STATUS", "Specify custom host status") do |v|
         case v
-        when /\Apending\z/i
+        when /\A\d\z/i
+          options[:status] = v.to_i
+        when /\A(?:all|any)\z/i
+          options[:status] = nil
+        when /\A(?:pending)\z/i
           options[:status] = STATUS_PENDING
-        when /\Arunning\z/i
+        when /\A(?:running)\z/i
           options[:status] = STATUS_RUNNING
-        when /\Ashutting-down\z/i
+        when /\A(?:shutting-down)\z/i
           options[:status] = STATUS_SHUTTING_DOWN
-        when /\Aterminated\z/i
+        when /\A(?:terminated)\z/i
           options[:status] = STATUS_TERMINATED
-        when /\Astopping\z/i
+        when /\A(?:stopping)\z/i
           options[:status] = STATUS_STOPPING
-        when /\Astopped\z/i
+        when /\A(?:stopped)\z/i
           options[:status] = STATUS_STOPPED
         else
-          options[:status] = v.to_i
+          raise(OptionParser::InvalidArgument.new("unknown status: #{v}"))
         end
       end
       @optparse.on("-l", "--[no-]listing", "Use listing format") do |v|
