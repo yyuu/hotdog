@@ -250,6 +250,7 @@ module Hotdog
             db = SQLite3::Database.new(persistent_db_path)
             copy_db(memory_db, db)
             close_db(memory_db)
+            $did_reload = true
             @db = db
           end
         end
