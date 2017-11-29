@@ -9,7 +9,7 @@ describe "tag expression" do
     it "interprets tag with host (#{o})" do
       expr = Hotdog::Expression::StringHostNode.new("foo", ":")
       expect(optimize_n(o+1, expr).dump).to eq({
-        tagname: "host",
+        tagname: "@host",
         separator: ":",
         tagvalue: "foo",
         fallback: {

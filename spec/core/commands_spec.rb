@@ -27,7 +27,7 @@ describe "commands" do
     allow(cmd).to receive(:execute).with("SELECT id FROM hosts WHERE status = ? AND id IN (?, ?, ?);", [Hotdog::STATUS_RUNNING, 1, 2, 3]) {
       [[1], [2], [3]]
     }
-    allow(cmd).to receive(:get_hosts_fields).with([1, 2, 3], ["host"])
+    allow(cmd).to receive(:get_hosts_fields).with([1, 2, 3], ["@host"])
     expect(cmd.__send__(:get_hosts, [1, 2, 3], []))
   end
 
@@ -68,7 +68,7 @@ describe "commands" do
     allow(cmd).to receive(:execute).with(q1.join(" "), [1, 2, 3]) {
       [["foo"], ["bar"], ["baz"]]
     }
-    allow(cmd).to receive(:get_hosts_fields).with([1, 2, 3], ["host", "foo", "bar", "baz"])
+    allow(cmd).to receive(:get_hosts_fields).with([1, 2, 3], ["@host", "foo", "bar", "baz"])
     expect(cmd.__send__(:get_hosts, [1, 2, 3], []))
   end
 
@@ -87,7 +87,7 @@ describe "commands" do
     allow(cmd).to receive(:execute).with(q1.join(" "), [1, 2, 3]) {
       [["foo"], ["bar"], ["baz"]]
     }
-    allow(cmd).to receive(:get_hosts_fields).with([1, 2, 3], ["bar", "host", "foo", "baz"])
+    allow(cmd).to receive(:get_hosts_fields).with([1, 2, 3], ["bar", "@host", "foo", "baz"])
     expect(cmd.__send__(:get_hosts, [1, 2, 3], []))
   end
 
@@ -127,15 +127,15 @@ describe "commands" do
           "WHERE hosts_tags.host_id = ? AND tags.name IN (?, ?, ?)",
             "GROUP BY tags.name;",
     ]
-    allow(cmd).to receive(:execute).with(q1.join(" "), [1, "foo", "bar", "host"]) {
-      [["foo", "foo1"], ["bar", "bar1"], ["host", "host1"]]
+    allow(cmd).to receive(:execute).with(q1.join(" "), [1, "foo", "bar", "@host"]) {
+      [["foo", "foo1"], ["bar", "bar1"], ["@host", "host1"]]
     }
-    allow(cmd).to receive(:execute).with(q1.join(" "), [2, "foo", "bar", "host"]) {
-      [["foo", "foo2"], ["bar", "bar2"], ["host", "host2"]]
+    allow(cmd).to receive(:execute).with(q1.join(" "), [2, "foo", "bar", "@host"]) {
+      [["foo", "foo2"], ["bar", "bar2"], ["@host", "host2"]]
     }
-    allow(cmd).to receive(:execute).with(q1.join(" "), [3, "foo", "bar", "host"]) {
-      [["foo", "foo3"], ["bar", "bar3"], ["host", "host3"]]
+    allow(cmd).to receive(:execute).with(q1.join(" "), [3, "foo", "bar", "@host"]) {
+      [["foo", "foo3"], ["bar", "bar3"], ["@host", "host3"]]
     }
-    expect(cmd.__send__(:get_hosts_fields, [1, 2, 3], ["foo", "bar", "host"])).to eq([[["foo1", "bar1", "host1"], ["foo2", "bar2", "host2"], ["foo3", "bar3", "host3"]], ["foo", "bar", "host"]])
+    expect(cmd.__send__(:get_hosts_fields, [1, 2, 3], ["foo", "bar", "@host"])).to eq([[["foo1", "bar1", "host1"], ["foo2", "bar2", "host2"], ["foo3", "bar3", "host3"]], ["foo", "bar", "@host"]])
   end
 end
