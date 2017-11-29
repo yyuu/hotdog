@@ -24,7 +24,7 @@ describe "tag expression" do
       [[1], [2], [3]]
     }
     expect(expr.evaluate(cmd)).to eq([1, 2, 3])
-    expect(expr.dump).to eq({tagname: "host", separator: ":", tagvalue: "foo"})
+    expect(expr.dump).to eq({tagname: "@host", separator: ":", tagvalue: "foo"})
   end
 
   it "interprets tag with tagname and tagvalue" do

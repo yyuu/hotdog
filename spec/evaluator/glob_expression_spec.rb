@@ -24,7 +24,7 @@ describe "tag glob expression" do
       [[1], [2], [3]]
     }
     expect(expr.evaluate(cmd)).to eq([1, 2, 3])
-    expect(expr.dump).to eq({tagname_glob: "host", separator: ":", tagvalue_glob: "foo*"})
+    expect(expr.dump).to eq({tagname_glob: "@host", separator: ":", tagvalue_glob: "foo*"})
   end
 
   it "interprets tag glob with tagname and tagvalue" do

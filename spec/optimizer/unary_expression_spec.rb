@@ -104,7 +104,7 @@ describe "unary expression" do
         ),
       )
       expect(optimize_n(o+1, expr).dump).to eq({
-        tagname: "host",
+        tagname: "@host",
         separator: ":",
         tagvalue: "foo",
         fallback: {
@@ -140,7 +140,7 @@ describe "unary expression" do
         Hotdog::Expression::StringHostNode.new("foo", ":"),
       )
       expect(optimize_n(o+1, expr).dump).to eq({
-        tagname: "host",
+        tagname: "@host",
         separator: ":",
         tagvalue: "foo",
         fallback: {
@@ -162,7 +162,7 @@ describe "unary expression" do
         ),
       )
       expect(optimize_n(o+1, expr).dump).to eq({
-        tagname: "host",
+        tagname: "@host",
         separator: ":",
         tagvalue: "foo",
         fallback: {
@@ -187,7 +187,7 @@ describe "unary expression" do
         ),
       )
       expect(optimize_n(o+1, expr).dump).to eq({
-        tagname: "host",
+        tagname: "@host",
         separator: ":",
         tagvalue: "foo",
         fallback: {
@@ -263,7 +263,7 @@ describe "unary expression" do
         ),
       )
       expect(optimize_n(o+1, expr).dump).to eq({
-        tagname: "host",
+        tagname: "@host",
         separator: ":",
         tagvalue: "foo",
         fallback: {
@@ -288,7 +288,7 @@ describe "unary expression" do
         ),
       )
       expect(optimize_n(o+1, expr).dump).to eq({
-        tagname: "host",
+        tagname: "@host",
         separator: ":",
         tagvalue: "foo",
         fallback: {
@@ -313,7 +313,7 @@ describe "unary expression" do
         ),
       )
       expect(optimize_n(o+1, expr).dump).to eq({
-        tagname: "host",
+        tagname: "@host",
         separator: ":",
         tagvalue: "foo",
         fallback: {

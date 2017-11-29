@@ -93,12 +93,12 @@ module Hotdog
               if @options[:primary_tag]
                 fields = [
                   @options[:primary_tag],
-                  "host",
+                  "@host",
                 ] + get_fields(host_ids).reject { |tagname| tagname == @options[:primary_tag] }
                 get_hosts_fields(host_ids, fields)
               else
                 fields = [
-                  "host",
+                  "@host",
                 ] + get_fields(host_ids)
                 get_hosts_fields(host_ids, fields)
               end
@@ -106,7 +106,7 @@ module Hotdog
               if @options[:primary_tag]
                 get_hosts_fields(host_ids, [@options[:primary_tag]])
               else
-                get_hosts_fields(host_ids, ["host"])
+                get_hosts_fields(host_ids, ["@host"])
               end
             end
           end
@@ -378,14 +378,6 @@ module Hotdog
           })
         end
 
-        # create virtual `host` tag
-        execute_db(db, "INSERT OR IGNORE INTO tags (name, value) SELECT 'host', hosts.name FROM hosts;")
-        execute_db(db,
-            "INSERT OR REPLACE INTO hosts_tags (host_id, tag_id) " \
-              "SELECT hosts.id, tags.id FROM hosts " \
-                "INNER JOIN tags ON tags.name = 'host' AND hosts.name = tags.value;"
-        )
-
         # create virtual `@host` tag
         execute_db(db, "INSERT OR IGNORE INTO tags (name, value) SELECT '@host', hosts.name FROM hosts;")
         execute_db(db,
@@ -457,14 +449,27 @@ module Hotdog
 
       def split_tag(tag)
         tagname, tagvalue = tag.split(":", 2)
-        [tagname, tagvalue || ""]
+        [rewrite_legacy_tagname(tagname), tagvalue || ""]
       end
 
       def join_tag(tagname, tagvalue)
         if tagvalue.to_s.empty?
-          tagname
+          rewrite_legacy_tagname(tagname)
         else
-          "#{tagname}:#{tagvalue}"
+          "#{rewrite_legacy_tagname(tagname)}:#{tagvalue}"
+        end
+      end
+
+      def rewrite_legacy_tagname(s)
+        case s
+        when "host"
+          # Starting from v0.31.0, hotdog started using _internal_ tags with leading `@` in name.
+          #
+          # This workaround is to keep legacy `host` tag for backward compatibility by rewriting
+          # it as the reference to the internal tag of `@host` without any user action.
+          "@#{s}"
+        else
+          s
         end
       end
 

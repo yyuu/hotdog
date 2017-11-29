@@ -9,7 +9,7 @@ describe "tag glob expression" do
     it "interprets tag glob with host (#{o})" do
       expr = Hotdog::Expression::GlobHostNode.new("foo*", ":")
       expect(optimize_n(o+1, expr).dump).to eq({
-        tagname_glob: "host",
+        tagname_glob: "@host",
         separator: ":",
         tagvalue_glob: "foo*",
         fallback: {

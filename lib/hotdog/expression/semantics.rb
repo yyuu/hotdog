@@ -746,7 +746,7 @@ module Hotdog
 
     class AnyHostNode < TagExpressionNode
       def initialize(separator=nil, options={})
-        super("host", nil, separator, options)
+        super("@host", nil, separator, options)
       end
 
       def condition(options={})
@@ -767,7 +767,7 @@ module Hotdog
 
     class StringHostNode < StringExpressionNode
       def initialize(tagvalue, separator=nil, options={})
-        super("host", tagvalue.to_s, separator, options)
+        super("@host", tagvalue.to_s, separator, options)
       end
 
       def condition(options={})
@@ -918,7 +918,7 @@ module Hotdog
 
     class GlobHostNode < GlobExpressionNode
       def initialize(tagvalue, separator=nil, options={})
-        super("host", tagvalue.to_s, separator, options)
+        super("@host", tagvalue.to_s, separator, options)
       end
 
       def condition(options={})
@@ -1073,7 +1073,7 @@ module Hotdog
         when /\A\/(.*)\/\z/
           tagvalue = $1
         end
-        super("host", tagvalue, separator, options)
+        super("@host", tagvalue, separator, options)
       end
 
       def condition(options={})
