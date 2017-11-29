@@ -64,77 +64,77 @@ module Hotdog
         UnaryExpressionNode.new(unary_op, expression)
       }
       rule(tagname_regexp: simple(:tagname_regexp), separator: simple(:separator), tagvalue_regexp: simple(:tagvalue_regexp)) {
-        if "/host/" == tagname_regexp
+        if "/@host/" == tagname_regexp or "/host/" == tagname_regexp
           RegexpHostNode.new(tagvalue_regexp, separator)
         else
           RegexpTagNode.new(tagname_regexp, tagvalue_regexp, separator)
         end
       }
       rule(tagname_regexp: simple(:tagname_regexp), separator: simple(:separator)) {
-        if "/host/" == tagname_regexp
+        if "/@host/" == tagname_regexp or "/host/" == tagname_regexp
           EverythingNode.new()
         else
           RegexpTagnameNode.new(tagname_regexp, separator)
         end
       }
       rule(tagname_regexp: simple(:tagname_regexp)) {
-        if "/host/" == tagname_regexp
+        if "/@host/" == tagname_regexp or "/host/" == tagname_regexp
           EverythingNode.new()
         else
           RegexpHostOrTagNode.new(tagname_regexp)
         end
       }
       rule(tagname_glob: simple(:tagname_glob), separator: simple(:separator), tagvalue_glob: simple(:tagvalue_glob)) {
-        if "host" == tagname_glob
+        if "@host" == tagname_glob or "host" == tagname_glob
           GlobHostNode.new(tagvalue_glob, separator)
         else
           GlobTagNode.new(tagname_glob, tagvalue_glob, separator)
         end
       }
       rule(tagname_glob: simple(:tagname_glob), separator: simple(:separator), tagvalue: simple(:tagvalue)) {
-        if "host" == tagname_glob
+        if "@host" == tagname_glob or "host" == tagname_glob
           GlobHostNode.new(tagvalue, separator)
         else
           GlobTagNode.new(tagname_glob, tagvalue, separator)
         end
       }
       rule(tagname_glob: simple(:tagname_glob), separator: simple(:separator)) {
-        if "host" == tagname_glob
+        if "@host" == tagname_glob or "host" == tagname_glob
           EverythingNode.new()
         else
           GlobTagnameNode.new(tagname_glob, separator)
         end
       }
       rule(tagname_glob: simple(:tagname_glob)) {
-        if "host" == tagname_glob
+        if "@host" == tagname_glob or "host" == tagname_glob
           EverythingNode.new()
         else
           GlobHostOrTagNode.new(tagname_glob)
         end
       }
       rule(tagname: simple(:tagname), separator: simple(:separator), tagvalue_glob: simple(:tagvalue_glob)) {
-        if "host" == tagname
+        if "@host" == tagname or "host" == tagname
           GlobHostNode.new(tagvalue_glob, separator)
         else
           GlobTagNode.new(tagname, tagvalue_glob, separator)
         end
       }
       rule(tagname: simple(:tagname), separator: simple(:separator), tagvalue: simple(:tagvalue)) {
-        if "host" == tagname
+        if "@host" == tagname or "host" == tagname
           StringHostNode.new(tagvalue, separator)
         else
           StringTagNode.new(tagname, tagvalue, separator)
         end
       }
       rule(tagname: simple(:tagname), separator: simple(:separator)) {
-        if "host" == tagname
+        if "@host" == tagname or "host" == tagname
           EverythingNode.new()
         else
           StringTagnameNode.new(tagname, separator)
         end
       }
       rule(tagname: simple(:tagname)) {
-        if "host" == tagname
+        if "@host" == tagname or "host" == tagname
           EverythingNode.new()
         else
           StringHostOrTagNode.new(tagname)
