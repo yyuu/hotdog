@@ -65,6 +65,9 @@ module Hotdog
         display_search_tags: false,
         verbose: false,
         verbosity: VERBOSITY_NULL,
+      }.reject { |key, val|
+        # reject nil values to declare sensible default later in subcommand
+        val.nil?
       }
 
       define_options
