@@ -61,7 +61,11 @@ module Hotdog
 
       private
       def default_option(options, key, default_value)
-        options[key] = default_value
+        if options.key?(key)
+          options[key]
+        else
+          options[key] = default_value
+        end
       end
 
       def prepare(db, query)
