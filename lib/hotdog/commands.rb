@@ -353,7 +353,7 @@ module Hotdog
           MultiJson.load(response)
         rescue OpenURI::HTTPError => error
           code, _body = error.io.status
-          raise(RuntimeError.new("dog.get_#{name}() returns [#{code.inspect}, ...]"))
+          raise(RuntimeError.new("datadog: GET #{request_path} returns [#{code.inspect}, ...]"))
         end
       end
 
