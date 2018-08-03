@@ -256,8 +256,6 @@ module Hotdog
 
       def create_db(db, options={})
         options = @options.merge(options)
-        
-        requests = {all_downtimes: "/api/v1/downtime", all_tags: "/api/v1/tags/hosts"}
         begin
           all_tags = @source_provider.get_all_tags()
           all_downtimes = @source_provider.get_all_downtimes()
