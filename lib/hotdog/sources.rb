@@ -61,6 +61,7 @@ module Hotdog
       end
 
       def update_tags(*args)
+        raise(NotImplementedError)
       end
     end
   end
