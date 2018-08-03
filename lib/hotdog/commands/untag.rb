@@ -15,7 +15,7 @@ module Hotdog
         optparse.on("--retry-delay SECONDS") do |v|
           options[:retry_delay] = v.to_i
         end
-        optparse.on("--source SOURCE") do |v|
+        optparse.on("--tag-source SOURCE") do |v|
           options[:tag_source] = v
         end
         optparse.on("-a TAG", "-t TAG", "--tag TAG", "Use specified tag name/value") do |v|
