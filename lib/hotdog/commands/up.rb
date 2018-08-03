@@ -1,7 +1,5 @@
 #!/usr/bin/env ruby
 
-require "fileutils"
-
 module Hotdog
   module Commands
     class Up < BaseCommand
@@ -25,7 +23,7 @@ module Hotdog
         }
         all_downtimes = nil
         with_retry(options) do
-          all_downtimes = get_all_downtimes(options)
+          all_downtimes = @source_provider.get_all_downtimes(options)
         end
 
         cancel_downtimes = all_downtimes.select { |downtime|
@@ -34,7 +32,7 @@ module Hotdog
 
         cancel_downtimes.each do |downtime|
           with_retry(options) do
-            cancel_downtime(downtime["id"], options)
+            @source_provider.cancel_downtime(downtime["id"], options)
           end
         end
 
@@ -56,23 +54,6 @@ module Hotdog
             end
           end
         end
-      end
-
-      private
-      def get_all_downtimes(options={})
-        code, all_downtimes = dog.get_all_downtimes()
-        if code.to_i / 100 != 2
-          raise("dog.get_all_downtimes() returns [%s, %s]" % [code.inspect, all_downtimes.inspect])
-        end
-        all_downtimes
-      end
-
-      def cancel_downtime(id, options={})
-        code, cancel = dog.cancel_downtime(id)
-        if code.to_i / 100 != 2
-          raise("dog.cancel_downtime(%s) returns [%s, %s]" % [id.inspect, code.inspect, cancel.inspect])
-        end
-        cancel
       end
     end
   end

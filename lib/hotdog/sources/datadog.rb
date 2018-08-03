@@ -55,14 +55,21 @@ module Hotdog
         end
       end
 
-      def schedule_downtime(*args)
-        # TODO
-        super
+      def schedule_downtime(scope, options={})
+        code, schedule = dog.schedule_downtime(scope, :start => options[:start].to_i, :end => (options[:start]+options[:downtime]).to_i)
+        logger.debug("dog.schedule_donwtime(%s, :start => %s, :end => %s) #==> [%s, %s]" % [scope.inspect, options[:start].to_i, (options[:start]+options[:downtime]).to_i, code.inspect, schedule.inspect])
+        if code.to_i / 100 != 2
+          raise("dog.schedule_downtime(%s, ...) returns [%s, %s]" % [scope.inspect, code.inspect, schedule.inspect])
+        end
+        schedule
       end
 
-      def cancel_downtime(*args)
-        # TODO
-        super
+      def cancel_downtime(id, options={})
+        code, cancel = dog.cancel_downtime(id)
+        if code.to_i / 100 != 2
+          raise("dog.cancel_downtime(%s) returns [%s, %s]" % [id.inspect, code.inspect, cancel.inspect])
+        end
+        cancel
       end
 
       def get_all_downtimes()
@@ -73,14 +80,36 @@ module Hotdog
         prepare_tags(datadog_get("/api/v1/tags/hosts"))
       end
 
-      def add_tags(*args)
-        # TODO
-        super
+      def get_host_tags(host_name, options={})
+        code, host_tags = dog.host_tags(host_name, options)
+        if code.to_i / 100 != 2
+          raise("dog.host_tags(#{host_name.inspect}, #{options.inspect}) returns [#{code.inspect}, #{host_tags.inspect}]")
+        end
+        host_tags
       end
 
-      def detach_tags(*args)
-        # TODO
-        super
+      def add_tags(*args)
+        code, resp = dog.add_tags(host_name, tags, options)
+        if code.to_i / 100 != 2
+          raise("dog.add_tags(#{host_name.inspect}, #{tags.inspect}, #{options.inspect}) returns [#{code.inspect}, #{resp.inspect}]")
+        end
+        resp
+      end
+
+      def detach_tags(host_name, options={})
+        code, detach_tags = dog.detach_tags(host_name, options)
+        if code.to_i / 100 != 2
+          raise("dog.detach_tags(#{host_name.inspect}, #{options.inspect}) returns [#{code.inspect}, #{detach_tags.inspect}]")
+        end
+        detach_tags
+      end
+
+      def update_tags(host_name, tags, options={})
+        code, update_tags = dog.update_tags(host_name, tags, options)
+        if code.to_i / 100 != 2
+          raise("dog.update_tags(#{host_name.inspect}, #{tags.inspect}, #{options.inspect}) returns [#{code.inspect}, #{update_tags.inspect}]")
+        end
+        update_tags
       end
 
       private

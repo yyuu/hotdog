@@ -59,6 +59,9 @@ module Hotdog
       def detach_tags(*args)
         raise(NotImplementedError)
       end
+
+      def update_tags(*args)
+      end
     end
   end
 end

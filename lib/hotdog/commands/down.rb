@@ -1,7 +1,5 @@
 #!/usr/bin/env ruby
 
-require "fileutils"
-
 module Hotdog
   module Commands
     class Down < BaseCommand
@@ -70,19 +68,9 @@ module Hotdog
         end
         scopes.each do |scope|
           with_retry(options) do
-            schedule_downtime(scope, options)
+            @source_provider.schedule_downtime(scope, options)
           end
         end
-      end
-
-      private
-      def schedule_downtime(scope, options={})
-        code, schedule = dog.schedule_downtime(scope, :start => options[:start].to_i, :end => (options[:start]+options[:downtime]).to_i)
-        logger.debug("dog.schedule_donwtime(%s, :start => %s, :end => %s) #==> [%s, %s]" % [scope.inspect, options[:start].to_i, (options[:start]+options[:downtime]).to_i, code.inspect, schedule.inspect])
-        if code.to_i / 100 != 2
-          raise("dog.schedule_downtime(%s, ...) returns [%s, %s]" % [scope.inspect, code.inspect, schedule.inspect])
-        end
-        schedule
       end
     end
   end
