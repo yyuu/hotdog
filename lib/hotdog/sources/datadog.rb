@@ -73,11 +73,15 @@ module Hotdog
       end
 
       def get_all_downtimes()
-        prepare_downtimes(datadog_get("/api/v1/downtime"))
+        now = Time.new.to_i
+        Array(datadog_get("/api/v1/downtime")).select { |downtime|
+          # active downtimes
+          downtime["active"] and ( downtime["start"].nil? or downtime["start"] < now ) and ( downtime["end"].nil? or now <= downtime["end"] ) and downtime["monitor_id"].nil?
+        }
       end
 
       def get_all_tags()
-        prepare_tags(datadog_get("/api/v1/tags/hosts"))
+        Hash(datadog_get("/api/v1/tags/hosts")).fetch("tags", {})
       end
 
       def get_host_tags(host_name, options={})
@@ -127,21 +131,6 @@ module Hotdog
           code, _body = error.io.status
           raise(RuntimeError.new("datadog: GET #{request_path} returns [#{code.inspect}, ...]"))
         end
-      end
-
-      def prepare_tags(tags)
-        Hash(tags).fetch("tags", {})
-      end
-
-      def prepare_downtimes(downtimes)
-        now = Time.new.to_i
-        Array(downtimes).select { |downtime|
-          # active downtimes
-          downtime["active"] and ( downtime["start"].nil? or downtime["start"] < now ) and ( downtime["end"].nil? or now <= downtime["end"] ) and downtime["monitor_id"].nil?
-        }.flat_map { |downtime|
-          # find host scopes
-          downtime["scope"].select { |scope| scope.start_with?("host:") }.map { |scope| scope.sub(/\Ahost:/, "") }
-        }
       end
 
       def update_api_key!()

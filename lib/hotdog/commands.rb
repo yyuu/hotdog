@@ -258,7 +258,10 @@ module Hotdog
         options = @options.merge(options)
         begin
           all_tags = @source_provider.get_all_tags()
-          all_downtimes = @source_provider.get_all_downtimes()
+          all_downtimes = @source_provider.get_all_downtimes().flat_map { |downtime|
+            # find host scopes
+            Array(downtime["scope"]).select { |scope| scope.start_with?("host:") }.map { |scope| scope.sub(/\Ahost:/, "") }
+          }
         rescue => error
           STDERR.puts(error.message)
           exit(1)
