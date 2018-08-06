@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 
 require "json"
+require "parallel"
 require "parslet"
 require "shellwords"
 require "thread"
