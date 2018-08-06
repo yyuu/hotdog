@@ -6,6 +6,7 @@ require "optparse"
 require "yaml"
 require "hotdog/commands"
 require "hotdog/formatters"
+require "hotdog/sources"
 require "hotdog/version"
 
 module Hotdog
@@ -40,9 +41,9 @@ module Hotdog
       @optparse = OptionParser.new
       @optparse.version = Hotdog::VERSION
       @options = {
-        endpoint: ENV.fetch("DATADOG_HOST", "https://app.datadoghq.com"),
-        api_key: ENV["DATADOG_API_KEY"],
-        application_key: ENV["DATADOG_APPLICATION_KEY"],
+        endpoint: nil,
+        api_key: nil,
+        application_key: nil,
         application: self,
         confdir: find_confdir(File.expand_path(".")),
         debug: false,
@@ -51,7 +52,7 @@ module Hotdog
         force: false,
         format: "text",
         headers: false,
-        source: nil,
+        source: "datadog",
         status: nil,
         listing: false,
         logger: @logger,
@@ -69,12 +70,13 @@ module Hotdog
         # reject nil values to declare sensible default later in subcommand
         val.nil?
       }
-
+      @source_provider = nil # will be initialized later in `main()`
       define_options
     end
     attr_reader :logger
     attr_reader :options
     attr_reader :optparse
+    attr_reader :source_provider
 
     def main(argv=[])
       config = File.join(options[:confdir], "config.yml")
@@ -85,6 +87,13 @@ module Hotdog
         end
       end
       args = @optparse.order(argv)
+
+      begin
+        @source_provider = get_source(@options[:source])
+      rescue NameError
+        STDERR.puts("hotdog: '#{@options[:source]}' is not a valid hotdog source.")
+        exit(1)
+      end
 
       begin
         command_name = ( args.shift || "help" )
@@ -135,42 +144,6 @@ module Hotdog
       rescue => error
         raise # to show error stacktrace
       end
-    end
-
-    def api_key()
-      if options[:api_key]
-        options[:api_key]
-      else
-        update_api_key!
-        if options[:api_key]
-          options[:api_key]
-        else
-          raise("DATADOG_API_KEY is not set")
-        end
-      end
-    end
-
-    def application_key()
-      if options[:application_key]
-        options[:application_key]
-      else
-        update_application_key!
-        if options[:application_key]
-          options[:application_key]
-        else
-          raise("DATADOG_APPLICATION_KEY is not set")
-        end
-      end
-    end
-
-    def source()
-      options.fetch(:source, SOURCE_DATADOG)
-    end
-
-    def source_name(source=self.source)
-      {
-        SOURCE_DATADOG => "datadog",
-      }.fetch(source, "unknown")
     end
 
     def status()
@@ -230,16 +203,7 @@ module Hotdog
         options[:headers] = v
       end
       @optparse.on("--source=SOURCE", "Specify custom host source") do |v|
-        case v
-        when /\A\d\z/i
-          options[:source] = v.to_i
-        when /\A(?:all|any)\z/i
-          options[:source] = nil
-        when /\A(?:datadog)\z/i
-          options[:source] = SOURCE_DATADOG
-        else
-          raise(OptionParser::InvalidArgument.new("unknown source: #{v}"))
-        end
+        @options[:source] = v
       end
       @optparse.on("--status=STATUS", "Specify custom host status") do |v|
         case v
@@ -320,6 +284,21 @@ module Hotdog
       klass.new(self)
     end
 
+    def get_source(name)
+      begin
+        klass = Hotdog::Sources.const_get(const_name(name))
+      rescue NameError
+        library = find_library("hotdog/sources", name)
+        if library
+          load library
+          klass = Hotdog::Sources.const_get(const_name(File.basename(library, ".rb")))
+        else
+          raise(NameError.new("unknown source: #{name}"))
+        end
+      end
+      klass.new(self)
+    end
+
     def find_library(dirname, name)
       load_path = $LOAD_PATH.map { |path| File.join(path, dirname) }.select { |path| File.directory?(path) }
       libraries = load_path.flat_map { |path| Dir.glob(File.join(path, "*.rb")) }.select { |file| File.file?(file) }
@@ -351,46 +330,6 @@ module Hotdog
           confdir
         else
           find_confdir(File.dirname(path))
-        end
-      end
-    end
-
-    def update_api_key!()
-      if options[:api_key_command]
-        logger.info("api_key_command> #{options[:api_key_command]}")
-        options[:api_key] = IO.popen(options[:api_key_command]) do |io|
-          io.read.strip
-        end
-        unless $?.success?
-          raise("failed: #{options[:api_key_command]}")
-        end
-      else
-        update_keys!
-      end
-    end
-
-    def update_application_key!()
-      if options[:application_key_command]
-        logger.info("application_key_command> #{options[:application_key_command]}")
-        options[:application_key] = IO.popen(options[:application_key_command]) do |io|
-          io.read.strip
-        end
-        unless $?.success?
-          raise("failed: #{options[:application_key_command]}")
-        end
-      else
-        update_keys!
-      end
-    end
-
-    def update_keys!()
-      if options[:key_command]
-        logger.info("key_command> #{options[:key_command]}")
-        options[:api_key], options[:application_key] = IO.popen(options[:key_command]) do |io|
-          io.read.strip.split(":", 2)
-        end
-        unless $?.success?
-          raise("failed: #{options[:key_command]}")
         end
       end
     end

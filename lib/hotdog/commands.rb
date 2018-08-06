@@ -1,22 +1,16 @@
 #!/usr/bin/env ruby
 
 require "fileutils"
-require "dogapi"
-require "multi_json"
-require "oj"
-require "open-uri"
-require "parallel"
 require "sqlite3"
-require "uri"
 
 module Hotdog
   module Commands
     class BaseCommand
       def initialize(application)
         @application = application
+        @source_provider = application.source_provider
         @logger = application.logger
         @options = application.options
-        @dog = nil # lazy initialization
         @prepared_statements = {}
         @persistent_db_path = File.join(@options.fetch(:confdir, "."), "hotdog.sqlite3")
       end
@@ -262,25 +256,21 @@ module Hotdog
 
       def create_db(db, options={})
         options = @options.merge(options)
-        requests = {all_downtimes: "/api/v1/downtime", all_tags: "/api/v1/tags/hosts"}
         begin
-          parallelism = Parallel.processor_count
-          # generate payload before forking threads to avoid fetching keys multiple times
-          query = URI.encode_www_form(api_key: application.api_key, application_key: application.application_key)
-          responses = Hash[Parallel.map(requests, in_threads: parallelism) { |name, request_path|
-            [name, datadog_get(request_path, query)]
-          }]
+          all_tags = @source_provider.get_all_tags()
+          all_downtimes = @source_provider.get_all_downtimes().flat_map { |downtime|
+            # find host scopes
+            Array(downtime["scope"]).select { |scope| scope.start_with?("host:") }.map { |scope| scope.sub(/\Ahost:/, "") }
+          }
         rescue => error
           STDERR.puts(error.message)
           exit(1)
         end
-        all_tags = prepare_tags(responses.fetch(:all_tags, {}))
-        all_downtimes = prepare_downtimes(responses.fetch(:all_downtimes, {}))
         if not all_downtimes.empty?
           logger.info("ignore host(s) with scheduled downtimes: #{all_downtimes.inspect}")
         end
         db.transaction do
-          execute_db(db, "CREATE TABLE IF NOT EXISTS hosts (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(255) NOT NULL COLLATE NOCASE, source INTEGER NOT NULL DEFAULT #{SOURCE_DATADOG}, status INTEGER NOT NULL DEFAULT #{STATUS_PENDING});")
+          execute_db(db, "CREATE TABLE IF NOT EXISTS hosts (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(255) NOT NULL COLLATE NOCASE, source INTEGER NOT NULL DEFAULT #{@source_provider.id}, status INTEGER NOT NULL DEFAULT #{STATUS_PENDING});")
           execute_db(db, "CREATE UNIQUE INDEX IF NOT EXISTS hosts_name ON hosts (name);")
           execute_db(db, "CREATE TABLE IF NOT EXISTS tags (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(200) NOT NULL COLLATE NOCASE, value VARCHAR(200) NOT NULL COLLATE NOCASE);")
           execute_db(db, "CREATE UNIQUE INDEX IF NOT EXISTS tags_name_value ON tags (name, value);")
@@ -288,11 +278,7 @@ module Hotdog
           execute_db(db, "CREATE UNIQUE INDEX IF NOT EXISTS hosts_tags_host_id_tag_id ON hosts_tags (host_id, tag_id);")
 
           execute_db(db, "CREATE TABLE IF NOT EXISTS source_names (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(200) NOT NULL COLLATE NOCASE);")
-          {
-            SOURCE_DATADOG => application.source_name(SOURCE_DATADOG),
-          }.each do |source_id, source_name|
-            execute_db(db, "INSERT OR IGNORE INTO source_names (id, name) VALUES (?, ?);", [source_id, source_name])
-          end
+          execute_db(db, "INSERT OR IGNORE INTO source_names (id, name) VALUES (?, ?);", [@source_provider.id, @source_provider.name])
                      
           execute_db(db, "CREATE TABLE IF NOT EXISTS status_names (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(200) NOT NULL COLLATE NOCASE);")
           {
@@ -343,42 +329,12 @@ module Hotdog
         end
       end
 
-      def datadog_get(request_path, query=nil)
-        # TODO: make this pluggable
-        endpoint = options[:endpoint]
-        query ||= URI.encode_www_form(api_key: application.api_key, application_key: application.application_key)
-        uri = URI.join(endpoint, "#{request_path}?#{query}")
-        begin
-          response = uri.open("User-Agent" => "hotdog/#{Hotdog::VERSION}") { |fp| fp.read }
-          MultiJson.load(response)
-        rescue OpenURI::HTTPError => error
-          code, _body = error.io.status
-          raise(RuntimeError.new("datadog: GET #{request_path} returns [#{code.inspect}, ...]"))
-        end
-      end
-
-      def prepare_tags(tags)
-        Hash(tags).fetch("tags", {})
-      end
-
-      def prepare_downtimes(downtimes)
-        now = Time.new.to_i
-        Array(downtimes).select { |downtime|
-          # active downtimes
-          downtime["active"] and ( downtime["start"].nil? or downtime["start"] < now ) and ( downtime["end"].nil? or now <= downtime["end"] ) and downtime["monitor_id"].nil?
-        }.flat_map { |downtime|
-          # find host scopes
-          downtime["scope"].select { |scope| scope.start_with?("host:") }.map { |scope| scope.sub(/\Ahost:/, "") }
-        }
-      end
-
       def create_hosts(db, hosts, downtimes)
         hosts.each_slice(SQLITE_LIMIT_COMPOUND_SELECT / 3) do |hosts|
           q = "INSERT OR IGNORE INTO hosts (name, source, status) VALUES %s;" % hosts.map { "(?, ?, ?)" }.join(", ")
           execute_db(db, q, hosts.map { |host|
-            source = SOURCE_DATADOG
             status = downtimes.include?(host) ? STATUS_STOPPED : STATUS_RUNNING
-            [host, source, status]
+            [host, @source_provider.id, status]
           })
         end
 
@@ -445,10 +401,6 @@ module Hotdog
                 "WHERE tag_id IN ( SELECT id FROM tags WHERE name = ? AND value = ? LIMIT 1 ) AND host_id IN ( SELECT id FROM hosts WHERE name IN (%s) );" % hosts.map { "?" }.join(", ")
           execute_db(db, q, split_tag(tag) + hosts)
         end
-      end
-
-      def dog()
-        @dog ||= Dogapi::Client.new(application.api_key, application.application_key)
       end
 
       def split_tag(tag)

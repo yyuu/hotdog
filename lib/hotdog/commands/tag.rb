@@ -1,7 +1,5 @@
 #!/usr/bin/env ruby
 
-require "fileutils"
-
 module Hotdog
   module Commands
     class Tag < BaseCommand
@@ -15,7 +13,7 @@ module Hotdog
         optparse.on("--retry-delay SECONDS") do |v|
           options[:retry_delay] = v.to_i
         end
-        optparse.on("--source SOURCE") do |v|
+        optparse.on("--tag-source SOURCE") do |v|
           options[:tag_source] = v
         end
         optparse.on("-a TAG", "-t TAG", "--tag TAG", "Use specified tag name/value") do |v|
@@ -41,32 +39,15 @@ module Hotdog
         hosts.each do |host|
           if options[:tags].empty?
             # nop; just show current tags
-            host_tags = with_retry { host_tags(host, source=options[:tag_source]) }
+            host_tags = with_retry { @source_provider.host_tags(host, source=options[:tag_source]) }
             STDOUT.puts host_tags['tags'].inspect
           else
             # add all as user tags
             with_retry(options) do
-              add_tags(host, options[:tags], source=options[:tag_source])
+              @source_provider.add_tags(host, options[:tags], source=options[:tag_source])
             end
           end
         end
-      end
-
-      private
-      def add_tags(host_name, tags, options={})
-        code, resp = dog.add_tags(host_name, tags, options)
-        if code.to_i / 100 != 2
-          raise("dog.add_tags(#{host_name.inspect}, #{tags.inspect}, #{options.inspect}) returns [#{code.inspect}, #{resp.inspect}]")
-        end
-        resp
-      end
-
-      def host_tags(host_name, options={})
-        code, host_tags = dog.host_tags(host_name, options)
-        if code.to_i / 100 != 2
-          raise("dog.host_tags(#{host_name.inspect}, #{options.inspect}) returns [#{code.inspect}, #{host_tags.inspect}]")
-        end
-        host_tags
       end
     end
   end
