@@ -77,16 +77,16 @@ module Hotdog
 
       def get_all_tags(options={})
         #
-        # This should return some `Hash<String,Hash<String,Array<String>>>` like follows
+        # This should return some `Hash<String,Array<String>>` like follows
         #
         # ```json
         # {
-        #  "tags": {
-        #    "tagname:tagvalue": [
-        #      "foo"
-        #    ]
-        #  }
-        #}
+        #   "tagname:tagvalue": [
+        #     "foo",
+        #     "bar",
+        #     "baz"
+        #   ]
+        # }
         # ```
         #
         raise(NotImplementedError)
