@@ -72,7 +72,7 @@ module Hotdog
         cancel
       end
 
-      def get_all_downtimes()
+      def get_all_downtimes(options={})
         now = Time.new.to_i
         Array(datadog_get("/api/v1/downtime")).select { |downtime|
           # active downtimes
@@ -80,7 +80,7 @@ module Hotdog
         }
       end
 
-      def get_all_tags()
+      def get_all_tags(options={})
         Hash(datadog_get("/api/v1/tags/hosts")).fetch("tags", {})
       end
 
@@ -92,7 +92,7 @@ module Hotdog
         host_tags
       end
 
-      def add_tags(*args)
+      def add_tags(host_name, tags, options={})
         code, resp = dog.add_tags(host_name, tags, options)
         if code.to_i / 100 != 2
           raise("dog.add_tags(#{host_name.inspect}, #{tags.inspect}, #{options.inspect}) returns [#{code.inspect}, #{resp.inspect}]")

@@ -32,15 +32,15 @@ module Hotdog
         options[:application_key]
       end
 
-      def schedule_downtime(*args)
+      def schedule_downtime(scope, options={})
         raise(NotImplementedError)
       end
 
-      def cancel_downtime(*args)
+      def cancel_downtime(id, options={})
         raise(NotImplementedError)
       end
 
-      def get_all_downtimes()
+      def get_all_downtimes(options={})
         #
         # This should return some `Array<Hash<String,String>>` like follows
         #
@@ -75,7 +75,7 @@ module Hotdog
         raise(NotImplementedError)
       end
 
-      def get_all_tags()
+      def get_all_tags(options={})
         #
         # This should return some `Hash<String,Hash<String,Array<String>>>` like follows
         #
@@ -92,19 +92,19 @@ module Hotdog
         raise(NotImplementedError)
       end
 
-      def get_host_tags()
+      def get_host_tags(host_name, options={})
         raise(NotImplementedError)
       end
 
-      def add_tags(*args)
+      def add_tags(host_name, tags, options={})
         raise(NotImplementedError)
       end
 
-      def detach_tags(*args)
+      def detach_tags(host_name, options={})
         raise(NotImplementedError)
       end
 
-      def update_tags(*args)
+      def update_tags(host_name, tags, options={})
         raise(NotImplementedError)
       end
     end
