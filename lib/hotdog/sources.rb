@@ -12,23 +12,23 @@ module Hotdog
       attr_reader :logger
       attr_reader :options
 
-      def id()
+      def id() #=> Integer
         raise(NotImplementedError)
       end
 
-      def name()
+      def name() #=> String
         raise(NotImplementedError)
       end
 
-      def endpoint()
+      def endpoint() #=> String
         options[:endpoint]
       end
 
-      def api_key()
+      def api_key() #=> String
         options[:api_key]
       end
 
-      def application_key()
+      def application_key() #=> String
         options[:application_key]
       end
 
@@ -41,10 +41,54 @@ module Hotdog
       end
 
       def get_all_downtimes()
+        #
+        # This should return some `Array<Hash<String,String>>` like follows
+        #
+        # ```json
+        # [
+        #   {
+        #     "recurrence": null,
+        #     "end": 1533593208,
+        #     "monitor_tags": [
+        #       "*"
+        #     ],
+        #     "canceled": null,
+        #     "monitor_id": null,
+        #     "org_id": 12345,
+        #     "disabled": false,
+        #     "start": 1533592608,
+        #     "creator_id": 78913,
+        #     "parent_id": null,
+        #     "timezone": "UTC",
+        #     "active": false,
+        #     "scope": [
+        #       "host:i-abcdef01234567890"
+        #     ],
+        #     "message": null,
+        #     "downtime_type": null,
+        #     "id": 278432422,
+        #     "updater_id": null
+        #   }
+        # ]
+        # ```
+        #
         raise(NotImplementedError)
       end
 
       def get_all_tags()
+        #
+        # This should return some `Hash<String,Hash<String,Array<String>>>` like follows
+        #
+        # ```json
+        # {
+        #  "tags": {
+        #    "tagname:tagvalue": [
+        #      "foo"
+        #    ]
+        #  }
+        #}
+        # ```
+        #
         raise(NotImplementedError)
       end
 
