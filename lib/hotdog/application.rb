@@ -81,7 +81,12 @@ module Hotdog
     def main(argv=[])
       config = File.join(options[:confdir], "config.yml")
       if File.file?(config)
-        loaded = YAML.load(ERB.new(File.read(config)).result)
+        begin
+          loaded = YAML.load(ERB.new(File.read(config)).result)
+        rescue => error
+          STDERR.puts("hotdog: failed to load configuration file at #{config.inspect}: #{error}")
+          exit(1)
+        end
         if Hash === loaded
           @options = @options.merge(Hash[loaded.map { |key, value| [Symbol === key ? key : key.to_s.to_sym, value] }])
         end
