@@ -261,6 +261,11 @@ module Hotdog
 
     def get_formatter(name)
       begin
+        require "hotdog/formatters/#{name}"
+      rescue LoadError => error
+        @logger.info("failed to load library file: #{error}")
+      end
+      begin
         klass = Hotdog::Formatters.const_get(const_name(name))
       rescue NameError
         library = find_library("hotdog/formatters", name)
@@ -276,6 +281,11 @@ module Hotdog
 
     def get_command(name)
       begin
+        require "hotdog/commands/#{name}"
+      rescue LoadError => error
+        @logger.info("failed to load library file: #{error}")
+      end
+      begin
         klass = Hotdog::Commands.const_get(const_name(name))
       rescue NameError
         library = find_library("hotdog/commands", name)
@@ -290,6 +300,11 @@ module Hotdog
     end
 
     def get_source(name)
+      begin
+        require "hotdog/sources/#{name}"
+      rescue LoadError => error
+        @logger.info("failed to load library file: #{error}")
+      end
       begin
         klass = Hotdog::Sources.const_get(const_name(name))
       rescue NameError
