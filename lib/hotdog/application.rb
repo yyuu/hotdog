@@ -94,14 +94,24 @@ module Hotdog
       args = @optparse.order(argv)
 
       begin
-        @source_provider = get_source(@options[:source])
+        if Hash === @options[:source_alias]
+          source_name = @options[:source_alias].fetch(@options[:source], @options[:source])
+        else
+          source_name = @options[:source]
+        end
+        @source_provider = get_source(source_name)
       rescue NameError
-        STDERR.puts("hotdog: '#{@options[:source]}' is not a valid hotdog source.")
+        STDERR.puts("hotdog: '#{source_name}' is not a valid hotdog source.")
         exit(1)
       end
 
       begin
-        command_name = ( args.shift || "help" )
+        given_command_name = ( args.shift || "help" )
+        if Hash === @options[:command_alias]
+          command_name = @options[:command_alias].fetch(given_command_name, given_command_name)
+        else
+          command_name = given_command_name
+        end
         begin
           command = get_command(command_name)
         rescue NameError
@@ -125,7 +135,12 @@ module Hotdog
           options[:headers] = true
         end
 
-        options[:formatter] = get_formatter(options[:format])
+        if Hash === @options[:format_alias]
+          format_name = @options[:format_alias].fetch(@options[:format], @options[:format])
+        else
+          format_name = @options[:format]
+        end
+        options[:formatter] = get_formatter(format_name)
 
         if ( options[:debug] or options[:verbose] ) and ( options[:verbosity] < VERBOSITY_DEBUG )
           options[:verbosity] = VERBOSITY_DEBUG
