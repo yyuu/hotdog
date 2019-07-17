@@ -261,18 +261,12 @@ module Hotdog
 
     def get_formatter(name)
       begin
-        require "hotdog/formatters/#{name}"
-      rescue LoadError => error
-        @logger.info("failed to load library file: #{error}")
-      end
-      begin
         klass = Hotdog::Formatters.const_get(const_name(name))
       rescue NameError
-        library = find_library("hotdog/formatters", name)
-        if library
-          load library
-          klass = Hotdog::Formatters.const_get(const_name(File.basename(library, ".rb")))
-        else
+        begin
+          require "hotdog/formatters/#{name}"
+          klass = Hotdog::Formatters.const_get(const_name(name))
+        rescue LoadError
           raise(NameError.new("unknown format: #{name}"))
         end
       end
@@ -281,18 +275,12 @@ module Hotdog
 
     def get_command(name)
       begin
-        require "hotdog/commands/#{name}"
-      rescue LoadError => error
-        @logger.info("failed to load library file: #{error}")
-      end
-      begin
         klass = Hotdog::Commands.const_get(const_name(name))
       rescue NameError
-        library = find_library("hotdog/commands", name)
-        if library
-          load library
-          klass = Hotdog::Commands.const_get(const_name(File.basename(library, ".rb")))
-        else
+        begin
+          require "hotdog/commands/#{name}"
+          klass = Hotdog::Commands.const_get(const_name(name))
+        rescue LoadError
           raise(NameError.new("unknown command: #{name}"))
         end
       end
@@ -301,18 +289,12 @@ module Hotdog
 
     def get_source(name)
       begin
-        require "hotdog/sources/#{name}"
-      rescue LoadError => error
-        @logger.info("failed to load library file: #{error}")
-      end
-      begin
         klass = Hotdog::Sources.const_get(const_name(name))
       rescue NameError
-        library = find_library("hotdog/sources", name)
-        if library
-          load library
-          klass = Hotdog::Sources.const_get(const_name(File.basename(library, ".rb")))
-        else
+        begin
+          require "hotdog/sources/#{name}"
+          klass = Hotdog::Sources.const_get(const_name(name))
+        rescue LoadError
           raise(NameError.new("unknown source: #{name}"))
         end
       end
