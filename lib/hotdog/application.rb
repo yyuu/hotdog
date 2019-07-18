@@ -3,6 +3,7 @@
 require "erb"
 require "logger"
 require "optparse"
+require "shellwords"
 require "yaml"
 require "hotdog/commands"
 require "hotdog/formatters"
@@ -108,9 +109,15 @@ module Hotdog
       begin
         given_command_name = ( args.shift || "help" )
         if Hash === @options[:command_alias]
-          command_name = @options[:command_alias].fetch(given_command_name, given_command_name)
+          command_alias = @options[:command_alias].fetch(given_command_name, given_command_name)
+          if Array === command_alias
+            command_name, *command_args = command_alias
+          else
+            command_name, *command_args = Shellwords.shellsplit(command_alias)
+          end
         else
           command_name = given_command_name
+          command_args = []
         end
         begin
           command = get_command(command_name)
@@ -124,7 +131,7 @@ module Hotdog
         command.define_options(@optparse, @options)
 
         begin
-          args = command.parse_options(@optparse, args)
+          args = command.parse_options(@optparse, command_args + args)
         rescue OptionParser::ParseError => error
           STDERR.puts("hotdog: #{error.message}")
           command.parse_options(@optparse, ["--help"])
