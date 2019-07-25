@@ -3,6 +3,7 @@
 require "erb"
 require "logger"
 require "optparse"
+require "shellwords"
 require "yaml"
 require "hotdog/commands"
 require "hotdog/formatters"
@@ -94,14 +95,30 @@ module Hotdog
       args = @optparse.order(argv)
 
       begin
-        @source_provider = get_source(@options[:source])
+        if Hash === @options[:source_alias]
+          source_name = @options[:source_alias].fetch(@options[:source], @options[:source])
+        else
+          source_name = @options[:source]
+        end
+        @source_provider = get_source(source_name)
       rescue NameError
-        STDERR.puts("hotdog: '#{@options[:source]}' is not a valid hotdog source.")
+        STDERR.puts("hotdog: '#{source_name}' is not a valid hotdog source.")
         exit(1)
       end
 
       begin
-        command_name = ( args.shift || "help" )
+        given_command_name = ( args.shift || "help" )
+        if Hash === @options[:command_alias]
+          command_alias = @options[:command_alias].fetch(given_command_name, given_command_name)
+          if Array === command_alias
+            command_name, *command_args = command_alias
+          else
+            command_name, *command_args = Shellwords.shellsplit(command_alias)
+          end
+        else
+          command_name = given_command_name
+          command_args = []
+        end
         begin
           command = get_command(command_name)
         rescue NameError
@@ -114,7 +131,7 @@ module Hotdog
         command.define_options(@optparse, @options)
 
         begin
-          args = command.parse_options(@optparse, args)
+          args = command.parse_options(@optparse, command_args + args)
         rescue OptionParser::ParseError => error
           STDERR.puts("hotdog: #{error.message}")
           command.parse_options(@optparse, ["--help"])
@@ -125,7 +142,12 @@ module Hotdog
           options[:headers] = true
         end
 
-        options[:formatter] = get_formatter(options[:format])
+        if Hash === @options[:format_alias]
+          format_name = @options[:format_alias].fetch(@options[:format], @options[:format])
+        else
+          format_name = @options[:format]
+        end
+        options[:formatter] = get_formatter(format_name)
 
         if ( options[:debug] or options[:verbose] ) and ( options[:verbosity] < VERBOSITY_DEBUG )
           options[:verbosity] = VERBOSITY_DEBUG
@@ -261,18 +283,12 @@ module Hotdog
 
     def get_formatter(name)
       begin
-        require "hotdog/formatters/#{name}"
-      rescue LoadError => error
-        @logger.info("failed to load library file: #{error}")
-      end
-      begin
         klass = Hotdog::Formatters.const_get(const_name(name))
       rescue NameError
-        library = find_library("hotdog/formatters", name)
-        if library
-          load library
-          klass = Hotdog::Formatters.const_get(const_name(File.basename(library, ".rb")))
-        else
+        begin
+          require "hotdog/formatters/#{name}"
+          klass = Hotdog::Formatters.const_get(const_name(name))
+        rescue LoadError
           raise(NameError.new("unknown format: #{name}"))
         end
       end
@@ -281,18 +297,12 @@ module Hotdog
 
     def get_command(name)
       begin
-        require "hotdog/commands/#{name}"
-      rescue LoadError => error
-        @logger.info("failed to load library file: #{error}")
-      end
-      begin
         klass = Hotdog::Commands.const_get(const_name(name))
       rescue NameError
-        library = find_library("hotdog/commands", name)
-        if library
-          load library
-          klass = Hotdog::Commands.const_get(const_name(File.basename(library, ".rb")))
-        else
+        begin
+          require "hotdog/commands/#{name}"
+          klass = Hotdog::Commands.const_get(const_name(name))
+        rescue LoadError
           raise(NameError.new("unknown command: #{name}"))
         end
       end
@@ -301,18 +311,12 @@ module Hotdog
 
     def get_source(name)
       begin
-        require "hotdog/sources/#{name}"
-      rescue LoadError => error
-        @logger.info("failed to load library file: #{error}")
-      end
-      begin
         klass = Hotdog::Sources.const_get(const_name(name))
       rescue NameError
-        library = find_library("hotdog/sources", name)
-        if library
-          load library
-          klass = Hotdog::Sources.const_get(const_name(File.basename(library, ".rb")))
-        else
+        begin
+          require "hotdog/sources/#{name}"
+          klass = Hotdog::Sources.const_get(const_name(name))
+        rescue LoadError
           raise(NameError.new("unknown source: #{name}"))
         end
       end
