@@ -80,16 +80,21 @@ module Hotdog
     attr_reader :source_provider
 
     def main(argv=[])
-      config = File.join(options[:confdir], "config.yml")
-      if File.file?(config)
-        begin
-          loaded = YAML.load(ERB.new(File.read(config)).result)
-        rescue => error
-          STDERR.puts("hotdog: failed to load configuration file at #{config.inspect}: #{error}")
-          exit(1)
-        end
-        if Hash === loaded
-          @options = @options.merge(Hash[loaded.map { |key, value| [Symbol === key ? key : key.to_s.to_sym, value] }])
+      [
+        File.join(options[:confdir], "config.yaml"),
+        File.join(options[:confdir], "config.yml"),
+      ].each do |config|
+        if File.file?(config)
+          begin
+            loaded = YAML.load(ERB.new(File.read(config)).result)
+          rescue => error
+            STDERR.puts("hotdog: failed to load configuration file at #{config.inspect}: #{error}")
+            exit(1)
+          end
+          if Hash === loaded
+            @options = @options.merge(Hash[loaded.map { |key, value| [Symbol === key ? key : key.to_s.to_sym, value] }])
+          end
+          break
         end
       end
       args = @optparse.order(argv)
