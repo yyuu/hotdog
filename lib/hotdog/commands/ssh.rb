@@ -71,8 +71,16 @@ module Hotdog
         tuples, fields = get_hosts_with_search_tags(result0, node)
         tuples = filter_hosts(tuples)
         validate_hosts!(tuples, fields)
-        logger.info("target host(s): #{tuples.map {|tuple| tuple.first }.inspect}")
-        run_main(tuples.map {|tuple| tuple.first }, options)
+
+        # prefer to use primary_tag as ssh hostname with default to first
+        if primary_tag = options[:primary_tag]
+          host_field_index = fields.find_index(primary_tag)
+        end
+        host_field_index ||= 0
+        hosts = tuples.map {|tuple| tuple[host_field_index] }
+
+        logger.info("target host(s): #{hosts.inspect}")
+        run_main(hosts, options)
       end
 
       private
