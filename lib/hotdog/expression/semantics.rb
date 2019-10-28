@@ -694,7 +694,7 @@ module Hotdog
             if options[:did_fallback]
               []
             else
-              if not environment.fixed_string? and @options[:fallback]
+              if environment.use_fallback? and @options[:fallback]
                 # avoid optimizing @options[:fallback] to prevent infinite recursion
                 @options[:fallback].evaluate(environment, options.merge(did_fallback: true))
               else

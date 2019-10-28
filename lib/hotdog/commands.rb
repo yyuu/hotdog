@@ -28,8 +28,13 @@ module Hotdog
         execute_db(@db, q, args)
       end
 
+      def fallback?()
+        @options[:use_fallback]
+      end
+
       def fixed_string?()
-        @options[:fixed_string]
+        # deprecated - superseded by `fallback?`
+        not @options[:use_fallback]
       end
 
       def reload(options={})

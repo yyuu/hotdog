@@ -49,7 +49,7 @@ module Hotdog
         confdir: find_confdir(File.expand_path(".")),
         debug: false,
         expiry: 3600,
-        fixed_string: false,
+        use_fallback: true,
         force: false,
         format: "text",
         headers: false,
@@ -222,8 +222,11 @@ module Hotdog
       @optparse.on("-d", "--[no-]debug", "Enable debug mode") do |v|
         options[:debug] = v
       end
-      @optparse.on("--fixed-string", "Interpret pattern as fixed string") do |v|
-        options[:fixed_string] = v
+      @optparse.on("--[no-]fixed-string", "Never fallback to alternative expression in case of result is empty. Inversed meaning as '--use-fallback'") do |v|
+        options[:use_fallback] = !v
+      end
+      @optparse.on("--[no-]use-fallback", "Fallback to alternative expressions in case of result is empty. Inversed meaning as '--fixed-string'") do |v|
+        options[:use_fallback] = v
       end
       @optparse.on("-f", "--[no-]force", "Enable force mode") do |v|
         options[:force] = v
