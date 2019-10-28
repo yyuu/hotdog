@@ -49,7 +49,7 @@ module Hotdog
         confdir: find_confdir(File.expand_path(".")),
         debug: false,
         expiry: 3600,
-        use_fallback: true,
+        use_fallback: false,
         force: false,
         format: "text",
         headers: false,
