@@ -1,3 +1,3 @@
 module Hotdog
-  VERSION = "1.20190725.1"
+  VERSION = "1.20191028.0"
 end
