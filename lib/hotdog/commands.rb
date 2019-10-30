@@ -28,7 +28,7 @@ module Hotdog
         execute_db(@db, q, args)
       end
 
-      def fallback?()
+      def use_fallback?()
         @options[:use_fallback]
       end
 
