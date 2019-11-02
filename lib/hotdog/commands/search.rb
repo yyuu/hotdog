@@ -65,17 +65,24 @@ module Hotdog
           else []
           end
         }
+        sort_field_range = 0..-1
         if options[:display_search_tags]
           tagnames = drilldown.call(node).map(&:to_s)
           if options[:primary_tag]
             tags = [options[:primary_tag]] + tagnames
+            sort_field_range = 1..-1  # sort by search tags
           else
             tags = tagnames
           end
         else
           tags = nil
         end
-        get_hosts(result, tags)
+        tuples, fields = get_hosts(result, tags)
+        # stable-sort by the order of tags with nils last
+        tuples = tuples.sort_by.with_index do |tuple, i|
+          [tuple[sort_field_range].map {|v| (v || '~~~').to_s }, i]
+        end
+        return tuples, fields
       end
 
       def parse(expression)
